@@ -59,3 +59,5 @@ if ($webPath === '') $webPath = '';
 $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
 $host = $_SERVER['HTTP_HOST'];
 define('BASE_URL', $protocol . '://' . $host . $webPath);
+
+//git test
