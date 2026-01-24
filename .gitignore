@@ -1,0 +1,40 @@
+# Composer / PHP
+/vendor/
+/composer.lock
+
+# Environment and secrets
+.env
+*.env
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Logs, caches, temp
+*.log
+tmp/
+cache/
+
+# Node / build
+node_modules/
+dist/
+build/
+
+# Database and backups
+*.sql
+*.sql.gz
+*.sqlite
+database/
+
+# Private keys
+*.pem
+*.key
+
+# XAMPP extras
+xamppfiles/
