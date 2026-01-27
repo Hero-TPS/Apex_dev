@@ -57,7 +57,7 @@ function getWeeklyMetrics($pdo, $startUnix, $endUnix) {
     $uberTrips = (int) ($uber['total_trips'] ?? 0);
     $mobileDataCost = (float) ($uber['mobile_data_cost'] ?? 0);
 
-// === FUEL: align to full SAST days (00:00 Monday → 23:59 Sunday) ===
+    // === FUEL: align to full SAST days (00:00 Monday → 23:59 Sunday) ===
     $tz = new DateTimeZone(Time::TIME_ZONE);
     $startDateObj = new DateTime($dateRange['start_date'], $tz);
     $endDateObj = new DateTime($dateRange['end_date'], $tz);
@@ -109,7 +109,8 @@ function getWeeklyMetrics($pdo, $startUnix, $endUnix) {
 /**
  * Get financial metrics for an entire month (SAST)
  */
-function getMonthlyMetrics($pdo, $year, $month) {
+function getMonthlyMetrics($pdo, $year, $month)
+{
     $tz = new DateTimeZone(Time::TIME_ZONE);
     $startDate = new DateTime("$year-$month-01", $tz);
     $endDate = clone $startDate;
@@ -121,8 +122,8 @@ function getMonthlyMetrics($pdo, $year, $month) {
     $stmt = $pdo->prepare("SELECT SUM(cost) AS income, COUNT(*) AS trips FROM bookings WHERE trip_date BETWEEN ? AND ?");
     $stmt->execute([$startDateStr, $endDateStr]);
     $row = $stmt->fetch();
-    $bookingIncome = (float)($row['income'] ?? 0);
-    $bookingTrips = (int)($row['trips'] ?? 0);
+    $bookingIncome = (float) ($row['income'] ?? 0);
+    $bookingTrips = (int) ($row['trips'] ?? 0);
 
     // === UBER ===
     $startUnix = $startDate->getTimestamp();
@@ -130,10 +131,10 @@ function getMonthlyMetrics($pdo, $year, $month) {
     $stmt = $pdo->prepare("SELECT COALESCE(SUM(total_income), 0) AS income, COALESCE(SUM(cash_received), 0) AS cash, COALESCE(SUM(total_trips), 0) AS trips, COALESCE(SUM(mobile_data_cost), 0) AS data FROM uber_income WHERE week_start BETWEEN ? AND ?");
     $stmt->execute([$startUnix, $endUnix]);
     $row = $stmt->fetch();
-    $uberIncome = (float)($row['income'] ?? 0);
-    $uberCash = (float)($row['cash'] ?? 0);
-    $uberTrips = (int)($row['trips'] ?? 0);
-    $mobileDataCost = (float)($row['data'] ?? 0);
+    $uberIncome = (float) ($row['income'] ?? 0);
+    $uberCash = (float) ($row['cash'] ?? 0);
+    $uberTrips = (int) ($row['trips'] ?? 0);
+    $mobileDataCost = (float) ($row['data'] ?? 0);
 
     // === FUEL: align to full SAST days ===
     $endDateFull = clone $endDate;
@@ -144,11 +145,11 @@ function getMonthlyMetrics($pdo, $year, $month) {
     $stmt = $pdo->prepare("SELECT SUM(total_cost) AS cost, SUM(trip_km) AS km FROM fuel_logs WHERE log_timestamp BETWEEN ? AND ?");
     $stmt->execute([$fuelStart, $fuelEnd]);
     $row = $stmt->fetch();
-    $fuelCost = (float)($row['cost'] ?? 0);
-    $totalTripKm = (float)($row['km'] ?? 0);
+    $fuelCost = (float) ($row['cost'] ?? 0);
+    $totalTripKm = (float) ($row['km'] ?? 0);
 
     // === CAR RENTAL ===
-    $carRental = (float)getSystemVariable($pdo, 'car_rental_price', 0) * getWeeksInMonth($year, $month);
+    $carRental = (float) getSystemVariable($pdo, 'car_rental_price', 0) * getWeeksInMonth($year, $month);
 
     // === CALCULATIONS ===
     $totalIncome = $bookingIncome + $uberIncome;
@@ -184,7 +185,8 @@ function getMonthlyMetrics($pdo, $year, $month) {
 /**
  * Get all weeks in a month (for drill-down)
  */
-function getWeeklyBreakdownForMonth($pdo, $year, $month) {
+function getWeeklyBreakdownForMonth($pdo, $year, $month)
+{
     $tz = new DateTimeZone(Time::TIME_ZONE);
     $weeks = [];
 
