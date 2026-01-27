@@ -40,7 +40,8 @@ include ROOT_DIR . '/includes/header.php';
 <div id="no-bookings-message" class="no-bookings" style="display: none;">
     <h3>📋 No bookings found</h3>
     <p>
-        <a href="AddBooking.php" class="btn" style="width: auto; padding: 10px 20px; text-decoration: none;">+ Create a Booking</a>
+        <a href="AddBooking.php" class="btn" style="width: auto; padding: 10px 20px; text-decoration: none;">+ Create a
+            Booking</a>
     </p>
 </div>
 
@@ -71,7 +72,7 @@ include ROOT_DIR . '/includes/header.php';
                 type: 'GET',
                 url: 'api/get_bookings.php',
                 // ✅ 'data' is explicitly present
-                data: {show: showAll ? 'all' : 'upcoming'},
+                data: { show: showAll ? 'all' : 'upcoming' },
                 dataType: 'json',
                 success: function (response) {
                     tableBody.empty();
@@ -79,23 +80,23 @@ include ROOT_DIR . '/includes/header.php';
                         $.each(response.bookings, function (index, booking) {
                             var rowClass = booking.is_overdue ? 'booking-overdue' : '';
                             var row =
-                                    '<tr id="booking-row-' + booking.id + '" ' +
-                                    'class="' + rowClass + '" ' +
-                                    'data-name="' + escapeHtml(booking.client_name.toLowerCase()) + '" ' +
-                                    'data-date="' + escapeHtml(booking.trip_date_raw) + '">' +
-                                    '<td data-label="Date">' + escapeHtml(booking.trip_date) + '</td>' +
-                                    '<td data-label="Time">' + escapeHtml(booking.start_time) + '</td>' +
-                                    '<td data-label="Client">' + escapeHtml(booking.client_name) + '</td>' +
-                                    '<td data-label="Pickup">' + escapeHtml(booking.pickup_location) + '</td>' +
-                                    '<td data-label="Destination">' + escapeHtml(booking.destination) + '</td>' +
-                                    '<td data-label="Cost">' + escapeHtml(booking.cost) + '</td>' +
-                                    '<td data-label="Actions">' +
-                                    '<div class="actions-container">' +
-                                    '<a href="BookingDetail.php?id=' + booking.id + '" class="action-btn view-details-btn">View</a>' +
-                                    '<a href="EditBookingForm.php?id=' + booking.id + '" class="action-btn edit-btn">Edit</a>' +
-                                    '<button class="action-btn delete-btn" data-id="' + booking.id + '">Delete</button>' +
-                                    '<a href="invoice.php?id=' + booking.id + '" class="action-btn invoice-btn" target="_blank">Invoice</a>' +
-                                    '<button class="action-btn thank-you-btn" data-id="' + booking.id + '">Thank You</button>';
+                                '<tr id="booking-row-' + booking.id + '" ' +
+                                'class="' + rowClass + '" ' +
+                                'data-name="' + escapeHtml(booking.client_name.toLowerCase()) + '" ' +
+                                'data-date="' + escapeHtml(booking.trip_date_raw) + '">' +
+                                '<td data-label="Date">' + escapeHtml(booking.trip_date) + '</td>' +
+                                '<td data-label="Time">' + escapeHtml(booking.start_time) + '</td>' +
+                                '<td data-label="Client">' + escapeHtml(booking.client_name) + '</td>' +
+                                '<td data-label="Pickup">' + escapeHtml(booking.pickup_location) + '</td>' +
+                                '<td data-label="Destination">' + escapeHtml(booking.destination) + '</td>' +
+                                '<td data-label="Cost">' + escapeHtml(booking.cost) + '</td>' +
+                                '<td data-label="Actions">' +
+                                '<div class="actions-container">' +
+                                '<a href="BookingDetail.php?id=' + booking.id + '" class="action-btn view-details-btn">View</a>' +
+                                '<a href="EditBookingForm.php?id=' + booking.id + '" class="action-btn edit-btn">Edit</a>' +
+                                '<button class="action-btn delete-btn" data-id="' + booking.id + '">Delete</button>' +
+                                '<a href="invoice.php?id=' + booking.id + '" class="action-btn invoice-btn" target="_blank">Invoice</a>' +
+                                '<button class="action-btn thank-you-btn" data-id="' + booking.id + '">Thank You</button>';
 
                             // Status button logic
                             var showStatusButton = false;
@@ -114,17 +115,17 @@ include ROOT_DIR . '/includes/header.php';
 
                             if (showStatusButton) {
                                 row += '<button class="action-btn status-toggle-btn ' +
-                                        (booking.status === 'completed' ? 'completed' : '') + '" ' +
-                                        'data-id="' + booking.id + '" ' +
-                                        'data-status="' + booking.status + '">' +
-                                        escapeHtml(statusButtonText) +
-                                        '</button>';
+                                    (booking.status === 'completed' ? 'completed' : '') + '" ' +
+                                    'data-id="' + booking.id + '" ' +
+                                    'data-status="' + booking.status + '">' +
+                                    escapeHtml(statusButtonText) +
+                                    '</button>';
                             }
 
                             row += '</div>' +
-                                    (booking.is_overdue ? '<div class="overdue-label">⚠️ Overdue</div>' : '') +
-                                    '</td>' +
-                                    '</tr>';
+                                (booking.is_overdue ? '<div class="overdue-label">⚠️ Overdue</div>' : '') +
+                                '</td>' +
+                                '</tr>';
                             tableBody.append(row);
                         });
                         $('.bookings-table').show();
@@ -172,42 +173,42 @@ include ROOT_DIR . '/includes/header.php';
             loadBookings();
         });
 
-// Status toggle
-$(document).on('click', '.status-toggle-btn', function() {
-    var bookingId = $(this).data('id');
-    var currentStatus = $(this).data('status');
-    var newStatus = (currentStatus === 'completed') ? 'confirmed' : 'completed';
-    var button = $(this);
+        // Status toggle
+        $(document).on('click', '.status-toggle-btn', function () {
+            var bookingId = $(this).data('id');
+            var currentStatus = $(this).data('status');
+            var newStatus = (currentStatus === 'completed') ? 'confirmed' : 'completed';
+            var button = $(this);
 
-    $.ajax({
-        url: 'api/update_booking.php',
-        type: 'POST',
-        data: {
-            action: 'update_status',
-            id: bookingId,
-            status: newStatus
-        },
-        dataType: 'json',
-        success: function(res) {
-            if (res.success) {
-                // 🔁 Update button state immediately (no full reload)
-                if (newStatus === 'completed') {
-                    button
-                        .text('Undo Done')
-                        .data('status', 'completed')
-                        .removeClass('view-details-btn')
-                        .addClass('completed');
-                } else {
-                    button
-                        .text('Mark Done')
-                        .data('status', 'confirmed')
-                        .removeClass('completed')
-                        .addClass('view-details-btn');
+            $.ajax({
+                url: 'api/update_booking.php',
+                type: 'POST',
+                data: {
+                    action: 'update_status',
+                    id: bookingId,
+                    status: newStatus
+                },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.success) {
+                        // 🔁 Update button state immediately (no full reload)
+                        if (newStatus === 'completed') {
+                            button
+                                .text('Undo Done')
+                                .data('status', 'completed')
+                                .removeClass('view-details-btn')
+                                .addClass('completed');
+                        } else {
+                            button
+                                .text('Mark Done')
+                                .data('status', 'confirmed')
+                                .removeClass('completed')
+                                .addClass('view-details-btn');
+                        }
+                    }
                 }
-            }
-        }
-    });
-});
+            });
+        });
 
         // Delete booking
         tableBody.on('click', '.delete-btn', function () {
@@ -226,7 +227,7 @@ $(document).on('click', '.status-toggle-btn', function() {
                 type: 'GET',
                 url: 'api/get_thank_you_link.php',
                 // ✅ 'data' is explicitly present
-                data: {id: bookingId},
+                data: { id: bookingId },
                 dataType: 'json',
                 success: function (response) {
                     if (response.success) {
@@ -259,7 +260,7 @@ $(document).on('click', '.status-toggle-btn', function() {
                 type: 'POST',
                 url: 'api/delete_booking.php',
                 // ✅ 'data' is explicitly present
-                data: {id: bookingIdToDelete},
+                data: { id: bookingIdToDelete },
                 dataType: 'json',
                 success: function (response) {
                     if (response.success) {
@@ -303,4 +304,4 @@ $(document).on('click', '.status-toggle-btn', function() {
     });
 </script>
 
-<?php include 'includes/footer.php'; ?>
+<?php include ROOT_DIR . '/includes/footer.php'; ?>

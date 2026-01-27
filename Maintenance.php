@@ -4,9 +4,11 @@
 $page_title = 'Data Maintenance';
 $page_subtitle = 'General Settings';
 $show_breadcrumb = true;
-$breadcrumb = ' > Maintenance';
 
-include 'includes/header.php';
+require_once __DIR__ . '/config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
+include ROOT_DIR . '/includes/header.php';
+
 
 // Fetch dropdown data
 $current_destinations = fetchColumn($pdo, 'destinations', 'name', 'name ASC');
@@ -258,4 +260,4 @@ $(document).ready(function () {
 });
 </script>
 
-<?php include 'includes/footer.php'; ?>
+<?php include ROOT_DIR . '/includes/footer.php'; ?>

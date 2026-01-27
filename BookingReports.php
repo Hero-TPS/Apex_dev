@@ -22,7 +22,9 @@ include ROOT_DIR . '/includes/header.php';
                 </tr>
             </thead>
             <tbody id="report-body">
-                <tr><td colspan="3" style="text-align:center;">Loading report...</td></tr>
+                <tr>
+                    <td colspan="3" style="text-align:center;">Loading report...</td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -40,7 +42,9 @@ include ROOT_DIR . '/includes/header.php';
                 </tr>
             </thead>
             <tbody id="monthly-report-body">
-                <tr><td colspan="3" style="text-align:center;">Loading monthly report...</td></tr>
+                <tr>
+                    <td colspan="3" style="text-align:center;">Loading monthly report...</td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -80,7 +84,7 @@ include ROOT_DIR . '/includes/header.php';
             }
         });
 
-// Load monthly report
+        // Load monthly report
         $.ajax({
             url: 'api/reports.php?action=monthly_bookings',
             dataType: 'json',
@@ -114,4 +118,4 @@ include ROOT_DIR . '/includes/header.php';
     });
 </script>
 
-<?php include 'includes/footer.php'; ?>
+<?php include ROOT_DIR . '/includes/footer.php'; ?>

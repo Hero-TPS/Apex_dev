@@ -3,7 +3,10 @@ $page_title = 'Fuel Log';
 $page_subtitle = 'Track fuel expenses';
 $show_breadcrumb = true;
 $breadcrumb = ' > Fuel Log';
-include 'includes/header.php';
+
+require_once __DIR__ . '/config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
+include ROOT_DIR . '/includes/header.php';
 
 // Get last fuel price for default
 $last_price = 25.00;
@@ -122,4 +125,4 @@ $(document).ready(function() {
 });
 </script>
 
-<?php include 'includes/footer.php'; ?>
+<?php include ROOT_DIR . '/includes/footer.php'; ?>

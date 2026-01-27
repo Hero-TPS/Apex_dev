@@ -5,7 +5,9 @@ $page_subtitle = 'Booking History';
 $show_breadcrumb = true;
 $breadcrumb = ' > <a href="ClientsView.php">Clients</a> > Booking History';
 
-include 'includes/header.php';
+require_once __DIR__ . '/config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
+include ROOT_DIR . '/includes/header.php';
 
 if (!isset($_GET['contact_id'])) {
     die('Client ID required');
@@ -83,5 +85,4 @@ $bookings = $stmt->fetchAll();
 
 <a href="ClientsView.php?highlight=<?= (int) $contactId ?>" class="page-action-btn back">⬅️ Back</a>
 
-<?php include 'includes/footer.php'; ?>
-
+<?php include ROOT_DIR . '/includes/footer.php'; ?>

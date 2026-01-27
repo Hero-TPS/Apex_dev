@@ -84,17 +84,19 @@ if (isset($_GET['id'])) {
         </div>
         <div class="detail-item full-width">
             <strong>Pickup:</strong> <?= htmlspecialchars($booking['pickup_location']) ?>
-            <a href="https://waze.com/ul?q=<?= urlencode($booking['pickup_location']) ?>" target="_blank" class="map-link">Waze</a>
+            <a href="https://waze.com/ul?q=<?= urlencode($booking['pickup_location']) ?>" target="_blank"
+                class="map-link">Waze</a>
         </div>
         <div class="detail-item full-width">
             <strong>Destination:</strong> <?= htmlspecialchars($booking['destination']) ?>
-            <a href="https://waze.com/ul?q=<?= urlencode($booking['destination']) ?>" target="_blank" class="map-link">Waze</a>
+            <a href="https://waze.com/ul?q=<?= urlencode($booking['destination']) ?>" target="_blank"
+                class="map-link">Waze</a>
         </div>
         <div class="detail-item">
             <strong>Cost:</strong> R <?= number_format((float) $booking['cost'], 2) ?>
         </div>
         <div class="detail-item">
-            <strong>Payment Method:</strong> 
+            <strong>Payment Method:</strong>
             <?= $booking['payment_method'] === 'eft' ? 'EFT' : 'Cash' ?>
         </div>
         <div class="detail-item">
@@ -112,34 +114,33 @@ if (isset($_GET['id'])) {
             <strong>Notes:</strong> <?= htmlspecialchars($booking['description'] ?: 'None') ?>
         </div>
         <div class="detail-item" id="status-display">
-            <strong>Status:</strong> 
+            <strong>Status:</strong>
             <?= $booking['status'] === 'completed' ? '✅ Completed' : '⏳ Confirmed' ?>
         </div>
         <div class="form-group">
             <label for="gate_code">Gate code</label>
             <textarea id="gate_code" name="gate_code"></textarea>
-        </div> 
+        </div>
     </div>
 
     <!-- Action Buttons -->
     <div class="invoice-actions">
         <?php if ($showStatusButton): ?>
-            <button 
-                id="toggleStatusBtn" 
-                class="page-action-btn <?= $booking['status'] === 'completed' ? 'save' : 'toggle' ?>"
+            <button id="toggleStatusBtn" class="page-action-btn <?= $booking['status'] === 'completed' ? 'save' : 'toggle' ?>"
                 data-status="<?= htmlspecialchars($booking['status']) ?>">
-                    <?= $booking['status'] === 'completed' ? 'Undo Done' : 'Mark Done' ?>
+                <?= $booking['status'] === 'completed' ? 'Undo Done' : 'Mark Done' ?>
             </button>
         <?php endif; ?>
-        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>" 
-           target="_blank" class="page-action-btn whatsapp">💬 Send Confirmation</a>
+        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
+            target="_blank" class="page-action-btn whatsapp">💬 Send Confirmation</a>
         <a href="EditBookingForm.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️ Edit Booking</a>
         <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
-        <a href="AddBooking.php?contact_id=<?= (int) $booking['contact_id'] ?>&contact_name=<?= urlencode($booking['client_name']) ?>" 
-           class="page-action-btn rebook"> ➕ Book again</a>      
-        <a href="invoice.php?id=<?= (int) $booking['id'] ?>" target="_blank" class="page-action-btn invoice">📄 View Invoice</a>
-        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createThankYouMessage($booking)) ?>" 
-           target="_blank" class="page-action-btn back">🙏 Send Thank You</a>
+        <a href="AddBooking.php?contact_id=<?= (int) $booking['contact_id'] ?>&contact_name=<?= urlencode($booking['client_name']) ?>"
+            class="page-action-btn rebook"> ➕ Book again</a>
+        <a href="invoice.php?id=<?= (int) $booking['id'] ?>" target="_blank" class="page-action-btn invoice">📄 View
+            Invoice</a>
+        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createThankYouMessage($booking)) ?>"
+            target="_blank" class="page-action-btn back">🙏 Send Thank You</a>
     </div>
 
     <!-- Delete Confirmation Modal -->
@@ -177,7 +178,7 @@ if (isset($_GET['id'])) {
                     type: 'POST',
                     url: 'api/delete_booking.php',
                     // ✅ 'data' is explicitly present
-                    data: {id: bookingId},
+                    data: { id: bookingId },
                     dataType: 'json',
                     success: function (response) {
                         if (response.success) {
@@ -217,23 +218,23 @@ if (isset($_GET['id'])) {
                         status: newStatus
                     },
                     dataType: 'json',
-success: function (res) {
-    if (res.success) {
-        // Update button
-        if (newStatus === 'completed') {
-            button.text('Undo Done').data('status', 'completed').removeClass('toggle').addClass('save');
-        } else {
-            button.text('Mark Done').data('status', 'confirmed').removeClass('save').addClass('toggle');
-        }
+                    success: function (res) {
+                        if (res.success) {
+                            // Update button
+                            if (newStatus === 'completed') {
+                                button.text('Undo Done').data('status', 'completed').removeClass('toggle').addClass('save');
+                            } else {
+                                button.text('Mark Done').data('status', 'confirmed').removeClass('save').addClass('toggle');
+                            }
 
-        // ✅ Update status display
-        if (newStatus === 'completed') {
-            $('#status-display').html('<strong>Status:</strong> ✅ Completed');
-        } else {
-            $('#status-display').html('<strong>Status:</strong> ⏳ Confirmed');
-        }
-    }
-}
+                            // ✅ Update status display
+                            if (newStatus === 'completed') {
+                                $('#status-display').html('<strong>Status:</strong> ✅ Completed');
+                            } else {
+                                $('#status-display').html('<strong>Status:</strong> ⏳ Confirmed');
+                            }
+                        }
+                    }
                 });
             });
         });
@@ -243,4 +244,4 @@ success: function (res) {
     <div class="error-message"><?= htmlspecialchars($error_message) ?></div>
 <?php endif; ?>
 
-<?php include 'includes/footer.php'; ?>
+<?php include ROOT_DIR . '/includes/footer.php'; ?>

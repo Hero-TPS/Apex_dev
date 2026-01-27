@@ -3,7 +3,10 @@ $page_title = 'Edit Uber Income';
 $page_subtitle = 'Update Weekly Data';
 $show_breadcrumb = true;
 $breadcrumb = ' > <a href="UberReports.php">Uber Reports</a> > Edit';
-include 'includes/header.php';
+
+require_once __DIR__ . '/config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
+include ROOT_DIR . '/includes/header.php';
 
 $id = $_GET['id'] ?? null;
 $record = null;
@@ -89,4 +92,4 @@ $(document).ready(function() {
 });
 </script>
 
-<?php include 'includes/footer.php'; ?>
+<?php include ROOT_DIR . '/includes/footer.php'; ?>

@@ -294,4 +294,4 @@ if (isset($_GET['id'])) {
     });
 </script>
 
-<?php include 'includes/footer.php'; ?>
+<?php include ROOT_DIR . '/includes/footer.php'; ?>

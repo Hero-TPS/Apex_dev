@@ -6,7 +6,9 @@ $page_subtitle = 'Client Management';
 $show_breadcrumb = true;
 $breadcrumb = ' > Add New Contact';
 
-include 'includes/header.php';
+require_once __DIR__ . '/config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
+include ROOT_DIR . '/includes/header.php';
 ?>
 
 <form id="contactForm">
@@ -89,4 +91,4 @@ $(document).ready(function() {
 });
 </script>
 
-<?php include 'includes/footer.php'; ?>
+<?php include ROOT_DIR . '/includes/footer.php'; ?>

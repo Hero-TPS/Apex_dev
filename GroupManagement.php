@@ -4,7 +4,9 @@ $page_subtitle = 'Manage client groups';
 $show_breadcrumb = true;
 $breadcrumb = ' > Client Groups';
 
-include 'includes/header.php';
+require_once __DIR__ . '/config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
+include ROOT_DIR . '/includes/header.php';
 ?>
 
 <div class="content">
@@ -263,4 +265,4 @@ include 'includes/header.php';
     }
 </script>
 
-<?php include 'includes/footer.php'; ?>
+<?php include ROOT_DIR . '/includes/footer.php'; ?>

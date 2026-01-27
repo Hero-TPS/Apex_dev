@@ -6,7 +6,7 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once 'config.php';
+require_once __DIR__ . '/config.php';
 
 /**
  * Gets a Google API access token, using a cached one if available and still valid.

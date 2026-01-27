@@ -3,7 +3,10 @@ $page_title = 'Edit Fuel Log';
 $page_subtitle = 'Update Fuel Entry';
 $show_breadcrumb = true;
 $breadcrumb = ' > Fuel Log > Edit';
-include 'includes/header.php';
+
+require_once __DIR__ . '/config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
+include ROOT_DIR . '/includes/header.php';
 
 $id = $_GET['id'] ?? null;
 $log = null;
@@ -84,4 +87,4 @@ $datetime_local = $dt->format('Y-m-d\TH:i');
     });
 </script>
 
-<?php include 'includes/footer.php'; ?>
+<?php include ROOT_DIR . '/includes/footer.php'; ?>
