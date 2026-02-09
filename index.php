@@ -14,8 +14,8 @@ include ROOT_DIR . '/includes/header.php';
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="bookings-section">📅 Bookings</h3>
         <div id="bookings-section" class="menu-content">
-            <a href="BookingsView.php" class="dashboard-button db-booking">View Bookings</a>
-            <a href="AddBooking.php" class="dashboard-button db-view">Add Booking</a>
+            <a href="modules/Bookings/" class="dashboard-button db-booking">View Bookings</a>
+            <a href="modules/Bookings/add.php" class="dashboard-button db-view">Add Booking</a>
             <a href="BookingReports.php" class="dashboard-button db-reports">Booking Reports</a>
         </div>
     </div>
@@ -24,7 +24,7 @@ include ROOT_DIR . '/includes/header.php';
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="clients-section">👥 Clients</h3>
         <div id="clients-section" class="menu-content">
-            <a href="ClientsView.php" class="dashboard-button db-clients">View Clients</a>
+            <a href="modules/Clients" class="dashboard-button db-clients">View Clients</a>
             <a href="ContactForm.php" class="dashboard-button db-contact">Add Client</a>
             <a href="GroupManagement.php" class="dashboard-button db-groups">Client Groups</a>
         </div>
