@@ -2,8 +2,8 @@
 $page_title = 'Edit Booking';
 $page_subtitle = 'Edit Booking';
 $show_breadcrumb = true;
-$breadcrumb = '> <a href="<?= BASE_URL ?>/modules/Bookings/">Bookings View</a> > Edit Booking';
 require_once __DIR__ . '/../../config.php';
+$breadcrumb = '> <a href="' . BASE_URL . '/modules/Bookings/">Bookings View</a> > Edit Booking';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once ROOT_DIR . '/includes/bookings.php';
 include ROOT_DIR . '/includes/header.php';

@@ -3,9 +3,9 @@
 $page_title = 'Client Bookings';
 $page_subtitle = 'Booking History';
 $show_breadcrumb = true;
-$breadcrumb = ' > <a href="<?= BASE_URL ?>/ClientsView.php">Clients</a> > Booking History';
 
 require_once __DIR__ . '/../../config.php';
+$breadcrumb = ' > <a href="' . BASE_URL . '/ClientsView.php">Clients</a> > Booking History';
 require_once ROOT_DIR . '/includes/helpers.php';
 include ROOT_DIR . '/includes/header.php';
 
@@ -64,6 +64,7 @@ $bookings = $stmt->fetchAll();
                 $pickup = $booking['was_swapped'] ? $booking['original_destination'] : $booking['original_pickup'];
                 $destination = $booking['was_swapped'] ? $booking['original_pickup'] : $booking['original_destination'];
                 $statusText = $booking['status'] === 'completed' ? '✅ Completed' : '⏳ Confirmed';
+                $statusClass = $booking['status'] === 'completed' ? 'status-completed' : 'status-confirmed';
                 ?>
                 <tr>
                     <td data-label="Date"><?= date('d/m/y', strtotime($booking['trip_date'])) ?></td>
