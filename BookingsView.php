@@ -93,7 +93,7 @@ include ROOT_DIR . '/includes/header.php';
                                 '<td data-label="Actions">' +
                                 '<div class="actions-container">' +
                                 '<a href="BookingDetail.php?id=' + booking.id + '" class="action-btn view-details-btn">View</a>' +
-                                '<a href="EditBookingForm.php?id=' + booking.id + '" class="action-btn edit-btn">Edit</a>' +
+                                '<a href="modules/Bookings/edit.php?id=' + booking.id + '" class="action-btn edit-btn">Edit</a>' +
                                 '<button class="action-btn delete-btn" data-id="' + booking.id + '">Delete</button>' +
                                 '<a href="invoice.php?id=' + booking.id + '" class="action-btn invoice-btn" target="_blank">Invoice</a>' +
                                 '<button class="action-btn thank-you-btn" data-id="' + booking.id + '">Thank You</button>';

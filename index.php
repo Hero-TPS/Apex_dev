@@ -16,7 +16,7 @@ include ROOT_DIR . '/includes/header.php';
         <div id="bookings-section" class="menu-content">
             <a href="modules/Bookings/" class="dashboard-button db-booking">View Bookings</a>
             <a href="modules/Bookings/add.php" class="dashboard-button db-view">Add Booking</a>
-            <a href="BookingReports.php" class="dashboard-button db-reports">Booking Reports</a>
+            <a href="modules/Bookings/reports.php" class="dashboard-button db-reports">Booking Reports</a>
         </div>
     </div>
 

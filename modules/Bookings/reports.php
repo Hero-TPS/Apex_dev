@@ -4,7 +4,7 @@ $page_subtitle = 'Weekly Summary';
 $show_breadcrumb = true;
 $breadcrumb = ' > Reports > Weekly Bookings';
 
-require_once __DIR__ . '/config.php'; // or '/../config.php' if in subfolder
+require_once __DIR__ . '/../../config.php'; // or '/../config.php' if in subfolder
 include ROOT_DIR . '/includes/header.php';
 ?>
 
@@ -60,7 +60,7 @@ include ROOT_DIR . '/includes/header.php';
 <script>
     $(document).ready(function () {
         $.ajax({
-            url: 'api/reports.php?action=weekly_bookings',
+            url: '<?= BASE_URL ?>/api/reports.php?action=weekly_bookings',
             dataType: 'json',
             success: function (response) {
                 const body = $('#report-body');
@@ -86,7 +86,7 @@ include ROOT_DIR . '/includes/header.php';
 
         // Load monthly report
         $.ajax({
-            url: 'api/reports.php?action=monthly_bookings',
+            url: '<?= BASE_URL ?>/api/reports.php?action=monthly_bookings',
             dataType: 'json',
             success: function (response) {
                 const body = $('#monthly-report-body');

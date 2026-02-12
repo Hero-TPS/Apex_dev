@@ -3,9 +3,9 @@
 $page_title = 'Client Bookings';
 $page_subtitle = 'Booking History';
 $show_breadcrumb = true;
-$breadcrumb = ' > <a href="ClientsView.php">Clients</a> > Booking History';
+$breadcrumb = ' > <a href="<?= BASE_URL ?>/ClientsView.php">Clients</a> > Booking History';
 
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 include ROOT_DIR . '/includes/header.php';
 
@@ -73,7 +73,7 @@ $bookings = $stmt->fetchAll();
                     <td data-label="Cost">R<?= number_format((float) $booking['cost'], 2) ?></td>
                     <td data-label="Status" class="<?= $statusClass ?>"><?= $statusText ?></td>
                     <td data-label="Actions">
-                        <a href="BookingDetail.php?id=<?= (int) $booking['id'] ?>" class="action-btn view-details-btn">View</a>
+                        <a href="<?= BASE_URL ?>/modules/Bookings/view.php?id=<?= (int) $booking['id'] ?>" class="action-btn view-details-btn">View</a>
                     </td>
                 </tr>
             <?php endforeach; ?>
@@ -83,6 +83,6 @@ $bookings = $stmt->fetchAll();
     <div class="error-message">No bookings found.</div>
 <?php endif; ?>
 
-<a href="ClientsView.php?highlight=<?= (int) $contactId ?>" class="page-action-btn back">⬅️ Back</a>
+<a href="<?= BASE_URL ?>/ClientsView.php?highlight=<?= (int) $contactId ?>" class="page-action-btn back">⬅️ Back</a>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>

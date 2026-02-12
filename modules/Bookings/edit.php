@@ -2,8 +2,8 @@
 $page_title = 'Edit Booking';
 $page_subtitle = 'Edit Booking';
 $show_breadcrumb = true;
-$breadcrumb = '> <a href="BookingsView.php">Bookings View</a> > Edit Booking';
-require_once __DIR__ . '/config.php';
+$breadcrumb = '> <a href="<?= BASE_URL ?>/modules/Bookings/">Bookings View</a> > Edit Booking';
+require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once ROOT_DIR . '/includes/bookings.php';
 include ROOT_DIR . '/includes/header.php';
@@ -262,7 +262,7 @@ if (isset($_GET['id'])) {
 
             $.ajax({
                 type: 'POST',
-                url: 'api/update_booking.php',
+                url: '<?= BASE_URL ?>/api/update_booking.php',
                 // ✅ 'data' is explicitly present
                 data: formData,
                 dataType: 'json',
@@ -271,7 +271,7 @@ if (isset($_GET['id'])) {
                     if (response.success) {
                         result.html('<div class="success-message">' + response.message + '</div>');
                         setTimeout(function () {
-                            window.location.href = 'BookingDetail.php?id=' + <?= (int) $booking['id'] ?>;
+                            window.location.href = '<?= BASE_URL ?>/modules/Bookings/view.php?id=' + <?= (int) $booking['id'] ?>;
                         }, 1000);
                     } else {
                         result.html('<div class="error-message">' + response.message + '</div>');

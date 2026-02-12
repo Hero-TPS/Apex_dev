@@ -136,7 +136,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
                 // 🔹 Booking cell
                 var bookingCell = '';
                 if (contact.booking_count > 0) {
-                    bookingCell = '<a href="ClientBookings.php?contact_id=' + contact.id + '" class="action-btn view-details-btn">View (' + contact.booking_count + ')</a>';
+                    bookingCell = '<a href="modules/Bookings/client-bookings.php?contact_id=' + contact.id + '" class="action-btn view-details-btn">View (' + contact.booking_count + ')</a>';
                 } else {
                     bookingCell = '<span style="color:#888;">0</span>';
                 }

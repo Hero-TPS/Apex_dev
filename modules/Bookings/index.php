@@ -92,10 +92,10 @@ include ROOT_DIR . '/includes/header.php';
                                 '<td data-label="Cost">' + escapeHtml(booking.cost) + '</td>' +
                                 '<td data-label="Actions">' +
                                 '<div class="actions-container">' +
-                                '<a href="BookingDetail.php?id=' + booking.id + '" class="action-btn view-details-btn">View</a>' +
-                                '<a href="EditBookingForm.php?id=' + booking.id + '" class="action-btn edit-btn">Edit</a>' +
+                                '<a href="<?= BASE_URL ?>/modules/Bookings/view.php?id=' + booking.id + '" class="action-btn view-details-btn">View</a>' +
+                                '<a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=' + booking.id + '" class="action-btn edit-btn">Edit</a>' +
                                 '<button class="action-btn delete-btn" data-id="' + booking.id + '">Delete</button>' +
-                                '<a href="invoice.php?id=' + booking.id + '" class="action-btn invoice-btn" target="_blank">Invoice</a>' +
+                                '<a href="<?= BASE_URL ?>/invoice.php?id=' + booking.id + '" class="action-btn invoice-btn" target="_blank">Invoice</a>' +
                                 '<button class="action-btn thank-you-btn" data-id="' + booking.id + '">Thank You</button>';
 
                             // Status button logic

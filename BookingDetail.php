@@ -133,7 +133,7 @@ if (isset($_GET['id'])) {
         <?php endif; ?>
         <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
             target="_blank" class="page-action-btn whatsapp">💬 Send Confirmation</a>
-        <a href="EditBookingForm.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️ Edit Booking</a>
+        <a href="modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️ Edit Booking</a>
         <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
         <a href="AddBooking.php?contact_id=<?= (int) $booking['contact_id'] ?>&contact_name=<?= urlencode($booking['client_name']) ?>"
             class="page-action-btn rebook"> ➕ Book again</a>
