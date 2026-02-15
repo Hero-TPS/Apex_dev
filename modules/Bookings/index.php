@@ -40,8 +40,7 @@ include ROOT_DIR . '/includes/header.php';
 <div id="no-bookings-message" class="no-bookings" style="display: none;">
     <h3>📋 No bookings found</h3>
     <p>
-        <a href="AddBooking.php" class="btn" style="width: auto; padding: 10px 20px; text-decoration: none;">+ Create a
-            Booking</a>
+        <a href="<?= BASE_URL ?>/modules/Bookings/add.php" class="btn" style="width: auto; padding: 10px 20px; text-decoration: none;">+ Create a Booking</a>
     </p>
 </div>
 
@@ -71,7 +70,6 @@ include ROOT_DIR . '/includes/header.php';
             $.ajax({
                 type: 'GET',
                 url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
-                // ✅ 'data' is explicitly present
                 data: { show: showAll ? 'all' : 'upcoming' },
                 dataType: 'json',
                 success: function (response) {
@@ -92,10 +90,10 @@ include ROOT_DIR . '/includes/header.php';
                                 '<td data-label="Cost">' + escapeHtml(booking.cost) + '</td>' +
                                 '<td data-label="Actions">' +
                                 '<div class="actions-container">' +
-                                '<a href="BookingDetail.php?id=' + booking.id + '" class="action-btn view-details-btn">View</a>' +
-                                '<a href="EditBookingForm.php?id=' + booking.id + '" class="action-btn edit-btn">Edit</a>' +
+                                '<a href="<?= BASE_URL ?>/modules/Bookings/view.php?id=' + booking.id + '" class="action-btn view-details-btn">View</a>' +
+                                '<a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=' + booking.id + '" class="action-btn edit-btn">Edit</a>' +
                                 '<button class="action-btn delete-btn" data-id="' + booking.id + '">Delete</button>' +
-                                '<a href="invoice.php?id=' + booking.id + '" class="action-btn invoice-btn" target="_blank">Invoice</a>' +
+                                '<a href="<?= BASE_URL ?>/invoice.php?id=' + booking.id + '" class="action-btn invoice-btn" target="_blank">Invoice</a>' +
                                 '<button class="action-btn thank-you-btn" data-id="' + booking.id + '">Thank You</button>';
 
                             // Status button logic
@@ -181,7 +179,7 @@ include ROOT_DIR . '/includes/header.php';
             var button = $(this);
 
             $.ajax({
-                url: 'api/update_booking.php',
+                url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
                 type: 'POST',
                 data: {
                     action: 'update_status',
@@ -225,8 +223,7 @@ include ROOT_DIR . '/includes/header.php';
 
             $.ajax({
                 type: 'GET',
-                url: 'api/get_thank_you_link.php',
-                // ✅ 'data' is explicitly present
+                url: '<?= BASE_URL ?>/api/get_thank_you_link.php',
                 data: { id: bookingId },
                 dataType: 'json',
                 success: function (response) {
@@ -258,9 +255,11 @@ include ROOT_DIR . '/includes/header.php';
 
             $.ajax({
                 type: 'POST',
-                url: 'api/delete_booking.php',
-                // ✅ 'data' is explicitly present
-                data: { id: bookingIdToDelete },
+                url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                data: { 
+                    action: 'delete',
+                    id: bookingIdToDelete 
+                },
                 dataType: 'json',
                 success: function (response) {
                     if (response.success) {

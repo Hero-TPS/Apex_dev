@@ -9,7 +9,7 @@ $breadcrumb = ' > <a href="' . (defined('BASE_URL') ? BASE_URL : '') . '/modules
 require_once __DIR__ . '/../../config.php';
 
 // Shared includes
-require_once ROOT_DIR . '/includes/helpers.php';
+require_once __DIR__ . '/helpers.php';
 include ROOT_DIR . '/includes/header.php';
 
 $booking = null;

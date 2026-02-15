@@ -8,7 +8,7 @@ $breadcrumb = ' > Add Booking';
 // Bootstrap config (two levels up from modules/Bookings/)
 require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
-require_once ROOT_DIR . '/includes/bookings.php';
+require_once __DIR__ . '/helpers.php';
 include ROOT_DIR . '/includes/header.php';
 
 // Fetch data
@@ -341,7 +341,7 @@ $(document).ready(function () {
                 if (response.success && response.booking_id) {
                     $('#result').html('<div class="success-message">' + response.message + '</div>');
                     setTimeout(function () {
-                        window.location.href = '<?= BASE_URL ?>/modules/Bookings/detail.php?id=' + response.booking_id;
+                        window.location.href = '<?= BASE_URL ?>/modules/Bookings/view.php?id=' + response.booking_id;
                     }, 500);
                 } else {
                     $('#result').html('<div class="error-message">' + (response.message || 'Failed to create booking.') + '</div>');
