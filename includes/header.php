@@ -9,7 +9,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <?php //echo isset($page_title) ? htmlspecialchars($page_title) . ' - ' : ''; ?>
         <?php //echo htmlspecialchars(BUSINESS_NAME); ?>
-        <link rel="stylesheet" href="<?= BASE_URL ?>/styles.css?_=<?= time() ?>">
+        <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/styles.css">
         <link rel="icon" href="<?= BASE_URL ?>/assets/favicon.ico" sizes="any">
         <link rel="apple-touch-icon" href="<?= BASE_URL ?>/assets/apple-touch-icon.png">
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js" crossorigin="anonymous"></script>
