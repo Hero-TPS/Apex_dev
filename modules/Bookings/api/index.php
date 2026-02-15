@@ -50,6 +50,17 @@ try {
         case 'delete':
             handleDeleteBooking();
             break;
+        
+        // NEW: Weekly bookings report
+        case 'weekly_bookings':
+            handleWeeklyBookings();
+            break;
+        
+        // NEW: Monthly bookings report
+        case 'monthly_bookings':
+            handleMonthlyBookings();
+            break;
+        
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action: ' . ($action ?? 'none')], 400);
     }
@@ -467,5 +478,92 @@ function handleDeleteBooking() {
     } catch (Exception $e) {
         error_log('General error in delete_booking: ' . $e->getMessage());
         jsonResponse(['success' => false, 'message' => '❌ An unexpected error occurred.'], 500);
+    }
+}
+
+// ========== NEW: REPORTS HANDLERS ==========
+
+function handleWeeklyBookings() {
+    global $pdo;
+
+    try {
+        $sql = "
+            SELECT 
+                YEAR(trip_date) as year,
+                WEEK(trip_date, 1) as week_number,
+                MIN(trip_date) as week_start,
+                MAX(trip_date) as week_end,
+                COUNT(*) as booking_count,
+                SUM(cost) as total_income
+            FROM bookings
+            WHERE trip_date >= DATE_SUB(CURDATE(), INTERVAL 12 WEEK)
+            GROUP BY YEAR(trip_date), WEEK(trip_date, 1)
+            ORDER BY year DESC, week_number DESC
+        ";
+        
+        $stmt = $pdo->query($sql);
+        $weeks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Format the data
+        $formatted = array_map(function($week) {
+            $start = new DateTime($week['week_start']);
+            $end = new DateTime($week['week_end']);
+            return [
+                'week_label' => $start->format('d M') . ' - ' . $end->format('d M Y'),
+                'booking_count' => (int)$week['booking_count'],
+                'total_income' => (float)$week['total_income']
+            ];
+        }, $weeks);
+        
+        jsonResponse([
+            'success' => true,
+            'data' => $formatted
+        ]);
+
+    } catch (PDOException $e) {
+        error_log('Weekly bookings report error: ' . $e->getMessage());
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
+function handleMonthlyBookings() {
+    global $pdo;
+
+    try {
+        $currentYear = date('Y');
+        
+        $sql = "
+            SELECT 
+                MONTH(trip_date) as month_number,
+                MONTHNAME(trip_date) as month_name,
+                COUNT(*) as booking_count,
+                SUM(cost) as total_income
+            FROM bookings
+            WHERE YEAR(trip_date) = ?
+            GROUP BY MONTH(trip_date), MONTHNAME(trip_date)
+            ORDER BY month_number ASC
+        ";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$currentYear]);
+        $months = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Format the data
+        $formatted = array_map(function($month) {
+            return [
+                'month_label' => $month['month_name'],
+                'booking_count' => (int)$month['booking_count'],
+                'total_income' => (float)$month['total_income']
+            ];
+        }, $months);
+        
+        jsonResponse([
+            'success' => true,
+            'data' => $formatted
+        ]);
+
+    } catch (PDOException $e) {
+        error_log('Monthly bookings report error: ' . $e->getMessage());
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
     }
 }
