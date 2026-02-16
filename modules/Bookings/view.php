@@ -1,17 +1,18 @@
 <?php
-// modules/Bookings/detail.php
-
-// Bootstrap (two levels up from modules/Bookings/)
-require_once __DIR__ . '/../../config.php';
-require_once __DIR__ . '/helpers.php';
+// modules/Bookings/view.php
 
 $page_title = 'Booking Details';
 $page_subtitle = 'View Booking';
 $show_breadcrumb = true;
+
+// ✅ Load config FIRST (defines BASE_URL)
+require_once __DIR__ . '/../../config.php';
+
+// ✅ NOW we can use BASE_URL in breadcrumb
 $breadcrumb = ' > <a href="' . BASE_URL . '/modules/Bookings/">Bookings</a> > Booking Details';
+
 include ROOT_DIR . '/includes/header.php';
-
-
+require_once ROOT_DIR . '/includes/helpers.php';
 
 $booking = null;
 $error_message = '';
@@ -87,68 +88,165 @@ if (isset($_GET['id'])) {
         </div>
         <div class="detail-item full-width">
             <strong>Pickup:</strong> <?= htmlspecialchars($booking['pickup_location']) ?>
-            <a href="https://waze.com/ul?q=<?= urlencode($booking['pickup_location']) ?>" target="_blank" class="map-link">Waze</a>
+            <a href="https://waze.com/ul?q=<?= urlencode($booking['pickup_location']) ?>" target="_blank"
+                class="map-link">Waze</a>
         </div>
         <div class="detail-item full-width">
             <strong>Destination:</strong> <?= htmlspecialchars($booking['destination']) ?>
-            <a href="https://waze.com/ul?q=<?= urlencode($booking['destination']) ?>" target="_blank" class="map-link">Waze</a>
+            <a href="https://waze.com/ul?q=<?= urlencode($booking['destination']) ?>" target="_blank"
+                class="map-link">Waze</a>
         </div>
         <div class="detail-item">
-            <strong>Cost:</strong> R<?= number_format((float)$booking['cost'], 2) ?>
+            <strong>Cost:</strong> R <?= number_format((float) $booking['cost'], 2) ?>
         </div>
         <div class="detail-item">
-            <strong>Status:</strong> <?= htmlspecialchars($booking['status']) ?>
+            <strong>Payment Method:</strong>
+            <?= $booking['payment_method'] === 'eft' ? 'EFT' : 'Cash' ?>
         </div>
-
-        <?php if ($showStatusButton): ?>
-            <div class="detail-item full-width">
-                <form id="statusToggleForm" method="post" action="<?= defined('BASE_URL') ? BASE_URL : '' ?>/modules/Bookings/api/index.php?action=update_status">
-                    <input type="hidden" name="id" value="<?= (int)$booking['id'] ?>">
-                    <input type="hidden" name="status" value="<?= $booking['status'] === 'completed' ? 'confirmed' : 'completed' ?>">
-                    <button type="submit" class="btn"><?= htmlspecialchars($statusButtonText) ?></button>
-                </form>
-            </div>
-        <?php endif; ?>
-
-        <div class="detail-actions full-width">
-            <a href="<?= defined('BASE_URL') ? BASE_URL : '' ?>/modules/Bookings/edit.php?id=<?= (int)$booking['id'] ?>" class="btn">Edit</a>
-            <a href="<?= defined('BASE_URL') ? BASE_URL : '' ?>/modules/Bookings/invoice.php?id=<?= (int)$booking['id'] ?>" class="btn" target="_blank">Invoice</a>
-            <a href="<?= defined('BASE_URL') ? BASE_URL : '' ?>/modules/Bookings/" class="btn">⬅️ Back to Bookings</a>
+        <div class="detail-item">
+            <strong>Flight:</strong>
+            <?php
+            if (!empty($booking['flight_number'])):
+                $flight_number_clean = preg_replace('/\s+/', '', $booking['flight_number']);
+                $flightradar_link = "https://www.flightradar24.com/data/flights/" . strtolower($flight_number_clean);
+                ?>
+                <?= htmlspecialchars($booking['flight_number']) ?>
+                <a href="<?= $flightradar_link ?>" target="_blank" class="map-link">Track Flight</a>
+            <?php endif; ?>
+        </div>
+        <div class="detail-item full-width">
+            <strong>Notes:</strong> <?= htmlspecialchars($booking['description'] ?: 'None') ?>
+        </div>
+        <div class="detail-item" id="status-display">
+            <strong>Status:</strong>
+            <?= $booking['status'] === 'completed' ? '✅ Completed' : '⏳ Confirmed' ?>
+        </div>
+        <div class="form-group">
+            <label for="gate_code">Gate code</label>
+            <textarea id="gate_code" name="gate_code"></textarea>
         </div>
     </div>
 
+    <!-- Action Buttons -->
+    <div class="invoice-actions">
+        <?php if ($showStatusButton): ?>
+            <button id="toggleStatusBtn" class="page-action-btn <?= $booking['status'] === 'completed' ? 'save' : 'toggle' ?>"
+                data-status="<?= htmlspecialchars($booking['status']) ?>">
+                <?= $booking['status'] === 'completed' ? 'Undo Done' : 'Mark Done' ?>
+            </button>
+        <?php endif; ?>
+        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
+            target="_blank" class="page-action-btn whatsapp">💬 Send Confirmation</a>
+        <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️ Edit Booking</a>
+        <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
+        <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= (int) $booking['contact_id'] ?>&contact_name=<?= urlencode($booking['client_name']) ?>"
+            class="page-action-btn rebook"> ➕ Book again</a>
+        <a href="<?= BASE_URL ?>/modules/Bookings/invoice.php?id=<?= (int) $booking['id'] ?>" target="_blank" class="page-action-btn invoice">📄 View
+            Invoice</a>
+        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createThankYouMessage($booking)) ?>"
+            target="_blank" class="page-action-btn back">🙏 Send Thank You</a>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteConfirmationModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3>Are you sure?</h3>
+            <p>This will permanently delete the booking and its Google Calendar event. This action cannot be undone.</p>
+            <div class="modal-buttons">
+                <button id="confirmDeleteBtn" class="modal-btn confirm-btn">Yes, Delete</button>
+                <button id="cancelDeleteBtn" class="modal-btn cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification-area"></div>
+
     <script>
-    (function () {
-        // Optional: AJAX status toggle for better UX
-        document.getElementById('statusToggleForm')?.addEventListener('submit', function (e) {
-            e.preventDefault();
-            var form = e.target;
-            var fd = new FormData(form);
-            fetch(form.action, {
-                method: 'POST',
-                body: fd,
-                credentials: 'same-origin'
-            })
-            .then(r => r.json())
-            .then(function (resp) {
-                if (resp.success) {
-                    location.reload();
-                } else {
-                    alert(resp.message || 'Failed to update status');
-                }
-            })
-            .catch(function () {
-                alert('Network error while updating status');
+        $(document).ready(function () {
+            var bookingId = <?= (int) $booking['id'] ?>;
+            var modal = $('#deleteConfirmationModal');
+
+            $('#deleteBookingBtn').on('click', function () {
+                modal.show();
+            });
+
+            $('#cancelDeleteBtn').on('click', function () {
+                modal.hide();
+            });
+
+            $('#confirmDeleteBtn').on('click', function () {
+                var btn = $(this);
+                btn.text('Deleting...').prop('disabled', true);
+
+                $.ajax({
+                    type: 'POST',
+                    url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                    data: { 
+                        action: 'delete',
+                        id: bookingId 
+                    },
+                    dataType: 'json',
+                    success: function (response) {
+                        if (response.success) {
+                            var notif = $('<div class="success-message">' + response.message + '</div>');
+                            $('#notification-area').html(notif);
+                            setTimeout(function () {
+                                window.location.href = '<?= BASE_URL ?>/modules/Bookings/';
+                            }, 2000);
+                        } else {
+                            var notif = $('<div class="error-message">' + response.message + '</div>');
+                            $('#notification-area').html(notif);
+                        }
+                    },
+                    error: function () {
+                        $('#notification-area').html('<div class="error-message">❌ Delete request failed.</div>');
+                    },
+                    complete: function () {
+                        btn.text('Yes, Delete').prop('disabled', false);
+                        modal.hide();
+                    }
+                });
+            });
+
+            // Status toggle
+            $('#toggleStatusBtn').on('click', function () {
+                var currentStatus = $(this).data('status');
+                var newStatus = (currentStatus === 'completed') ? 'confirmed' : 'completed';
+                var button = $(this);
+
+                $.ajax({
+                    url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                    type: 'POST',
+                    data: {
+                        action: 'update_status',
+                        id: <?= (int) $booking['id'] ?>,
+                        status: newStatus
+                    },
+                    dataType: 'json',
+                    success: function (res) {
+                        if (res.success) {
+                            // Update button
+                            if (newStatus === 'completed') {
+                                button.text('Undo Done').data('status', 'completed').removeClass('toggle').addClass('save');
+                            } else {
+                                button.text('Mark Done').data('status', 'confirmed').removeClass('save').addClass('toggle');
+                            }
+
+                            // ✅ Update status display
+                            if (newStatus === 'completed') {
+                                $('#status-display').html('<strong>Status:</strong> ✅ Completed');
+                            } else {
+                                $('#status-display').html('<strong>Status:</strong> ⏳ Confirmed');
+                            }
+                        }
+                    }
+                });
             });
         });
-    })();
     </script>
 
 <?php else: ?>
-    <div class="error-message">
-        <?= htmlspecialchars($error_message) ?>
-    </div>
-    <a href="<?= defined('BASE_URL') ? BASE_URL : '' ?>/modules/Bookings/" class="btn">⬅️ Back to Bookings</a>
+    <div class="error-message"><?= htmlspecialchars($error_message) ?></div>
 <?php endif; ?>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>
