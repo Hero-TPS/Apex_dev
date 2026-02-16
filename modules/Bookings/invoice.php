@@ -37,7 +37,7 @@ $whatsapp_link = "https://wa.me/" . $phone . "?text=" . urlencode($message);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice - <?= htmlspecialchars(BUSINESS_NAME) ?></title>
-    <link rel="stylesheet" href="styles.css?v=2.4">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/styles.css">
     <link rel="icon" href="assets/favicon.ico">
     <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 </head>

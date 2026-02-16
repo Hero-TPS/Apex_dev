@@ -1,16 +1,17 @@
 <?php
 // modules/Bookings/detail.php
-$page_title = 'Booking Details';
-$page_subtitle = 'View Booking';
-$show_breadcrumb = true;
-$breadcrumb = ' > <a href="' . (defined('BASE_URL') ? BASE_URL : '') . '/modules/Bookings/">Bookings View</a> > Booking Detail';
 
 // Bootstrap (two levels up from modules/Bookings/)
 require_once __DIR__ . '/../../config.php';
-
-// Shared includes
 require_once __DIR__ . '/helpers.php';
+
+$page_title = 'Booking Details';
+$page_subtitle = 'View Booking';
+$show_breadcrumb = true;
+$breadcrumb = ' > <a href="' . BASE_URL . '/modules/Bookings/">Bookings</a> > Booking Details';
 include ROOT_DIR . '/includes/header.php';
+
+
 
 $booking = null;
 $error_message = '';

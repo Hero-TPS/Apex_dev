@@ -1,12 +1,14 @@
 <?php
-$page_title = 'Edit Booking';
-$page_subtitle = 'Edit Booking';
-$show_breadcrumb = true;
-$breadcrumb = '> <a href="' . (defined('BASE_URL') ? BASE_URL : '') . '/modules/Bookings/">Bookings View</a> > Edit Booking';
 
+// Shared includes
 require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once __DIR__ . '/helpers.php';
+
+$page_title = 'Edit Booking';
+$page_subtitle = 'Edit Booking';
+$show_breadcrumb = true;
+$breadcrumb = ' > <a href="' . BASE_URL . '/modules/Bookings/">Bookings</a> > Edit Booking';
 include ROOT_DIR . '/includes/header.php';
 
 $booking = null;
