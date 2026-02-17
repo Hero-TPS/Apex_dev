@@ -1,4 +1,3 @@
-
 <?php
 require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
@@ -21,8 +20,8 @@ $pickup = $booking['was_swapped'] ? $booking['original_destination'] : $booking[
 $destination = $booking['was_swapped'] ? $booking['original_pickup'] : $booking['original_destination'];
 
 // Build WhatsApp link
-$invoice_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') 
-             . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+$invoice_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
+    . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 
 $message = "Good day " . $booking['client_name'] . ",\n\nPlease find your invoice here: " . $invoice_url;
 
@@ -33,6 +32,7 @@ $whatsapp_link = "https://wa.me/" . $phone . "?text=" . urlencode($message);
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -41,6 +41,7 @@ $whatsapp_link = "https://wa.me/" . $phone . "?text=" . urlencode($message);
     <link rel="icon" href="assets/favicon.ico">
     <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 </head>
+
 <body>
     <div class="container invoice-container">
         <div class="invoice-header">
@@ -59,7 +60,7 @@ $whatsapp_link = "https://wa.me/" . $phone . "?text=" . urlencode($message);
                 <?= htmlspecialchars($booking['client_email'] ?? '') ?>
             </div>
             <div class="meta-right">
-                <strong>Invoice #:</strong> <?= 1000 + (int)$booking['id'] ?><br>
+                <strong>Invoice #:</strong> <?= 1000 + (int) $booking['id'] ?><br>
                 <strong>Date:</strong> <?= date("d M Y") ?>
             </div>
         </div>
@@ -74,27 +75,29 @@ $whatsapp_link = "https://wa.me/" . $phone . "?text=" . urlencode($message);
             <tbody>
                 <tr>
                     <td>
-                        Transport from <?= htmlspecialchars($pickup) ?> 
+                        Transport from <?= htmlspecialchars($pickup) ?>
                         to <?= htmlspecialchars($destination) ?>.
                         <?php if (!empty($booking['flight_number'])): ?>
                             <br><small>Flight: <?= htmlspecialchars($booking['flight_number']) ?></small>
                         <?php endif; ?>
                     </td>
                     <td><?= date('d M Y', strtotime($booking['trip_date'])) ?></td>
-                    <td style="text-align:right;">R <?= number_format((float)$booking['cost'], 2) ?></td>
+                    <td style="text-align:right;">R <?= number_format((float) $booking['cost'], 2) ?></td>
                 </tr>
             </tbody>
         </table>
         <div class="invoice-total">
-            <strong>Total:</strong> R <?= number_format((float)$booking['cost'], 2) ?>
+            <strong>Total:</strong> R <?= number_format((float) $booking['cost'], 2) ?>
         </div>
         <div class="invoice-footer">
             <p>Thank you for your business!</p>
         </div>
         <div class="invoice-actions">
             <button onclick="window.print()" class="btn">🖨️ Print / Save as PDF</button>
-            <a href="<?= htmlspecialchars($whatsapp_link) ?>" target="_blank" class="btn whatsapp-link">💬 Send via WhatsApp</a>
+            <a href="<?= htmlspecialchars($whatsapp_link) ?>" target="_blank" class="btn whatsapp-link">💬 Send via
+                WhatsApp</a>
         </div>
     </div>
 </body>
+
 </html>

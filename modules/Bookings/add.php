@@ -31,15 +31,12 @@ if (isset($_GET['contact_id']) && isset($_GET['contact_name'])) {
     <form id="bookingForm">
         <div class="form-group">
             <label for="contactSearch">Select Contact <span class="required">*</span></label>
-            <input 
-                type="text" 
-                id="contactSearch" 
-                placeholder="Search client..." 
-                value="<?= $prefill_contact_name ? htmlspecialchars($prefill_contact_name) : '' ?>"
-                required>
+            <input type="text" id="contactSearch" placeholder="Search client..."
+                value="<?= $prefill_contact_name ? htmlspecialchars($prefill_contact_name) : '' ?>" required>
             <div id="contactSuggestions" class="suggestions-box"></div>
             <input type="hidden" id="contact_id" name="contact_id" value="<?= $prefill_contact_id ?? '' ?>" required>
-            <input type="hidden" id="contact_name" name="contact_name" value="<?= htmlspecialchars($prefill_contact_name) ?>">
+            <input type="hidden" id="contact_name" name="contact_name"
+                value="<?= htmlspecialchars($prefill_contact_name) ?>">
         </div>
 
         <div class="form-group">
@@ -105,7 +102,8 @@ if (isset($_GET['contact_id']) && isset($_GET['contact_name'])) {
 
         <div class="form-group hidden" id="otherDestinationGroup">
             <label for="otherDestination">Specify Other Destination <span class="required">*</span></label>
-            <input type="text" id="otherDestination" name="other_original_destination" placeholder="Enter destination address">
+            <input type="text" id="otherDestination" name="other_original_destination"
+                placeholder="Enter destination address">
         </div>
 
         <div class="form-group hidden" id="addToDestinationGroup">
@@ -167,21 +165,88 @@ if (isset($_GET['contact_id']) && isset($_GET['contact_name'])) {
 </div>
 
 <script>
-$(document).ready(function () {
-    document.getElementById('date').min = new Date().toISOString().split('T')[0];
+    $(document).ready(function () {
+        document.getElementById('date').min = new Date().toISOString().split('T')[0];
 
-    const contactSearch = $('#contactSearch');
-    const suggestionsBox = $('#contactSuggestions');
-    const contactIdInput = $('#contact_id');
-    const contactNameInput = $('#contact_name');
+        const contactSearch = $('#contactSearch');
+        const suggestionsBox = $('#contactSuggestions');
+        const contactIdInput = $('#contact_id');
+        const contactNameInput = $('#contact_name');
 
-    let clients = <?= json_encode($contacts ?: []) ?>;
-    let selected = -1;
+        let clients = <?= json_encode($contacts ?: []) ?>;
+        let selected = -1;
 
-    const prefillId = <?= $prefill_contact_id ?: 'null' ?>;
-    if (prefillId !== null) {
-        const client = clients.find(c => c.id === prefillId);
-        if (client) {
+        const prefillId = <?= $prefill_contact_id ?: 'null' ?>;
+        if (prefillId !== null) {
+            const client = clients.find(c => c.id === prefillId);
+            if (client) {
+                contactSearch.val(client.name);
+                contactIdInput.val(client.id);
+                contactNameInput.val(client.name);
+                $('#phone').val(client.phone || '');
+
+                const pickupSelect = $('#pickup');
+                pickupSelect.empty();
+                if (client.address) {
+                    pickupSelect.append(`<option value="${escapeHtml(client.address)}" selected>${escapeHtml(client.address)}</option>`);
+                } else {
+                    pickupSelect.append('<option value="" selected>Choose pickup location...</option>');
+                }
+                pickupSelect.append('<option value="other">Other</option>');
+            }
+        }
+
+        contactSearch.on('input focus', function () {
+            const query = $(this).val().trim().toLowerCase();
+            if (query.length === 0) {
+                suggestionsBox.hide();
+                return;
+            }
+            const filtered = clients.filter(c =>
+                (c.name && c.name.toLowerCase().includes(query)) ||
+                (c.phone && c.phone.toLowerCase().includes(query))
+            );
+            suggestionsBox.empty();
+            if (filtered.length > 0) {
+                selected = -1;
+                filtered.forEach(client => {
+                    const item = $(`<div class="suggestion-item">${escapeHtml(client.name)}<br><small>${escapeHtml(client.phone || '')}</small><br><small>${escapeHtml(client.address || '')}</small></div>`);
+                    item.data('client', client);
+                    item.on('click', function () {
+                        selectClient($(this).data('client'));
+                    });
+                    suggestionsBox.append(item);
+                });
+                suggestionsBox.show();
+            } else {
+                suggestionsBox.html('<div class="suggestion-item">No clients found</div>').show();
+            }
+        });
+
+        contactSearch.on('keydown', function (e) {
+            const items = suggestionsBox.find('.suggestion-item');
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selected = Math.min(selected + 1, items.length - 1);
+                highlight(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selected = Math.max(selected - 1, -1);
+                highlight(items);
+            } else if (e.key === 'Enter' && selected >= 0) {
+                e.preventDefault();
+                selectClient(items.eq(selected).data('client'));
+            }
+        });
+
+        function highlight(items) {
+            items.removeClass('active');
+            if (selected >= 0) {
+                items.eq(selected).addClass('active');
+            }
+        }
+
+        function selectClient(client) {
             contactSearch.val(client.name);
             contactIdInput.val(client.id);
             contactNameInput.val(client.name);
@@ -195,172 +260,105 @@ $(document).ready(function () {
                 pickupSelect.append('<option value="" selected>Choose pickup location...</option>');
             }
             pickupSelect.append('<option value="other">Other</option>');
-        }
-    }
+            pickupSelect.trigger('change');
 
-    contactSearch.on('input focus', function () {
-        const query = $(this).val().trim().toLowerCase();
-        if (query.length === 0) {
-            suggestionsBox.hide();
-            return;
-        }
-        const filtered = clients.filter(c =>
-            (c.name && c.name.toLowerCase().includes(query)) ||
-            (c.phone && c.phone.toLowerCase().includes(query))
-        );
-        suggestionsBox.empty();
-        if (filtered.length > 0) {
-            selected = -1;
-            filtered.forEach(client => {
-                const item = $(`<div class="suggestion-item">${escapeHtml(client.name)}<br><small>${escapeHtml(client.phone || '')}</small><br><small>${escapeHtml(client.address || '')}</small></div>`);
-                item.data('client', client);
-                item.on('click', function () {
-                    selectClient($(this).data('client'));
-                });
-                suggestionsBox.append(item);
-            });
-            suggestionsBox.show();
-        } else {
-            suggestionsBox.html('<div class="suggestion-item">No clients found</div>').show();
-        }
-    });
-
-    contactSearch.on('keydown', function (e) {
-        const items = suggestionsBox.find('.suggestion-item');
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            selected = Math.min(selected + 1, items.length - 1);
-            highlight(items);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            selected = Math.max(selected - 1, -1);
-            highlight(items);
-        } else if (e.key === 'Enter' && selected >= 0) {
-            e.preventDefault();
-            selectClient(items.eq(selected).data('client'));
-        }
-    });
-
-    function highlight(items) {
-        items.removeClass('active');
-        if (selected >= 0) {
-            items.eq(selected).addClass('active');
-        }
-    }
-
-    function selectClient(client) {
-        contactSearch.val(client.name);
-        contactIdInput.val(client.id);
-        contactNameInput.val(client.name);
-        $('#phone').val(client.phone || '');
-
-        const pickupSelect = $('#pickup');
-        pickupSelect.empty();
-        if (client.address) {
-            pickupSelect.append(`<option value="${escapeHtml(client.address)}" selected>${escapeHtml(client.address)}</option>`);
-        } else {
-            pickupSelect.append('<option value="" selected>Choose pickup location...</option>');
-        }
-        pickupSelect.append('<option value="other">Other</option>');
-        pickupSelect.trigger('change');
-
-        suggestionsBox.hide();
-    }
-
-    $(document).on('click', function (e) {
-        if (!$(e.target).closest('#contactSearch, #contactSuggestions').length) {
             suggestionsBox.hide();
         }
-    });
 
-    $(document).on('keydown', function (e) {
-        if (e.key === 'Escape') {
-            suggestionsBox.hide();
-        }
-    });
-
-    // Toggle "Other" fields
-    $('#pickup').on('change', function () {
-        if ($(this).val() === 'other') {
-            $('#otherPickupGroup').removeClass('hidden');
-            $('#otherPickup').prop('required', true);
-        } else {
-            $('#otherPickupGroup').addClass('hidden');
-            $('#otherPickup').prop('required', false);
-        }
-    });
-
-    $('#destination').on('change', function () {
-        if ($(this).val() === 'other') {
-            $('#otherDestinationGroup').removeClass('hidden');
-            $('#addToDestinationGroup').removeClass('hidden');
-            $('#otherDestination').prop('required', true);
-        } else {
-            $('#otherDestinationGroup').addClass('hidden');
-            $('#addToDestinationGroup').addClass('hidden');
-            $('#otherDestination').prop('required', false);
-        }
-    });
-
-    $('#cost').on('change', function () {
-        if ($(this).val() === 'other') {
-            $('#otherCostGroup').removeClass('hidden');
-            $('#otherCost').prop('required', true);
-        } else {
-            $('#otherCostGroup').addClass('hidden');
-            $('#otherCost').prop('required', false);
-        }
-    });
-
-    // Trigger initial state
-    $('#pickup').trigger('change');
-    $('#destination').trigger('change');
-    $('#cost').trigger('change');
-
-    // Form submit
-    $('#bookingForm').on('submit', function (e) {
-        e.preventDefault();
-        var submitBtn = $('#submitBtn');
-        var loading = $('#loading');
-        var result = $('#result');
-        submitBtn.hide();
-        loading.show();
-        result.html('');
-
-        var paymentMethod = $('#payment_method').is(':checked') ? 'eft' : 'cash';
-        var formData = $(this).serialize() + '&payment_method=' + paymentMethod;
-
-        $.ajax({
-            type: 'POST',
-            url: '<?= BASE_URL ?>/modules/Bookings/api/index.php?action=add',
-            data: formData,
-            dataType: 'json',
-            success: function (response) {
-                loading.hide();
-                submitBtn.show();
-                if (response.success && response.booking_id) {
-                    $('#result').html('<div class="success-message">' + response.message + '</div>');
-                    setTimeout(function () {
-                        window.location.href = '<?= BASE_URL ?>/modules/Bookings/view.php?id=' + response.booking_id;
-                    }, 500);
-                } else {
-                    $('#result').html('<div class="error-message">' + (response.message || 'Failed to create booking.') + '</div>');
-                }
-            },
-            error: function (xhr) {
-                loading.hide();
-                submitBtn.show();
-                $('#result').html('<div class="error-message">❌ Error: ' + (xhr.responseText || 'Unknown error') + '</div>');
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('#contactSearch, #contactSuggestions').length) {
+                suggestionsBox.hide();
             }
         });
-    });
 
-    function escapeHtml(str) {
-        var div = document.createElement('div');
-        div.appendChild(document.createTextNode(str || ''));
-        return div.innerHTML;
-    }
-});
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Escape') {
+                suggestionsBox.hide();
+            }
+        });
+
+        // Toggle "Other" fields
+        $('#pickup').on('change', function () {
+            if ($(this).val() === 'other') {
+                $('#otherPickupGroup').removeClass('hidden');
+                $('#otherPickup').prop('required', true);
+            } else {
+                $('#otherPickupGroup').addClass('hidden');
+                $('#otherPickup').prop('required', false);
+            }
+        });
+
+        $('#destination').on('change', function () {
+            if ($(this).val() === 'other') {
+                $('#otherDestinationGroup').removeClass('hidden');
+                $('#addToDestinationGroup').removeClass('hidden');
+                $('#otherDestination').prop('required', true);
+            } else {
+                $('#otherDestinationGroup').addClass('hidden');
+                $('#addToDestinationGroup').addClass('hidden');
+                $('#otherDestination').prop('required', false);
+            }
+        });
+
+        $('#cost').on('change', function () {
+            if ($(this).val() === 'other') {
+                $('#otherCostGroup').removeClass('hidden');
+                $('#otherCost').prop('required', true);
+            } else {
+                $('#otherCostGroup').addClass('hidden');
+                $('#otherCost').prop('required', false);
+            }
+        });
+
+        // Trigger initial state
+        $('#pickup').trigger('change');
+        $('#destination').trigger('change');
+        $('#cost').trigger('change');
+
+        // Form submit
+        $('#bookingForm').on('submit', function (e) {
+            e.preventDefault();
+            var submitBtn = $('#submitBtn');
+            var loading = $('#loading');
+            var result = $('#result');
+            submitBtn.hide();
+            loading.show();
+            result.html('');
+
+            var paymentMethod = $('#payment_method').is(':checked') ? 'eft' : 'cash';
+            var formData = $(this).serialize() + '&payment_method=' + paymentMethod;
+
+            $.ajax({
+                type: 'POST',
+                url: '<?= BASE_URL ?>/modules/Bookings/api/index.php?action=add',
+                data: formData,
+                dataType: 'json',
+                success: function (response) {
+                    loading.hide();
+                    submitBtn.show();
+                    if (response.success && response.booking_id) {
+                        $('#result').html('<div class="success-message">' + response.message + '</div>');
+                        setTimeout(function () {
+                            window.location.href = '<?= BASE_URL ?>/modules/Bookings/view.php?id=' + response.booking_id;
+                        }, 500);
+                    } else {
+                        $('#result').html('<div class="error-message">' + (response.message || 'Failed to create booking.') + '</div>');
+                    }
+                },
+                error: function (xhr) {
+                    loading.hide();
+                    submitBtn.show();
+                    $('#result').html('<div class="error-message">❌ Error: ' + (xhr.responseText || 'Unknown error') + '</div>');
+                }
+            });
+        });
+
+        function escapeHtml(str) {
+            var div = document.createElement('div');
+            div.appendChild(document.createTextNode(str || ''));
+            return div.innerHTML;
+        }
+    });
 </script>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>

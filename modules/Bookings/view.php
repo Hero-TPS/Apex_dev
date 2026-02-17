@@ -13,6 +13,7 @@ $breadcrumb = ' > <a href="' . BASE_URL . '/modules/Bookings/">Bookings</a> > Bo
 
 include ROOT_DIR . '/includes/header.php';
 require_once ROOT_DIR . '/includes/helpers.php';
+require_once __DIR__ . '/helpers.php';
 
 $booking = null;
 $error_message = '';
@@ -137,11 +138,13 @@ if (isset($_GET['id'])) {
         <?php endif; ?>
         <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
             target="_blank" class="page-action-btn whatsapp">💬 Send Confirmation</a>
-        <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️ Edit Booking</a>
+        <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
+            Edit Booking</a>
         <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
         <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= (int) $booking['contact_id'] ?>&contact_name=<?= urlencode($booking['client_name']) ?>"
             class="page-action-btn rebook"> ➕ Book again</a>
-        <a href="<?= BASE_URL ?>/modules/Bookings/invoice.php?id=<?= (int) $booking['id'] ?>" target="_blank" class="page-action-btn invoice">📄 View
+        <a href="<?= BASE_URL ?>/modules/Bookings/invoice.php?id=<?= (int) $booking['id'] ?>" target="_blank"
+            class="page-action-btn invoice">📄 View
             Invoice</a>
         <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createThankYouMessage($booking)) ?>"
             target="_blank" class="page-action-btn back">🙏 Send Thank You</a>
@@ -181,9 +184,9 @@ if (isset($_GET['id'])) {
                 $.ajax({
                     type: 'POST',
                     url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
-                    data: { 
+                    data: {
                         action: 'delete',
-                        id: bookingId 
+                        id: bookingId
                     },
                     dataType: 'json',
                     success: function (response) {

@@ -8,7 +8,7 @@ require_once __DIR__ . '/../../../config.php';
 // Shared helpers and booking logic
 require_once ROOT_DIR . '/google-auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
-require_once ROOT_DIR . '/includes/bookings.php';
+require_once __DIR__ . '/../helpers.php';
 
 // Set JSON header
 header('Content-Type: application/json');

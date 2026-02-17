@@ -1,4 +1,5 @@
 <?php
+//booking reports
 $page_title = 'Booking Reports';
 $page_subtitle = 'Weekly Summary';
 $show_breadcrumb = true;
