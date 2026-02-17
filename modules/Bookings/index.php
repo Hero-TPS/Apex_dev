@@ -40,7 +40,8 @@ include ROOT_DIR . '/includes/header.php';
 <div id="no-bookings-message" class="no-bookings" style="display: none;">
     <h3>📋 No bookings found</h3>
     <p>
-        <a href="<?= BASE_URL ?>/modules/Bookings/add.php" class="btn" style="width: auto; padding: 10px 20px; text-decoration: none;">+ Create a Booking</a>
+        <a href="<?= BASE_URL ?>/modules/Bookings/add.php" class="btn"
+            style="width: auto; padding: 10px 20px; text-decoration: none;">+ Create a Booking</a>
     </p>
 </div>
 
@@ -256,9 +257,9 @@ include ROOT_DIR . '/includes/header.php';
             $.ajax({
                 type: 'POST',
                 url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
-                data: { 
+                data: {
                     action: 'delete',
-                    id: bookingIdToDelete 
+                    id: bookingIdToDelete
                 },
                 dataType: 'json',
                 success: function (response) {
