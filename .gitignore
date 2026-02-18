@@ -38,3 +38,13 @@ database/
 
 # XAMPP extras
 xamppfiles/
+# Service Account Key - NEVER commit this!
+service-account-key.json
+
+# Environment files
+.env
+*.key
+*.pem
+
+# Local config
+config.local.php
