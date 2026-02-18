@@ -14,7 +14,8 @@ require_once __DIR__ . '/../helpers.php';
 header('Content-Type: application/json');
 
 // Response helpers
-function jsonResponse(array $payload, int $httpCode = 200) {
+function jsonResponse(array $payload, int $httpCode = 200)
+{
     http_response_code($httpCode);
     echo json_encode($payload, JSON_UNESCAPED_UNICODE);
     exit;
@@ -26,10 +27,14 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 // Infer action from method if not explicit
 if (!$action) {
-    if ($method === 'GET') $action = 'get';
-    elseif ($method === 'POST') $action = 'add';
-    elseif ($method === 'PUT' || $method === 'PATCH') $action = 'update';
-    elseif ($method === 'DELETE') $action = 'delete';
+    if ($method === 'GET')
+        $action = 'get';
+    elseif ($method === 'POST')
+        $action = 'add';
+    elseif ($method === 'PUT' || $method === 'PATCH')
+        $action = 'update';
+    elseif ($method === 'DELETE')
+        $action = 'delete';
 }
 
 // Dispatch
@@ -50,17 +55,17 @@ try {
         case 'delete':
             handleDeleteBooking();
             break;
-        
+
         // NEW: Weekly bookings report
         case 'weekly_bookings':
             handleWeeklyBookings();
             break;
-        
+
         // NEW: Monthly bookings report
         case 'monthly_bookings':
             handleMonthlyBookings();
             break;
-        
+
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action: ' . ($action ?? 'none')], 400);
     }
@@ -71,9 +76,10 @@ try {
 
 // ========== HANDLERS ==========
 
-function handleGetBookings() {
+function handleGetBookings()
+{
     global $pdo;
-    
+
     $response = [
         'success' => false,
         'message' => 'An error occurred while fetching bookings.',
@@ -143,7 +149,7 @@ function handleGetBookings() {
             $isOverdue = $isPast && ($row['status'] !== 'completed');
 
             $response['bookings'][] = [
-                'id' => (int)$row['id'],
+                'id' => (int) $row['id'],
                 'trip_date' => date('d/m/y', strtotime($row['trip_date'])),
                 'trip_date_raw' => $row['trip_date'],
                 'start_time' => date('H:i', strtotime($row['start_time'])),
@@ -153,14 +159,14 @@ function handleGetBookings() {
                 'is_past' => $isPast,
                 'pickup_location' => $pickup,
                 'destination' => $destination,
-                'cost' => 'R' . number_format((float)$row['cost'], 2),
+                'cost' => 'R' . number_format((float) $row['cost'], 2),
                 'client_name' => $row['client_name']
             ];
         }
 
         $response['success'] = true;
-        $response['message'] = count($bookings) > 0 
-            ? 'Bookings retrieved successfully.' 
+        $response['message'] = count($bookings) > 0
+            ? 'Bookings retrieved successfully.'
             : 'No bookings found.';
 
     } catch (PDOException $e) {
@@ -171,7 +177,8 @@ function handleGetBookings() {
     jsonResponse($response);
 }
 
-function handleAddBooking() {
+function handleAddBooking()
+{
     global $pdo;
 
     try {
@@ -204,18 +211,26 @@ function handleAddBooking() {
         $description = $_POST['description'] ?? '';
 
         // Validate
-        if (empty($contact_id)) throw new Exception('Client not selected');
-        if (empty($trip_date)) throw new Exception('Trip date is required');
-        if (empty($start_time)) throw new Exception('Start time is required');
-        if (empty($duration) || !is_numeric($duration)) throw new Exception('Valid duration is required');
-        if (empty($original_pickup)) throw new Exception('Pickup location is required');
-        if (empty($original_destination)) throw new Exception('Destination is required');
-        if (empty($cost)) throw new Exception('Cost is required');
+        if (empty($contact_id))
+            throw new Exception('Client not selected');
+        if (empty($trip_date))
+            throw new Exception('Trip date is required');
+        if (empty($start_time))
+            throw new Exception('Start time is required');
+        if (empty($duration) || !is_numeric($duration))
+            throw new Exception('Valid duration is required');
+        if (empty($original_pickup))
+            throw new Exception('Pickup location is required');
+        if (empty($original_destination))
+            throw new Exception('Destination is required');
+        if (empty($cost))
+            throw new Exception('Cost is required');
 
         // Calculate end_time
-        $start = new DateTime($start_time);
-        $start->modify("+" . (float) $duration . " hours");
-        $end_time = $start->format('H:i:s');
+        $start = new DateTime($trip_date . ' ' . $start_time, new DateTimeZone(TIME_ZONE));
+        $end = clone $start;
+        $end->modify("+" . (float) $duration . " hours");
+        $end_time = $end->format('H:i:s');
 
         // Add new destination to list if requested
         if ($original_destination === 'other' && isset($_POST['add_to_destinations'])) {
@@ -252,18 +267,53 @@ function handleAddBooking() {
             $description
         ]);
 
+        $booking_id = $pdo->lastInsertId();
+
+        // ✅ CREATE GOOGLE CALENDAR EVENT
+        // Fetch the complete booking with client info
+        $stmt = $pdo->prepare("
+            SELECT b.*, c.name AS client_name, c.phone AS client_phone 
+            FROM bookings b 
+            JOIN contacts c ON b.contact_id = c.id 
+            WHERE b.id = ?
+        ");
+        $stmt->execute([$booking_id]);
+        $bookingData = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($bookingData) {
+            // Set pickup_location and destination for calendar event
+            $bookingData['pickup_location'] = $original_pickup;
+            $bookingData['destination'] = $original_destination;
+
+            // Create Google Calendar event
+            $googleEventId = createBookingInGoogleCalendar($bookingData, $start, $end);
+
+            // Update booking with Google Calendar event ID
+            if ($googleEventId) {
+                $updateStmt = $pdo->prepare("UPDATE bookings SET google_calendar_event_id = ? WHERE id = ?");
+                $updateStmt->execute([$googleEventId, $booking_id]);
+
+                error_log("✅ Google Calendar event created: $googleEventId for booking ID: $booking_id");
+            } else {
+                error_log("⚠️ Failed to create Google Calendar event for booking ID: $booking_id");
+            }
+        }
+
         jsonResponse([
             'success' => true,
-            'message' => 'Booking created successfully',
-            'booking_id' => $pdo->lastInsertId()
+            'message' => 'Booking created successfully' . ($googleEventId ? ' with Google Calendar event' : ' (calendar event failed)'),
+            'booking_id' => $booking_id,
+            'google_event_id' => $googleEventId ?? null
         ]);
 
     } catch (Exception $e) {
+        error_log('Add booking error: ' . $e->getMessage());
         jsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
     }
 }
 
-function handleUpdateBooking() {
+function handleUpdateBooking()
+{
     global $pdo;
 
     $response = ['success' => false, 'message' => 'An unknown error occurred.'];
@@ -385,9 +435,17 @@ function handleUpdateBooking() {
 
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
-                $contact_id, $trip_date, $start_time, $end_time_formatted,
-                $original_pickup, $original_destination, $swap_locations ? 1 : 0,
-                $final_cost, $flight_number, $description_to_save, $payment_method,
+                $contact_id,
+                $trip_date,
+                $start_time,
+                $end_time_formatted,
+                $original_pickup,
+                $original_destination,
+                $swap_locations ? 1 : 0,
+                $final_cost,
+                $flight_number,
+                $description_to_save,
+                $payment_method,
                 $booking_id
             ]);
 
@@ -428,7 +486,8 @@ function handleUpdateBooking() {
     }
 }
 
-function handleDeleteBooking() {
+function handleDeleteBooking()
+{
     global $pdo;
 
     $response = ['success' => false, 'message' => 'An unknown error occurred.'];
@@ -465,8 +524,8 @@ function handleDeleteBooking() {
         // Build success message
         $message = "✅ Booking deleted from database.";
         if (!empty($googleEventId)) {
-            $message .= $calendarDeleted 
-                ? " Google Calendar event also deleted." 
+            $message .= $calendarDeleted
+                ? " Google Calendar event also deleted."
                 : " Failed to delete calendar event (it may have been removed manually).";
         }
 
@@ -483,7 +542,8 @@ function handleDeleteBooking() {
 
 // ========== NEW: REPORTS HANDLERS ==========
 
-function handleWeeklyBookings() {
+function handleWeeklyBookings()
+{
     global $pdo;
 
     try {
@@ -500,21 +560,21 @@ function handleWeeklyBookings() {
             GROUP BY YEAR(trip_date), WEEK(trip_date, 1)
             ORDER BY year DESC, week_number DESC
         ";
-        
+
         $stmt = $pdo->query($sql);
         $weeks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Format the data
-        $formatted = array_map(function($week) {
+        $formatted = array_map(function ($week) {
             $start = new DateTime($week['week_start']);
             $end = new DateTime($week['week_end']);
             return [
                 'week_label' => $start->format('d M') . ' - ' . $end->format('d M Y'),
-                'booking_count' => (int)$week['booking_count'],
-                'total_income' => (float)$week['total_income']
+                'booking_count' => (int) $week['booking_count'],
+                'total_income' => (float) $week['total_income']
             ];
         }, $weeks);
-        
+
         jsonResponse([
             'success' => true,
             'data' => $formatted
@@ -526,12 +586,13 @@ function handleWeeklyBookings() {
     }
 }
 
-function handleMonthlyBookings() {
+function handleMonthlyBookings()
+{
     global $pdo;
 
     try {
         $currentYear = date('Y');
-        
+
         $sql = "
             SELECT 
                 MONTH(trip_date) as month_number,
@@ -543,20 +604,20 @@ function handleMonthlyBookings() {
             GROUP BY MONTH(trip_date), MONTHNAME(trip_date)
             ORDER BY month_number ASC
         ";
-        
+
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$currentYear]);
         $months = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         // Format the data
-        $formatted = array_map(function($month) {
+        $formatted = array_map(function ($month) {
             return [
                 'month_label' => $month['month_name'],
-                'booking_count' => (int)$month['booking_count'],
-                'total_income' => (float)$month['total_income']
+                'booking_count' => (int) $month['booking_count'],
+                'total_income' => (float) $month['total_income']
             ];
         }, $months);
-        
+
         jsonResponse([
             'success' => true,
             'data' => $formatted

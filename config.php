@@ -9,7 +9,7 @@ error_reporting(E_ALL);
 
 // Configuration constants
 const CUSTOM_CALENDAR_ID = '765e1ec046eaa848aaf6a20611a8d815109da563222f638ccf15e585a008fec7@group.calendar.google.com';
-const CALENDAR_LINK = 'https://calendar.google.com/calendar/u/0/r?cid=cXVlbnRpbmNhbUBnbWFpbC5jb20&mode=AGENDA  ';
+const CALENDAR_LINK = 'https://calendar.google.com/calendar/u/0/r?cid=cXVlbnRpbmNhbUBnbWFpbC5jb20&mode=AGENDA';
 const WEB_APP_URL = 'https://localhost/HPTS-XAMPP/';
 
 // Business and WhatsApp settings
