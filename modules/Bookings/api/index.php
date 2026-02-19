@@ -1,19 +1,14 @@
 <?php
 // modules/Bookings/api/index.php
-// Unified Bookings API router - combines add, get, update, delete actions
+// Unified Bookings API router
 
-// Bootstrap: require config (three levels up from modules/Bookings/api)
 require_once __DIR__ . '/../../../config.php';
-
-// Shared helpers and booking logic
 require_once ROOT_DIR . '/google-auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once __DIR__ . '/../helpers.php';
 
-// Set JSON header
 header('Content-Type: application/json');
 
-// Response helpers
 function jsonResponse(array $payload, int $httpCode = 200)
 {
     http_response_code($httpCode);
@@ -21,11 +16,9 @@ function jsonResponse(array $payload, int $httpCode = 200)
     exit;
 }
 
-// Determine action
 $action = $_REQUEST['action'] ?? null;
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-// Infer action from method if not explicit
 if (!$action) {
     if ($method === 'GET')
         $action = 'get';
@@ -37,7 +30,6 @@ if (!$action) {
         $action = 'delete';
 }
 
-// Dispatch
 try {
     switch ($action) {
         case 'get':
@@ -55,23 +47,21 @@ try {
         case 'delete':
             handleDeleteBooking();
             break;
-
-        // NEW: Weekly bookings report
         case 'weekly_bookings':
             handleWeeklyBookings();
             break;
-
-        // NEW: Monthly bookings report
         case 'monthly_bookings':
             handleMonthlyBookings();
             break;
-
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action: ' . ($action ?? 'none')], 400);
     }
 } catch (Exception $e) {
-    error_log('Bookings API error: ' . $e->getMessage());
-    jsonResponse(['success' => false, 'message' => 'Server error: ' . $e->getMessage()], 500);
+    logCritical('BOOKING_API', 'Unhandled exception in action: ' . $action, [
+        'error' => $e->getMessage(),
+        'trace' => $e->getTraceAsString()
+    ]);
+    jsonResponse(['success' => false, 'message' => 'Server error occurred'], 500);
 }
 
 // ========== HANDLERS ==========
@@ -93,15 +83,8 @@ function handleGetBookings()
         if ($show === 'all') {
             $sql = "
                 SELECT 
-                    b.id,
-                    b.trip_date,
-                    b.start_time,
-                    b.end_time,
-                    b.status,
-                    b.original_pickup,
-                    b.original_destination,
-                    b.was_swapped,
-                    b.cost,
+                    b.id, b.trip_date, b.start_time, b.end_time, b.status,
+                    b.original_pickup, b.original_destination, b.was_swapped, b.cost,
                     c.name AS client_name 
                 FROM bookings b
                 JOIN contacts c ON b.contact_id = c.id
@@ -115,15 +98,8 @@ function handleGetBookings()
             $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
             $sql = "
                 SELECT 
-                    b.id,
-                    b.trip_date,
-                    b.start_time,
-                    b.end_time,
-                    b.status,
-                    b.original_pickup,
-                    b.original_destination,
-                    b.was_swapped,
-                    b.cost,
+                    b.id, b.trip_date, b.start_time, b.end_time, b.status,
+                    b.original_pickup, b.original_destination, b.was_swapped, b.cost,
                     c.name AS client_name 
                 FROM bookings b
                 JOIN contacts c ON b.contact_id = c.id
@@ -170,7 +146,10 @@ function handleGetBookings()
             : 'No bookings found.';
 
     } catch (PDOException $e) {
-        error_log('get_bookings error: ' . $e->getMessage());
+        logError('BOOKING', 'Database error fetching bookings', [
+            'error' => $e->getMessage(),
+            'show' => $show ?? 'upcoming'
+        ]);
         $response['message'] = 'Database error occurred.';
     }
 
@@ -269,8 +248,8 @@ function handleAddBooking()
 
         $booking_id = $pdo->lastInsertId();
 
-        // ✅ CREATE GOOGLE CALENDAR EVENT
-        // Fetch the complete booking with client info
+        // CREATE GOOGLE CALENDAR EVENT
+        $googleEventId = null;
         $stmt = $pdo->prepare("
             SELECT b.*, c.name AS client_name, c.phone AS client_phone 
             FROM bookings b 
@@ -281,33 +260,39 @@ function handleAddBooking()
         $bookingData = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($bookingData) {
-            // Set pickup_location and destination for calendar event
             $bookingData['pickup_location'] = $original_pickup;
             $bookingData['destination'] = $original_destination;
 
-            // Create Google Calendar event
             $googleEventId = createBookingInGoogleCalendar($bookingData, $start, $end);
 
-            // Update booking with Google Calendar event ID
             if ($googleEventId) {
                 $updateStmt = $pdo->prepare("UPDATE bookings SET google_calendar_event_id = ? WHERE id = ?");
                 $updateStmt->execute([$googleEventId, $booking_id]);
-
-                error_log("✅ Google Calendar event created: $googleEventId for booking ID: $booking_id");
+                
+                logInfo('BOOKING', 'Booking created with calendar event', [
+                    'booking_id' => $booking_id,
+                    'google_event_id' => $googleEventId
+                ]);
             } else {
-                error_log("⚠️ Failed to create Google Calendar event for booking ID: $booking_id");
+                logWarning('BOOKING', 'Booking created but calendar event failed', [
+                    'booking_id' => $booking_id
+                ]);
             }
         }
 
         jsonResponse([
             'success' => true,
-            'message' => 'Booking created successfully' . ($googleEventId ? ' with Google Calendar event' : ' (calendar event failed)'),
+            'message' => 'Booking created successfully',
             'booking_id' => $booking_id,
-            'google_event_id' => $googleEventId ?? null
+            'google_event_id' => $googleEventId
         ]);
 
     } catch (Exception $e) {
-        error_log('Add booking error: ' . $e->getMessage());
+        logError('BOOKING', 'Failed to create booking', [
+            'error' => $e->getMessage(),
+            'contact_id' => $contact_id ?? null,
+            'trip_date' => $trip_date ?? null
+        ]);
         jsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
     }
 }
@@ -315,8 +300,6 @@ function handleAddBooking()
 function handleUpdateBooking()
 {
     global $pdo;
-
-    $response = ['success' => false, 'message' => 'An unknown error occurred.'];
 
     try {
         // Sub-action: update payment method
@@ -334,6 +317,11 @@ function handleUpdateBooking()
             if ($stmt->rowCount() === 0) {
                 throw new Exception('Booking not found.');
             }
+
+            logInfo('BOOKING', 'Payment method updated', [
+                'booking_id' => $booking_id,
+                'payment_method' => $payment_method
+            ]);
 
             jsonResponse(['success' => true, 'message' => 'Payment method updated.']);
         }
@@ -353,6 +341,11 @@ function handleUpdateBooking()
             if ($stmt->rowCount() === 0) {
                 throw new Exception('Booking not found.');
             }
+
+            logInfo('BOOKING', 'Booking status updated', [
+                'booking_id' => $booking_id,
+                'status' => $status
+            ]);
 
             jsonResponse([
                 'success' => true,
@@ -383,7 +376,7 @@ function handleUpdateBooking()
             $final_cost = ($cost === 'other') ? floatval($other_cost) : floatval($cost);
 
             if ($booking_id <= 0 || $contact_id <= 0 || !$trip_date || !$start_time || !$original_pickup || !$original_destination) {
-                jsonResponse(['success' => false, 'message' => '❌ Please fill in all required fields.'], 400);
+                jsonResponse(['success' => false, 'message' => 'Please fill in all required fields.'], 400);
             }
 
             $start_datetime = new DateTime($trip_date . ' ' . $start_time, new DateTimeZone(TIME_ZONE));
@@ -468,29 +461,36 @@ function handleUpdateBooking()
                 updateBookingInGoogleCalendar($bookingDetails, $start_datetime, $end_datetime);
             }
 
-            $response['success'] = true;
-            $response['message'] = "✅ Booking for '" . htmlspecialchars($bookingDetails['client_name'], ENT_QUOTES) . "' updated.";
-            $fullMessage = createWhatsAppMessage($bookingDetails);
-            $response['whatsapp'] = "https://wa.me/" . formatPhoneNumberForWhatsApp($bookingDetails['client_phone']) . "?text=" . urlencode($fullMessage);
-            $response['fullMessage'] = $fullMessage;
+            logInfo('BOOKING', 'Booking updated', [
+                'booking_id' => $booking_id,
+                'changed' => $changed
+            ]);
 
-            jsonResponse($response);
+            $fullMessage = createWhatsAppMessage($bookingDetails);
+
+            jsonResponse([
+                'success' => true,
+                'message' => "Booking for '" . htmlspecialchars($bookingDetails['client_name'], ENT_QUOTES) . "' updated.",
+                'whatsapp' => "https://wa.me/" . formatPhoneNumberForWhatsApp($bookingDetails['client_phone']) . "?text=" . urlencode($fullMessage),
+                'fullMessage' => $fullMessage
+            ]);
 
         } else {
             jsonResponse(['success' => false, 'message' => 'Invalid request. No booking ID received.'], 400);
         }
 
     } catch (Exception $e) {
-        error_log('Update booking error: ' . $e->getMessage());
-        jsonResponse(['success' => false, 'message' => '❌ Update failed.'], 400);
+        logError('BOOKING', 'Failed to update booking', [
+            'error' => $e->getMessage(),
+            'booking_id' => $booking_id ?? null
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Update failed.'], 400);
     }
 }
 
 function handleDeleteBooking()
 {
     global $pdo;
-
-    $response = ['success' => false, 'message' => 'An unknown error occurred.'];
 
     if ($_SERVER["REQUEST_METHOD"] !== "POST" || !isset($_POST['id'])) {
         jsonResponse(['success' => false, 'message' => 'Invalid request or missing booking ID.'], 400);
@@ -505,13 +505,13 @@ function handleDeleteBooking()
         // Fetch full booking (including Google event ID)
         $booking = getBookingById($pdo, $bookingId);
         if (!$booking) {
-            jsonResponse(['success' => false, 'message' => "⚠️ Booking not found or already deleted."], 404);
+            jsonResponse(['success' => false, 'message' => "Booking not found or already deleted."], 404);
         }
 
         // Delete from database
         $deleted = deleteBookingFromDb($pdo, $bookingId);
         if (!$deleted) {
-            jsonResponse(['success' => false, 'message' => "⚠️ Booking could not be deleted (may have already been removed)."], 404);
+            jsonResponse(['success' => false, 'message' => "Booking could not be deleted."], 404);
         }
 
         // Delete from Google Calendar if linked
@@ -521,26 +521,38 @@ function handleDeleteBooking()
             $calendarDeleted = deleteBookingFromGoogleCalendar($googleEventId);
         }
 
+        logInfo('BOOKING', 'Booking deleted', [
+            'booking_id' => $bookingId,
+            'had_calendar_event' => !empty($googleEventId),
+            'calendar_deleted' => $calendarDeleted
+        ]);
+
         // Build success message
-        $message = "✅ Booking deleted from database.";
+        $message = "Booking deleted from database.";
         if (!empty($googleEventId)) {
             $message .= $calendarDeleted
                 ? " Google Calendar event also deleted."
-                : " Failed to delete calendar event (it may have been removed manually).";
+                : " (Calendar event may have been removed manually)";
         }
 
         jsonResponse(['success' => true, 'message' => $message]);
 
     } catch (PDOException $e) {
-        error_log('Database error in delete_booking: ' . $e->getMessage());
-        jsonResponse(['success' => false, 'message' => '❌ A database error occurred while deleting the booking.'], 500);
+        logError('BOOKING', 'Database error during deletion', [
+            'error' => $e->getMessage(),
+            'booking_id' => $bookingId
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred while deleting.'], 500);
     } catch (Exception $e) {
-        error_log('General error in delete_booking: ' . $e->getMessage());
-        jsonResponse(['success' => false, 'message' => '❌ An unexpected error occurred.'], 500);
+        logError('BOOKING', 'Unexpected error during deletion', [
+            'error' => $e->getMessage(),
+            'booking_id' => $bookingId
+        ]);
+        jsonResponse(['success' => false, 'message' => 'An unexpected error occurred.'], 500);
     }
 }
 
-// ========== NEW: REPORTS HANDLERS ==========
+// ========== REPORTS HANDLERS ==========
 
 function handleWeeklyBookings()
 {
@@ -564,7 +576,6 @@ function handleWeeklyBookings()
         $stmt = $pdo->query($sql);
         $weeks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Format the data
         $formatted = array_map(function ($week) {
             $start = new DateTime($week['week_start']);
             $end = new DateTime($week['week_end']);
@@ -581,7 +592,9 @@ function handleWeeklyBookings()
         ]);
 
     } catch (PDOException $e) {
-        error_log('Weekly bookings report error: ' . $e->getMessage());
+        logError('BOOKING_REPORT', 'Weekly report generation failed', [
+            'error' => $e->getMessage()
+        ]);
         jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
     }
 }
@@ -609,7 +622,6 @@ function handleMonthlyBookings()
         $stmt->execute([$currentYear]);
         $months = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Format the data
         $formatted = array_map(function ($month) {
             return [
                 'month_label' => $month['month_name'],
@@ -624,7 +636,9 @@ function handleMonthlyBookings()
         ]);
 
     } catch (PDOException $e) {
-        error_log('Monthly bookings report error: ' . $e->getMessage());
+        logError('BOOKING_REPORT', 'Monthly report generation failed', [
+            'error' => $e->getMessage()
+        ]);
         jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
     }
 }

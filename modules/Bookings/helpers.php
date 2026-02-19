@@ -55,7 +55,6 @@ function deleteBookingFromGoogleCalendar(string $eventId): bool
 
     $accessToken = getGoogleAccessToken();
     if (!$accessToken) {
-        error_log("Google access token unavailable.");
         return false;
     }
 
@@ -79,20 +78,19 @@ function deleteBookingFromGoogleCalendar(string $eventId): bool
 
 /**
  * Update Google Calendar event for a booking (e.g., after edit)
- * Returns new event ID on success, null on failure
+ * Returns event ID on success, null on failure
  */
 function updateBookingInGoogleCalendar(array $bookingData, DateTime $start, DateTime $end): ?string
 {
     $accessToken = getGoogleAccessToken();
     if (!$accessToken) {
-        error_log("Google access token unavailable. Skipping calendar update.");
         return null;
     }
 
     $eventData = [
         'summary' => '🚗 ' . $bookingData['client_name'] . ' - R' . number_format($bookingData['cost'], 2),
         'location' => $bookingData['was_swapped'] ? $bookingData['original_destination'] : $bookingData['original_pickup'],
-        'description' => createEventDescription($bookingData), // assumes this helper exists
+        'description' => createEventDescription($bookingData),
         'start' => [
             'dateTime' => $start->format(DateTime::RFC3339),
             'timeZone' => defined('TIME_ZONE') ? TIME_ZONE : 'UTC'
@@ -130,7 +128,7 @@ function updateBookingInGoogleCalendar(array $bookingData, DateTime $start, Date
         $response = json_decode($result, true);
         return $response['id'] ?? null;
     } else {
-        error_log("Google Calendar update failed (HTTP $httpCode): " . $result);
+        error_log("[CALENDAR] Update failed (HTTP $httpCode): " . $result);
         return null;
     }
 }
@@ -143,7 +141,6 @@ function createBookingInGoogleCalendar(array $bookingData, DateTime $start, Date
 {
     $accessToken = getGoogleAccessToken();
     if (!$accessToken) {
-        error_log("Google access token unavailable. Skipping calendar creation.");
         return null;
     }
 
@@ -188,7 +185,7 @@ function createBookingInGoogleCalendar(array $bookingData, DateTime $start, Date
         $response = json_decode($result, true);
         return $response['id'] ?? null;
     } else {
-        error_log("Google Calendar creation failed (HTTP $httpCode): " . $result);
+        error_log("[CALENDAR] Creation failed (HTTP $httpCode): " . $result);
         return null;
     }
 }

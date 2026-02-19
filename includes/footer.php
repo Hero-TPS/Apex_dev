@@ -7,8 +7,8 @@
     <div class="floating-menu-toggle" id="menuToggle">☰</div>
     <div class="floating-menu" id="floatingMenu">
         <a href="<?= BASE_URL ?>/index.php" class="hamburger-item">🏠 Home</a>
-        <a href="<?= BASE_URL ?>/AddBooking.php" class="hamburger-item">🚗 Add Booking</a>
-        <a href="<?= BASE_URL ?>/BookingsView.php" class="hamburger-item">📅 View Bookings</a>
+        <a href="<?= BASE_URL ?>/modules/Bookings/add.php" class="hamburger-item">🚗 Add Booking</a>
+        <a href="<?= BASE_URL ?>/modules/Bookings/index.php" class="hamburger-item">📅 View Bookings</a>
         <a href="<?= BASE_URL ?>/ContactForm.php" class="hamburger-item">👥 Add Client</a>
         <a href="<?= BASE_URL ?>/FuelLog.php" class="hamburger-item">⛽ Add Fuel Log</a>
         <a href="https://calendar.google.com/calendar/u/0?cid=<?= urlencode(CUSTOM_CALENDAR_ID) ?>"
