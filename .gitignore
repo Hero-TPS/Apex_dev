@@ -47,4 +47,4 @@ service-account-key.json
 *.pem
 
 # Local config
-config.local.php
+config.php
