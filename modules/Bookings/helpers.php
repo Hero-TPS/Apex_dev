@@ -73,7 +73,15 @@ function deleteBookingFromGoogleCalendar(string $eventId): bool
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    return $httpCode === 204;
+    if ($httpCode !== 204) {
+        logWarning('CALENDAR', 'Failed to delete calendar event', [
+            'event_id' => $eventId,
+            'http_code' => $httpCode
+        ]);
+        return false;
+    }
+
+    return true;
 }
 
 /**
@@ -128,7 +136,12 @@ function updateBookingInGoogleCalendar(array $bookingData, DateTime $start, Date
         $response = json_decode($result, true);
         return $response['id'] ?? null;
     } else {
-        error_log("[CALENDAR] Update failed (HTTP $httpCode): " . $result);
+        logError('CALENDAR', 'Failed to update calendar event', [
+            'http_code' => $httpCode,
+            'response' => $result,
+            'booking_id' => $bookingData['id'] ?? null,
+            'event_id' => $bookingData['google_calendar_event_id'] ?? null
+        ]);
         return null;
     }
 }
@@ -185,7 +198,12 @@ function createBookingInGoogleCalendar(array $bookingData, DateTime $start, Date
         $response = json_decode($result, true);
         return $response['id'] ?? null;
     } else {
-        error_log("[CALENDAR] Creation failed (HTTP $httpCode): " . $result);
+        logError('CALENDAR', 'Failed to create calendar event', [
+            'http_code' => $httpCode,
+            'response' => $result,
+            'booking_id' => $bookingData['id'] ?? null,
+            'client' => $bookingData['client_name'] ?? null
+        ]);
         return null;
     }
 }

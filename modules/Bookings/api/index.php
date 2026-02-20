@@ -271,11 +271,13 @@ function handleAddBooking()
                 
                 logInfo('BOOKING', 'Booking created with calendar event', [
                     'booking_id' => $booking_id,
-                    'google_event_id' => $googleEventId
+                    'google_event_id' => $googleEventId,
+                    'client' => $bookingData['client_name']
                 ]);
             } else {
                 logWarning('BOOKING', 'Booking created but calendar event failed', [
-                    'booking_id' => $booking_id
+                    'booking_id' => $booking_id,
+                    'client' => $bookingData['client_name']
                 ]);
             }
         }
@@ -463,7 +465,8 @@ function handleUpdateBooking()
 
             logInfo('BOOKING', 'Booking updated', [
                 'booking_id' => $booking_id,
-                'changed' => $changed
+                'changed' => $changed,
+                'client' => $bookingDetails['client_name']
             ]);
 
             $fullMessage = createWhatsAppMessage($bookingDetails);
@@ -524,7 +527,8 @@ function handleDeleteBooking()
         logInfo('BOOKING', 'Booking deleted', [
             'booking_id' => $bookingId,
             'had_calendar_event' => !empty($googleEventId),
-            'calendar_deleted' => $calendarDeleted
+            'calendar_deleted' => $calendarDeleted,
+            'client' => $booking['client_name'] ?? null
         ]);
 
         // Build success message

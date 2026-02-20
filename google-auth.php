@@ -24,19 +24,25 @@ function getGoogleAccessToken()
 
     // Validate key file
     if (!file_exists($key_file_path)) {
-        error_log("[GOOGLE AUTH] Service account key file not found");
+        logCritical('GOOGLE_AUTH', 'Service account key file not found', [
+            'path' => $key_file_path
+        ]);
         return null;
     }
 
     if (!is_readable($key_file_path)) {
-        error_log("[GOOGLE AUTH] Service account key file is not readable");
+        logCritical('GOOGLE_AUTH', 'Service account key file is not readable', [
+            'path' => $key_file_path
+        ]);
         return null;
     }
 
     $key_file_content = json_decode(file_get_contents($key_file_path), true);
 
     if (!$key_file_content) {
-        error_log("[GOOGLE AUTH] Failed to parse service account key: " . json_last_error_msg());
+        logCritical('GOOGLE_AUTH', 'Failed to parse service account key file', [
+            'json_error' => json_last_error_msg()
+        ]);
         return null;
     }
 
@@ -44,7 +50,11 @@ function getGoogleAccessToken()
     if (!isset($key_file_content['private_key']) ||
         !isset($key_file_content['client_email']) ||
         !isset($key_file_content['token_uri'])) {
-        error_log("[GOOGLE AUTH] Service account key missing required fields");
+        logCritical('GOOGLE_AUTH', 'Service account key missing required fields', [
+            'has_private_key' => isset($key_file_content['private_key']),
+            'has_client_email' => isset($key_file_content['client_email']),
+            'has_token_uri' => isset($key_file_content['token_uri'])
+        ]);
         return null;
     }
 
@@ -55,7 +65,9 @@ function getGoogleAccessToken()
 
     // Validate private key format
     if (strpos($private_key, '-----BEGIN PRIVATE KEY-----') === false) {
-        error_log("[GOOGLE AUTH] Invalid private key format");
+        logCritical('GOOGLE_AUTH', 'Invalid private key format', [
+            'key_length' => strlen($private_key)
+        ]);
         return null;
     }
 
@@ -91,7 +103,9 @@ function getGoogleAccessToken()
         while ($msg = openssl_error_string()) {
             $errors .= $msg . '; ';
         }
-        error_log("[GOOGLE AUTH] Failed to sign JWT: " . $errors);
+        logError('GOOGLE_AUTH', 'Failed to sign JWT', [
+            'openssl_errors' => $errors
+        ]);
         return null;
     }
 
@@ -116,7 +130,10 @@ function getGoogleAccessToken()
     curl_close($ch);
 
     if ($curl_error) {
-        error_log("[GOOGLE AUTH] cURL error: " . $curl_error);
+        logError('GOOGLE_AUTH', 'cURL error during token request', [
+            'error' => $curl_error,
+            'http_code' => $http_code
+        ]);
         return null;
     }
 
@@ -127,17 +144,17 @@ function getGoogleAccessToken()
         $_SESSION['google_access_token'] = $response_json['access_token'];
         $_SESSION['google_token_expiry'] = time() + $response_json['expires_in'] - 30;
 
+        logInfo('GOOGLE_AUTH', 'Access token obtained successfully');
+        
         return $response_json['access_token'];
     }
 
     // Log failure details
-    error_log("[GOOGLE AUTH] Token request failed (HTTP $http_code)");
-    if (isset($response_json['error'])) {
-        error_log("[GOOGLE AUTH] Error: " . $response_json['error']);
-        if (isset($response_json['error_description'])) {
-            error_log("[GOOGLE AUTH] Description: " . $response_json['error_description']);
-        }
-    }
+    logError('GOOGLE_AUTH', 'Failed to obtain access token', [
+        'http_code' => $http_code,
+        'error' => $response_json['error'] ?? 'Unknown',
+        'error_description' => $response_json['error_description'] ?? 'No description'
+    ]);
 
     return null;
 }
