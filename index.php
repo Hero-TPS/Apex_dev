@@ -24,9 +24,9 @@ include ROOT_DIR . '/includes/header.php';
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="clients-section">👥 Clients</h3>
         <div id="clients-section" class="menu-content">
-            <a href="modules/Clients" class="dashboard-button db-clients">View Clients</a>
+            <a href="modules/Clients/" class="dashboard-button db-clients">View Clients</a>
             <a href="modules/Clients/add.php" class="dashboard-button db-contact">Add Client</a>
-            <!--a href="GroupManagement.php" class="dashboard-button db-groups">Client Groups</a-->
+            <a href="GroupManagement.php" class="dashboard-button db-groups">Client Groups</a>
         </div>
     </div>
 
@@ -34,8 +34,8 @@ include ROOT_DIR . '/includes/header.php';
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="fuel-section">⛽ Fuel</h3>
         <div id="fuel-section" class="menu-content">
-            <a href="FuelLog.php" class="dashboard-button db-fuel">Log Fuel</a>
-            <a href="FuelReports.php" class="dashboard-button db-fuel-reports">Fuel Reports</a>
+            <a href="modules/Fuel/add.php" class="dashboard-button db-fuel">Log Fuel</a>
+            <a href="modules/Fuel/" class="dashboard-button db-fuel-reports">Fuel Reports</a>
         </div>
     </div>
 
@@ -43,8 +43,8 @@ include ROOT_DIR . '/includes/header.php';
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="uber-section">🚗 Uber</h3>
         <div id="uber-section" class="menu-content">
-            <a href="UberIncome.php" class="dashboard-button db-uber">Log Uber Income</a>
-            <a href="UberReports.php" class="dashboard-button db-uber-reports">Uber Reports</a>
+            <a href="modules/Uber/add.php" class="dashboard-button db-uber">Log Uber Income</a>
+            <a href="modules/Uber/" class="dashboard-button db-uber-reports">Uber Reports</a>
         </div>
     </div>
 
