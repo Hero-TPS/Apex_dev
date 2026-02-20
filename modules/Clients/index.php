@@ -16,14 +16,13 @@ $highlightClientId = $_GET['highlight'] ?? null;
     👁️ Show Only Clients With Bookings
 </button>
 
-<!-- Client Search with Suggestions -->
+<!-- Client Search -->
 <div class="client-search-container">
     <input 
         type="text" 
         id="clientSearch" 
         class="client-search-input"
         placeholder="🔍 Search clients by name, phone or address...">
-    <div id="clientSuggestions" class="suggestions-box"></div>
 </div>
 
 <!-- Notification Area -->
@@ -77,11 +76,8 @@ $highlightClientId = $_GET['highlight'] ?? null;
         var modal = $('#deleteConfirmationModal');
         var contactIdToDelete = null;
         var allClients = [];
-        
-        // Booking filter state
         var showOnlyWithBookings = false;
 
-        // Toggle button logic
         $('#toggleBookingsFilter').on('click', function () {
             showOnlyWithBookings = !showOnlyWithBookings;
             $(this).text(showOnlyWithBookings 
@@ -113,8 +109,8 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 '<td data-label="Bookings">' + (contact.booking_count || 0) + '</td>' +
                                 '<td data-label="Actions">' +
                                 '<div class="actions-container">' +
-                                '<a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=' + contact.id + '&contact_name=' + encodeURIComponent(contact.name) + '" class="action-btn view-details-btn">Book</a>' +
-                                '<button class="action-btn edit-btn" data-id="' + contact.id + '">Edit</button>' +
+                                '<a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=' + contact.id + '" class="action-btn view-details-btn">View Bookings</a>' +
+                                '<a href="<?= BASE_URL ?>/modules/Clients/edit.php?id=' + contact.id + '" class="action-btn edit-btn">Edit</a>' +
                                 '<button class="action-btn delete-btn" data-id="' + contact.id + '">Delete</button>' +
                                 '</div>' +
                                 '</td>' +
@@ -181,12 +177,6 @@ $highlightClientId = $_GET['highlight'] ?? null;
         $('#cancelDeleteBtn').on('click', function () {
             modal.hide();
             contactIdToDelete = null;
-        });
-
-        // Edit button - redirect to edit page
-        tableBody.on('click', '.edit-btn', function () {
-            var clientId = $(this).data('id');
-            window.location.href = '<?= BASE_URL ?>/modules/Clients/edit.php?id=' + clientId;
         });
 
         // Search functionality

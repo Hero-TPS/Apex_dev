@@ -51,7 +51,7 @@ $(document).ready(function() {
         loading.show();
         result.html('');
 
-        var isSaveAndBook = e.originalEvent.submitter.name === 'save_and_book';
+        var isSaveAndBook = e.originalEvent.submitter && e.originalEvent.submitter.name === 'save_and_book';
 
         $.ajax({
             type: 'POST',
@@ -66,8 +66,7 @@ $(document).ready(function() {
                         // Redirect to AddBooking with client pre-filled
                         window.location.href = '<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=' + response.contact_id + '&contact_name=' + encodeURIComponent($('#name').val());
                     } else {
-                        result.html('<div class="success-message">' + response.message + '. Ready for next entry.</div>');
-                        $('#contactForm')[0].reset();
+                        result.html('<div class="success-message">' + response.message + '. Redirecting...</div>');
                         
                         // Redirect to clients list after 2 seconds
                         setTimeout(function() {

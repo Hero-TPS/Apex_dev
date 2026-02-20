@@ -1,6 +1,5 @@
 <?php
 // modules/Clients/api/index.php
-// Unified Clients API router
 
 require_once __DIR__ . '/../../../config.php';
 
@@ -14,20 +13,14 @@ function jsonResponse(array $payload, int $httpCode = 200)
 }
 
 $action = $_REQUEST['action'] ?? 'get';
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-
-if (!$action || $action === 'get') {
-    if ($method === 'GET') {
-        $action = 'get';
-    } elseif ($method === 'POST') {
-        $action = $_POST['action'] ?? 'add';
-    }
-}
 
 try {
     switch ($action) {
         case 'get':
             handleGetClients();
+            break;
+        case 'get_single':
+            handleGetSingleClient();
             break;
         case 'add':
             handleAddClient();
@@ -37,9 +30,6 @@ try {
             break;
         case 'delete':
             handleDeleteClient();
-            break;
-        case 'get_single':
-            handleGetSingleClient();
             break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
@@ -58,50 +48,41 @@ function handleGetClients()
 {
     global $pdo;
     
-    $search = $_GET['search'] ?? '';
+    $onlyWithBookings = isset($_GET['only_with_bookings']) && $_GET['only_with_bookings'] == 1;
     
     try {
-        $sql = "
-            SELECT 
-                c.id,
-                c.name,
-                c.email,
-                c.phone,
-                c.address,
-                GROUP_CONCAT(g.name SEPARATOR ', ') as groups,
-                COUNT(DISTINCT b.id) as booking_count
-            FROM contacts c
-            LEFT JOIN contact_groups cg ON c.id = cg.contact_id
-            LEFT JOIN groups g ON cg.group_id = g.id
-            LEFT JOIN bookings b ON c.id = b.contact_id
-        ";
-        
-        if (!empty($search)) {
-            $sql .= " WHERE c.name LIKE ? OR c.email LIKE ? OR c.phone LIKE ?";
-        }
-        
-        $sql .= " GROUP BY c.id ORDER BY c.name ASC";
-        
-        $stmt = $pdo->prepare($sql);
-        
-        if (!empty($search)) {
-            $searchTerm = '%' . $search . '%';
-            $stmt->execute([$searchTerm, $searchTerm, $searchTerm]);
+        if ($onlyWithBookings) {
+            $sql = "
+                SELECT 
+                    c.*,
+                    COUNT(DISTINCT b.id) AS booking_count
+                FROM contacts c
+                INNER JOIN bookings b ON c.id = b.contact_id
+                GROUP BY c.id
+                ORDER BY c.name ASC
+            ";
         } else {
-            $stmt->execute();
+            $sql = "
+                SELECT 
+                    c.*,
+                    (SELECT COUNT(*) FROM bookings b WHERE b.contact_id = c.id) AS booking_count
+                FROM contacts c
+                ORDER BY c.name ASC
+            ";
         }
         
-        $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $pdo->query($sql);
+        $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         jsonResponse([
             'success' => true,
-            'clients' => $clients
+            'contacts' => $contacts
         ]);
         
     } catch (PDOException $e) {
         logError('CLIENT', 'Failed to fetch clients', [
             'error' => $e->getMessage(),
-            'search' => $search
+            'only_with_bookings' => $onlyWithBookings
         ]);
         jsonResponse(['success' => false, 'message' => 'Database error'], 500);
     }
@@ -118,23 +99,19 @@ function handleGetSingleClient()
     }
     
     try {
-        $stmt = $pdo->prepare("SELECT * FROM contacts WHERE id = ?");
+        $stmt = $pdo->prepare("
+            SELECT 
+                c.*,
+                (SELECT COUNT(*) FROM bookings b WHERE b.contact_id = c.id) AS booking_count
+            FROM contacts c
+            WHERE c.id = ?
+        ");
         $stmt->execute([$id]);
         $client = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$client) {
             jsonResponse(['success' => false, 'message' => 'Client not found'], 404);
         }
-        
-        // Get groups
-        $stmt = $pdo->prepare("
-            SELECT g.id, g.name 
-            FROM groups g
-            JOIN contact_groups cg ON g.id = cg.group_id
-            WHERE cg.contact_id = ?
-        ");
-        $stmt->execute([$id]);
-        $client['groups'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         jsonResponse([
             'success' => true,
@@ -156,32 +133,24 @@ function handleAddClient()
     
     try {
         $name = trim($_POST['name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
         $phone = trim($_POST['phone'] ?? '');
+        $email = trim($_POST['email'] ?? '');
         $address = trim($_POST['address'] ?? '');
-        $groups = $_POST['groups'] ?? [];
+        $additional_info = trim($_POST['additionalInfo'] ?? '');
         
         // Validate
         if (empty($name)) {
-            jsonResponse(['success' => false, 'message' => 'Name is required'], 400);
+            jsonResponse(['success' => false, 'message' => 'Client name is required'], 400);
         }
         
         // Insert client
         $stmt = $pdo->prepare("
-            INSERT INTO contacts (name, email, phone, address)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO contacts (name, phone, email, address, additional_info, date_added)
+            VALUES (?, ?, ?, ?, ?, NOW())
         ");
-        $stmt->execute([$name, $email, $phone, $address]);
+        $stmt->execute([$name, $phone, $email, $address, $additional_info]);
         
         $clientId = $pdo->lastInsertId();
-        
-        // Add to groups
-        if (!empty($groups)) {
-            $stmt = $pdo->prepare("INSERT INTO contact_groups (contact_id, group_id) VALUES (?, ?)");
-            foreach ($groups as $groupId) {
-                $stmt->execute([$clientId, $groupId]);
-            }
-        }
         
         logInfo('CLIENT', 'Client created', [
             'client_id' => $clientId,
@@ -191,7 +160,14 @@ function handleAddClient()
         jsonResponse([
             'success' => true,
             'message' => 'Client added successfully',
-            'client_id' => $clientId
+            'contact_id' => $clientId,
+            'client' => [
+                'id' => $clientId,
+                'name' => $name,
+                'phone' => $phone,
+                'email' => $email,
+                'address' => $address
+            ]
         ]);
         
     } catch (PDOException $e) {
@@ -209,10 +185,10 @@ function handleUpdateClient()
     try {
         $id = intval($_POST['id'] ?? 0);
         $name = trim($_POST['name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
         $phone = trim($_POST['phone'] ?? '');
+        $email = trim($_POST['email'] ?? '');
         $address = trim($_POST['address'] ?? '');
-        $groups = $_POST['groups'] ?? [];
+        $additional_info = trim($_POST['additionalInfo'] ?? '');
         
         if ($id <= 0) {
             jsonResponse(['success' => false, 'message' => 'Invalid client ID'], 400);
@@ -225,30 +201,27 @@ function handleUpdateClient()
         // Update client
         $stmt = $pdo->prepare("
             UPDATE contacts 
-            SET name = ?, email = ?, phone = ?, address = ?
+            SET name = ?, phone = ?, email = ?, address = ?, additional_info = ?
             WHERE id = ?
         ");
-        $stmt->execute([$name, $email, $phone, $address, $id]);
+        $updated = $stmt->execute([$name, $phone, $email, $address, $additional_info, $id]);
         
-        // Update groups
-        $pdo->prepare("DELETE FROM contact_groups WHERE contact_id = ?")->execute([$id]);
-        
-        if (!empty($groups)) {
-            $stmt = $pdo->prepare("INSERT INTO contact_groups (contact_id, group_id) VALUES (?, ?)");
-            foreach ($groups as $groupId) {
-                $stmt->execute([$id, $groupId]);
-            }
+        if ($updated) {
+            logInfo('CLIENT', 'Client updated', [
+                'client_id' => $id,
+                'name' => $name
+            ]);
+            
+            jsonResponse([
+                'success' => true,
+                'message' => 'Client updated successfully'
+            ]);
+        } else {
+            jsonResponse([
+                'success' => false,
+                'message' => 'Failed to update client'
+            ], 400);
         }
-        
-        logInfo('CLIENT', 'Client updated', [
-            'client_id' => $id,
-            'name' => $name
-        ]);
-        
-        jsonResponse([
-            'success' => true,
-            'message' => 'Client updated successfully'
-        ]);
         
     } catch (PDOException $e) {
         logError('CLIENT', 'Failed to update client', [
@@ -287,22 +260,23 @@ function handleDeleteClient()
         $stmt->execute([$id]);
         $clientName = $stmt->fetchColumn();
         
-        // Delete group associations
-        $pdo->prepare("DELETE FROM contact_groups WHERE contact_id = ?")->execute([$id]);
-        
         // Delete client
         $stmt = $pdo->prepare("DELETE FROM contacts WHERE id = ?");
         $stmt->execute([$id]);
         
-        logInfo('CLIENT', 'Client deleted', [
-            'client_id' => $id,
-            'name' => $clientName
-        ]);
-        
-        jsonResponse([
-            'success' => true,
-            'message' => 'Client deleted successfully'
-        ]);
+        if ($stmt->rowCount() > 0) {
+            logInfo('CLIENT', 'Client deleted', [
+                'client_id' => $id,
+                'name' => $clientName
+            ]);
+            
+            jsonResponse([
+                'success' => true,
+                'message' => 'Client deleted successfully'
+            ]);
+        } else {
+            jsonResponse(['success' => false, 'message' => 'Client not found'], 404);
+        }
         
     } catch (PDOException $e) {
         logError('CLIENT', 'Failed to delete client', [

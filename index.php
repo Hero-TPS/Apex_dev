@@ -25,7 +25,7 @@ include ROOT_DIR . '/includes/header.php';
         <h3 class="menu-toggle" data-target="clients-section">👥 Clients</h3>
         <div id="clients-section" class="menu-content">
             <a href="modules/Clients" class="dashboard-button db-clients">View Clients</a>
-            <a href="ContactForm.php" class="dashboard-button db-contact">Add Client</a>
+            <a href="modules/Clients/add.php" class="dashboard-button db-contact">Add Client</a>
             <a href="GroupManagement.php" class="dashboard-button db-groups">Client Groups</a>
         </div>
     </div>
