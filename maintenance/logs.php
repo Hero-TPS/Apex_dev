@@ -9,7 +9,7 @@ include ROOT_DIR . '/includes/header.php';
 
 // Get filter parameters
 $level = $_GET['level'] ?? 'all';
-$module = $_GET['module'] ?? 'all';
+$category = $_GET['category'] ?? 'all';
 $limit = intval($_GET['limit'] ?? 100);
 
 // Build query
@@ -21,24 +21,24 @@ if ($level !== 'all') {
     $params[] = strtoupper($level);
 }
 
-if ($module !== 'all') {
-    $where[] = "module = ?";
-    $params[] = strtoupper($module);
+if ($category !== 'all') {
+    $where[] = "category = ?";
+    $params[] = strtoupper($category);
 }
 
 $whereClause = empty($where) ? '' : 'WHERE ' . implode(' AND ', $where);
 
 // Get logs
-$sql = "SELECT * FROM logs {$whereClause} ORDER BY created_at DESC LIMIT ?";
+$sql = "SELECT * FROM system_logs {$whereClause} ORDER BY timestamp DESC LIMIT ?";
 $params[] = $limit;
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Get unique modules for filter
-$modulesStmt = $pdo->query("SELECT DISTINCT module FROM logs ORDER BY module");
-$modules = $modulesStmt->fetchAll(PDO::FETCH_COLUMN);
+// Get unique categories for filter
+$categoriesStmt = $pdo->query("SELECT DISTINCT category FROM system_logs ORDER BY category");
+$categories = $categoriesStmt->fetchAll(PDO::FETCH_COLUMN);
 ?>
 
 <style>
@@ -106,6 +106,7 @@ $modules = $modulesStmt->fetchAll(PDO::FETCH_COLUMN);
 }
 
 .log-level-INFO { background: #d4edda; color: #155724; }
+.log-level-DEBUG { background: #e7e7e7; color: #333; }
 .log-level-WARNING { background: #fff3cd; color: #856404; }
 .log-level-ERROR { background: #f8d7da; color: #721c24; }
 .log-level-CRITICAL { background: #721c24; color: white; }
@@ -114,7 +115,7 @@ $modules = $modulesStmt->fetchAll(PDO::FETCH_COLUMN);
     font-family: monospace;
     font-size: 11px;
     color: #666;
-    max-width: 400px;
+    max-width: 300px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -138,6 +139,7 @@ $modules = $modulesStmt->fetchAll(PDO::FETCH_COLUMN);
         <label>Level</label>
         <select id="levelFilter">
             <option value="all" <?= $level === 'all' ? 'selected' : '' ?>>All Levels</option>
+            <option value="debug" <?= $level === 'debug' ? 'selected' : '' ?>>Debug</option>
             <option value="info" <?= $level === 'info' ? 'selected' : '' ?>>Info</option>
             <option value="warning" <?= $level === 'warning' ? 'selected' : '' ?>>Warning</option>
             <option value="error" <?= $level === 'error' ? 'selected' : '' ?>>Error</option>
@@ -146,12 +148,12 @@ $modules = $modulesStmt->fetchAll(PDO::FETCH_COLUMN);
     </div>
 
     <div class="filter-group">
-        <label>Module</label>
-        <select id="moduleFilter">
-            <option value="all" <?= $module === 'all' ? 'selected' : '' ?>>All Modules</option>
-            <?php foreach ($modules as $mod): ?>
-                <option value="<?= htmlspecialchars($mod) ?>" <?= $module === $mod ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($mod) ?>
+        <label>Category</label>
+        <select id="categoryFilter">
+            <option value="all" <?= $category === 'all' ? 'selected' : '' ?>>All Categories</option>
+            <?php foreach ($categories as $cat): ?>
+                <option value="<?= htmlspecialchars($cat) ?>" <?= $category === $cat ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($cat) ?>
                 </option>
             <?php endforeach; ?>
         </select>
@@ -180,7 +182,7 @@ $modules = $modulesStmt->fetchAll(PDO::FETCH_COLUMN);
         <tr>
             <th style="width: 140px;">Date & Time</th>
             <th style="width: 80px;">Level</th>
-            <th style="width: 100px;">Module</th>
+            <th style="width: 100px;">Category</th>
             <th>Message</th>
             <th style="width: 200px;">Context</th>
         </tr>
@@ -195,13 +197,13 @@ $modules = $modulesStmt->fetchAll(PDO::FETCH_COLUMN);
         <?php else: ?>
             <?php foreach ($logs as $log): ?>
                 <tr>
-                    <td><?= date('d/m/Y H:i:s', strtotime($log['created_at'])) ?></td>
+                    <td><?= date('d/m/Y H:i:s', strtotime($log['timestamp'])) ?></td>
                     <td>
                         <span class="log-level log-level-<?= $log['level'] ?>">
                             <?= $log['level'] ?>
                         </span>
                     </td>
-                    <td><?= htmlspecialchars($log['module']) ?></td>
+                    <td><?= htmlspecialchars($log['category']) ?></td>
                     <td><?= htmlspecialchars($log['message']) ?></td>
                     <td>
                         <?php if (!empty($log['context'])): ?>
@@ -227,16 +229,16 @@ $(document).ready(function() {
     // Apply filters
     function applyFilters() {
         const level = $('#levelFilter').val();
-        const module = $('#moduleFilter').val();
+        const category = $('#categoryFilter').val();
         const limit = $('#limitFilter').val();
         
         window.location.href = '<?= BASE_URL ?>/Maintenance/logs.php' +
             '?level=' + level +
-            '&module=' + encodeURIComponent(module) +
+            '&category=' + encodeURIComponent(category) +
             '&limit=' + limit;
     }
 
-    $('#levelFilter, #moduleFilter, #limitFilter').on('change', applyFilters);
+    $('#levelFilter, #categoryFilter, #limitFilter').on('change', applyFilters);
 
     // Clear all logs
     $('#clearAllBtn').on('click', function() {

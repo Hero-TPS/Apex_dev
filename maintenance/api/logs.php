@@ -9,11 +9,11 @@ $action = $_GET['action'] ?? '';
 try {
     if ($action === 'clear_all' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         // Get count before deletion
-        $stmt = $pdo->query("SELECT COUNT(*) FROM logs");
+        $stmt = $pdo->query("SELECT COUNT(*) FROM system_logs");
         $count = $stmt->fetchColumn();
         
         // Delete all logs
-        $pdo->exec("TRUNCATE TABLE logs");
+        $pdo->exec("TRUNCATE TABLE system_logs");
         
         // Log this action (will be the only log after truncate)
         logInfo('MAINTENANCE', 'All system logs cleared', [
@@ -37,7 +37,7 @@ try {
     $response = [
         'success' => false,
         'message' => 'Failed to clear logs: ' . $e->getMessage()
-    ];
+    ];64
 }
 
 echo json_encode($response, JSON_UNESCAPED_UNICODE);
