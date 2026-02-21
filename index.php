@@ -48,32 +48,32 @@ include ROOT_DIR . '/includes/header.php';
         </div>
     </div>
 
-   <!-- Financials Menu (was "Reports") -->
-<div class="menu-section">
-    <h3 class="menu-toggle" data-target="financials-section">💰 Financials</h3>
-    <div id="financials-section" class="menu-content">
-        <a href="financials/index.php" class="dashboard-button db-reports">
-            <span class="dashboard-text">Financial Summary</span>
-        </a>
-        <a href="financials/weekly.php" class="dashboard-button db-reports">
-            <span class="dashboard-text">Weekly Report</span>
-        </a>
-        <a href="financials/monthly.php" class="dashboard-button db-reports">
-            <span class="dashboard-text">Monthly Report</span>
-        </a>
-    </div>
-</div>
-
-    <!-- Maintenance -->
+   <!-- Financials Menu -->
     <div class="menu-section">
-        <h3 class="menu-toggle" data-target="maintenance-section">⚙️ Maintenance</h3>
-        <div id="maintenance-section" class="menu-content">
-            <a href="modules/Maintenance/" class="dashboard-button db-maintenance">Manage Lists</a>
-            <a href="modules/Maintenance/logs.php" class="dashboard-button db-maintenance">System Logs</a>
+        <h3 class="menu-toggle" data-target="financials-section">💰 Financials</h3>
+        <div id="financials-section" class="menu-content">
+            <a href="financials/index.php" class="dashboard-button db-reports">
+                <span class="dashboard-text">Financial Summary</span>
+            </a>
+            <a href="financials/weekly.php" class="dashboard-button db-reports">
+                <span class="dashboard-text">Weekly Report</span>
+            </a>
+            <a href="financials/monthly.php" class="dashboard-button db-reports">
+                <span class="dashboard-text">Monthly Report</span>
+            </a>
         </div>
     </div>
 
-    <!-- Calendar (last section) -->
+    <!-- Maintenance -->
+<div class="menu-section">
+    <h3 class="menu-toggle" data-target="maintenance-section">⚙️ Maintenance</h3>
+    <div id="maintenance-section" class="menu-content">
+        <a href="Maintenance/" class="dashboard-button db-maintenance">Manage Lists</a>
+        <a href="Maintenance/logs.php" class="dashboard-button db-maintenance">System Logs</a>
+    </div>
+</div>
+
+    <!-- Calendar -->
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="calendar-section">🗓️ Calendar</h3>
         <div id="calendar-section" class="menu-content">

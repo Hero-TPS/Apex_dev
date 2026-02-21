@@ -157,7 +157,7 @@ $(document).ready(function () {
 
         $.ajax({
             type: 'POST',
-            url: 'api/maintenance.php?action=update_lists',
+            url: 'Maintenance/api/index.php?action=update_lists',
             // ✅ 'data' is explicitly present
              data: $(this).serialize(),
             dataType: 'json',
@@ -180,7 +180,7 @@ $(document).ready(function () {
 
         $.ajax({
             type: 'POST',
-            url: 'api/maintenance.php?action=update_variables',
+            url: 'Maintenance/api/index.php?action=update_variables',
             // ✅ 'data' is explicitly present
             data: $(this).serialize(),
             dataType: 'json',
@@ -233,7 +233,7 @@ $(document).ready(function () {
         var btn = $(this).text('Deleting...').prop('disabled', true);
 
         $.ajax({
-            url: 'api/maintenance.php?action=delete_variable',
+            url: 'Maintenance/api/index.php?action=delete_variable',
             type: 'POST',
             // ✅ 'data' is explicitly present
             data: {
