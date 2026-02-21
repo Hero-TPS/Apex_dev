@@ -1,5 +1,5 @@
 <?php
-// Maintenance.php
+// Maintenance/index.php
 
 $page_title = 'Data Maintenance';
 $page_subtitle = 'General Settings';
@@ -58,6 +58,7 @@ $durations_text = implode("\n", $current_durations);
             💾 Save Changes
         </button>
     </form>
+    <div id="listsResult"></div>
 </div>
 
 <!-- System Variables -->
@@ -89,171 +90,86 @@ $durations_text = implode("\n", $current_durations);
                         value="<?= htmlspecialchars($row['value']) ?>"
                         required>
                 <?php endif; ?>
-                <button 
-                    type="button" 
-                    class="page-action-btn delete"
-                    data-name="<?= htmlspecialchars($row['name']) ?>"
-                    data-label="<?= htmlspecialchars($row['label']) ?>"
-                    style="margin-top: 8px; width: auto;"
-                    title="Delete this variable">
-                    🗑️ Delete
-                </button>
             </div>
         <?php endforeach; ?>
-
-        <div id="newVariablesContainer"></div>
-
-        <button type="submit" class="page-action-btn save" id="submitVariablesBtn">
+        
+        <button type="submit" class="page-action-btn save" id="varSubmitBtn">
             💾 Save Variables
         </button>
     </form>
-
-    <!-- Add New Variable Button -->
-    <div class="form-group" style="margin-top: 20px;">
-        <button type="button" id="addVariableBtn" class="page-action-btn rebook">
-            ➕ Add New Variable
-        </button>
-    </div>
+    <div id="variablesResult"></div>
 </div>
-
-<!-- Hidden template for new variables -->
-<div id="variableTemplate" style="display:none;">
-    <div class="form-group new-variable">
-        <label>Label (User-Friendly Name)</label>
-        <input type="text" name="new_variables[__INDEX__][label]" placeholder="e.g., Car Rental Price" required>
-        <label>Machine Name (no spaces)</label>
-        <input type="text" name="new_variables[__INDEX__][name]" placeholder="e.g., car_rental_price" required>
-        <label>Value</label>
-        <input type="text" name="new_variables[__INDEX__][value]" placeholder="e.g., 150.00" required>
-        <label>Type</label>
-        <select name="new_variables[__INDEX__][type]">
-            <option value="text">Text</option>
-            <option value="number">Number</option>
-        </select>
-        <button type="button" class="page-action-btn delete">🗑️ Remove</button>
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div id="deleteConfirmationModal" class="modal-overlay" style="display: none;">
-    <div class="modal-content">
-        <h3>Are you sure?</h3>
-        <p id="deleteMessage">This will permanently delete the variable. This action cannot be undone.</p>
-        <div class="modal-buttons">
-            <button id="confirmDeleteBtn" class="modal-btn confirm-btn">Yes, Delete</button>
-            <button id="cancelDeleteBtn" class="modal-btn cancel-btn">Cancel</button>
-        </div>
-    </div>
-</div>
-
-<div id="notification-area"></div>
 
 <script>
-$(document).ready(function () {
-    // Dropdown lists
-    $('#maintenanceForm').on('submit', function (e) {
+$(document).ready(function() {
+    // Handle dropdown lists form
+    $('#maintenanceForm').on('submit', function(e) {
         e.preventDefault();
-        var btn = $('#submitBtn').text('Saving...').prop('disabled', true);
+        var submitBtn = $('#submitBtn');
+        var result = $('#listsResult');
+        
+        submitBtn.prop('disabled', true).text('Saving...');
+        result.html('');
 
         $.ajax({
             type: 'POST',
-            url: 'Maintenance/api/index.php?action=update_lists',
-            // ✅ 'data' is explicitly present
-             data: $(this).serialize(),
-            dataType: 'json',
-            success: function (response) {
-                if (response.success) {
-                    location.reload();
-                }
-            },
-            error: function () {
-                $('#notification-area').html('<div class="error-message">❌ Failed to save.</div>');
-                btn.text('💾 Save Changes').prop('disabled', false);
-            }
-        });
-    });
-
-    // System Variables
-    $('#variablesForm').on('submit', function (e) {
-        e.preventDefault();
-        var btn = $('#submitVariablesBtn').text('Saving...').prop('disabled', true);
-
-        $.ajax({
-            type: 'POST',
-            url: 'Maintenance/api/index.php?action=update_variables',
-            // ✅ 'data' is explicitly present
+            url: '<?= BASE_URL ?>/Maintenance/api/index.php?action=update_lists',
             data: $(this).serialize(),
             dataType: 'json',
-            success: function (response) {
+            success: function(response) {
+                submitBtn.prop('disabled', false).text('💾 Save Changes');
                 if (response.success) {
-                    location.reload();
+                    result.html('<div class="success-message">' + response.message + '</div>');
+                } else {
+                    result.html('<div class="error-message">' + response.message + '</div>');
                 }
+                
+                setTimeout(function() {
+                    result.fadeOut(function() {
+                        $(this).html('').show();
+                    });
+                }, 5000);
             },
-            error: function () {
-                $('#notification-area').html('<div class="error-message">❌ Failed to save variables.</div>');
-                btn.text('💾 Save Variables').prop('disabled', false);
+            error: function(xhr, status, error) {
+                submitBtn.prop('disabled', false).text('💾 Save Changes');
+                result.html('<div class="error-message">❌ Failed to save. Please try again.</div>');
+                console.error('Error:', error, xhr.responseText);
             }
         });
     });
 
-    // Add new variable
-    let newVariableIndex = 0;
-    $('#addVariableBtn').on('click', function() {
-        const template = $('#variableTemplate').html()
-            .replace(/__INDEX__/g, newVariableIndex);
-        $('#newVariablesContainer').append(template);
-        newVariableIndex++;
-    });
-
-    // Remove new variable
-    $(document).on('click', '.delete-new-variable', function() {
-        $(this).closest('.new-variable').remove();
-    });
-
-    // Delete system variable
-    let variableToDelete = null;
-    $(document).on('click', '.delete-variable-btn', function() {
-        variableToDelete = {
-            name: $(this).data('name'),
-            label: $(this).data('label')
-        };
-        $('#deleteMessage').text(`Delete variable "${variableToDelete.label}"? This cannot be undone.`);
-        $('#deleteConfirmationModal').show();
-    });
-
-    // Cancel delete
-    $('#cancelDeleteBtn').on('click', function() {
-        $('#deleteConfirmationModal').hide();
-        variableToDelete = null;
-    });
-
-    // Confirm delete
-    $('#confirmDeleteBtn').on('click', function() {
-        if (!variableToDelete) return;
-        var btn = $(this).text('Deleting...').prop('disabled', true);
+    // Handle system variables form
+    $('#variablesForm').on('submit', function(e) {
+        e.preventDefault();
+        var submitBtn = $('#varSubmitBtn');
+        var result = $('#variablesResult');
+        
+        submitBtn.prop('disabled', true).text('Saving...');
+        result.html('');
 
         $.ajax({
-            url: 'Maintenance/api/index.php?action=delete_variable',
             type: 'POST',
-            // ✅ 'data' is explicitly present
-            data: {
-                name: variableToDelete.name
-            },
+            url: '<?= BASE_URL ?>/Maintenance/api/index.php?action=update_variables',
+            data: $(this).serialize(),
             dataType: 'json',
-            success: function(res) {
-                if (res.success) {
-                    location.reload();
+            success: function(response) {
+                submitBtn.prop('disabled', false).text('💾 Save Variables');
+                if (response.success) {
+                    result.html('<div class="success-message">' + response.message + '</div>');
                 } else {
-                    $('#notification-area').html('<div class="error-message">' + res.message + '</div>');
+                    result.html('<div class="error-message">' + response.message + '</div>');
                 }
+                
+                setTimeout(function() {
+                    result.fadeOut(function() {
+                        $(this).html('').show();
+                    });
+                }, 5000);
             },
-            error: function() {
-                $('#notification-area').html('<div class="error-message">❌ Failed to delete.</div>');
-            },
-            complete: function() {
-                btn.text('Yes, Delete').prop('disabled', false);
-                $('#deleteConfirmationModal').hide();
-                variableToDelete = null;
+            error: function(xhr, status, error) {
+                submitBtn.prop('disabled', false).text('💾 Save Variables');
+                result.html('<div class="error-message">❌ Failed to save. Please try again.</div>');
+                console.error('Error:', error, xhr.responseText);
             }
         });
     });
