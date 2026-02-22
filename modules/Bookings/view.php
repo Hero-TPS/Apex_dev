@@ -122,6 +122,14 @@ if (isset($_GET['id'])) {
             <strong>Status:</strong>
             <?= $booking['status'] === 'completed' ? '✅ Completed' : '⏳ Confirmed' ?>
         </div>
+        <div class="detail-item">
+            <strong>Created:</strong> <?= date('d/m/Y H:i', strtotime($booking['date_created'])) ?>
+        </div>
+        <?php if (!empty($booking['updated_at'])): ?>
+            <div class="detail-item">
+                <strong>Last Updated:</strong> <?= date('d/m/Y H:i', strtotime($booking['updated_at'])) ?>
+            </div>
+        <?php endif; ?>
         <div class="form-group">
             <label for="gate_code">Gate code</label>
             <textarea id="gate_code" name="gate_code"></textarea>

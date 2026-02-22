@@ -313,7 +313,7 @@ function handleUpdateBooking()
                 throw new Exception('Invalid booking ID or payment method.');
             }
 
-            $stmt = $pdo->prepare("UPDATE bookings SET payment_method = ? WHERE id = ?");
+            $stmt = $pdo->prepare("UPDATE bookings SET payment_method = ?, updated_at = NOW() WHERE id = ?");
             $stmt->execute([$payment_method, $booking_id]);
 
             if ($stmt->rowCount() === 0) {
@@ -337,7 +337,7 @@ function handleUpdateBooking()
                 throw new Exception('Invalid booking ID or status.');
             }
 
-            $stmt = $pdo->prepare("UPDATE bookings SET status = ? WHERE id = ?");
+            $stmt = $pdo->prepare("UPDATE bookings SET status = ?, updated_at = NOW() WHERE id = ?");
             $stmt->execute([$status, $booking_id]);
 
             if ($stmt->rowCount() === 0) {
@@ -370,15 +370,30 @@ function handleUpdateBooking()
             $other_cost = trim($_REQUEST['other_cost'] ?? '');
             $flight_number = trim($_REQUEST['flight_number'] ?? '');
             $description_input = trim($_REQUEST['description'] ?? '');
+            $payment_method = trim($_REQUEST['payment_method'] ?? 'cash');
             $swap_locations = isset($_REQUEST['swap_locations']);
-            $payment_method = ($_REQUEST['payment_method'] ?? 'cash') === 'eft' ? 'eft' : 'cash';
 
-            $original_pickup = ($pickup_location === 'other') ? $other_pickup_location : $pickup_location;
-            $original_destination = ($destination === 'other') ? $other_destination : $destination;
-            $final_cost = ($cost === 'other') ? floatval($other_cost) : floatval($cost);
+            // Handle "Other" fields
+            if ($pickup_location === 'other') {
+                $original_pickup = $other_pickup_location;
+            } else {
+                $original_pickup = $pickup_location;
+            }
 
-            if ($booking_id <= 0 || $contact_id <= 0 || !$trip_date || !$start_time || !$original_pickup || !$original_destination) {
-                jsonResponse(['success' => false, 'message' => 'Please fill in all required fields.'], 400);
+            if ($destination === 'other') {
+                $original_destination = $other_destination;
+            } else {
+                $original_destination = $destination;
+            }
+
+            if ($cost === 'other') {
+                $final_cost = floatval($other_cost);
+            } else {
+                $final_cost = floatval($cost);
+            }
+
+            if (empty($original_pickup) || empty($original_destination) || $final_cost <= 0) {
+                throw new Exception('Invalid booking data');
             }
 
             $start_datetime = new DateTime($trip_date . ' ' . $start_time, new DateTimeZone(TIME_ZONE));
@@ -415,17 +430,15 @@ function handleUpdateBooking()
                 $current['payment_method'] != $payment_method
             );
 
+            // ✅ DON'T modify description - save as-is, no timestamp appended
             $description_to_save = $description_input;
-            if ($changed) {
-                $timestamp = date('Y-m-d H:i');
-                $description_to_save .= "\n\n[Updated on {$timestamp} via admin]";
-            }
 
-            // Update booking
+            // ✅ Update booking and set updated_at timestamp
             $sql = "UPDATE bookings SET 
                         contact_id = ?, trip_date = ?, start_time = ?, end_time = ?,
                         original_pickup = ?, original_destination = ?, was_swapped = ?,
-                        cost = ?, flight_number = ?, description = ?, payment_method = ?
+                        cost = ?, flight_number = ?, description = ?, payment_method = ?,
+                        updated_at = NOW()
                     WHERE id = ?";
 
             $stmt = $pdo->prepare($sql);
@@ -469,7 +482,8 @@ function handleUpdateBooking()
                 'client' => $bookingDetails['client_name']
             ]);
 
-            $fullMessage = createWhatsAppMessage($bookingDetails);
+            // ✅ Pass TRUE as second parameter to indicate this is an update
+            $fullMessage = createWhatsAppMessage($bookingDetails, true);
 
             jsonResponse([
                 'success' => true,

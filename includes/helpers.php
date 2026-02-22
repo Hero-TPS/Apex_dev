@@ -104,8 +104,10 @@ function formatPhoneNumberForWhatsApp($rawPhone) {
 
 /**
  * Create WhatsApp booking confirmation message
+ * @param array $bookingDetails - Booking data
+ * @param bool $isUpdate - True if this is an update, false for new booking
  */
-function createWhatsAppMessage($bookingDetails) {
+function createWhatsAppMessage($bookingDetails, $isUpdate = false) {
     $start = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time']);
     $forDate = $start->format('d/m/y');
     $startTime = $start->format('H:i');
@@ -113,7 +115,10 @@ function createWhatsAppMessage($bookingDetails) {
     $costInfo = $bookingDetails['cost'] > 0 ? "💰 Cost: R" . number_format($bookingDetails['cost'], 2) . "\n" : '';
     $notesInfo = !empty($bookingDetails['description']) ? "📝 Notes: " . $bookingDetails['description'] . "\n" : '';
 
-    return "*BOOKING CONFIRMED* ✅\n\n" .
+    // Change title based on whether it's an update or new booking
+    $title = $isUpdate ? "*BOOKING UPDATED AND CONFIRMED* ✅\n\n" : "*BOOKING CONFIRMED* ✅\n\n";
+
+    return $title .
            "Good day " . $bookingDetails['client_name'] . ",\n\n" .
            "📍 Pickup: " . $bookingDetails['pickup_location'] . "\n" .
            "📅 Date: " . $forDate . " at " . $startTime . "\n" .
