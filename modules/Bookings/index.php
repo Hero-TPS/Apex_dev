@@ -178,6 +178,7 @@ include ROOT_DIR . '/includes/header.php';
             var currentStatus = $(this).data('status');
             var newStatus = (currentStatus === 'completed') ? 'confirmed' : 'completed';
             var button = $(this);
+            var row = button.closest('tr');
 
             $.ajax({
                 url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
@@ -190,21 +191,54 @@ include ROOT_DIR . '/includes/header.php';
                 dataType: 'json',
                 success: function (res) {
                     if (res.success) {
-                        // 🔁 Update button state immediately (no full reload)
-                        if (newStatus === 'completed') {
+                        // If marking as completed and viewing "Upcoming Only"
+                        if (newStatus === 'completed' && !showAll) {
+                            // Fade out and remove the row
+                            row.fadeOut(400, function () {
+                                $(this).remove();
+
+                                // Check if table is empty
+                                if (tableBody.find('tr').length === 0) {
+                                    $('.bookings-table').hide();
+                                    noBookingsMessage.show();
+                                }
+                            });
+
+                            showNotification('✓ Booking marked as completed', 'success');
+                        }
+                        // If marking as completed and viewing "All Bookings"
+                        else if (newStatus === 'completed' && showAll) {
+                            // Just update the button state
                             button
                                 .text('Undo Done')
                                 .data('status', 'completed')
                                 .removeClass('view-details-btn')
                                 .addClass('completed');
-                        } else {
+
+                            // Optionally add a visual indicator to the row
+                            row.addClass('booking-completed');
+
+                            showNotification('✓ Booking marked as completed', 'success');
+                        }
+                        // If undoing completion (always in "All Bookings" view)
+                        else {
                             button
                                 .text('Mark Done')
                                 .data('status', 'confirmed')
                                 .removeClass('completed')
                                 .addClass('view-details-btn');
+
+                            // Remove completed styling if present
+                            row.removeClass('booking-completed');
+
+                            showNotification('✓ Booking status changed to confirmed', 'success');
                         }
+                    } else {
+                        showNotification('✗ ' + (res.message || 'Failed to update status'), 'error');
                     }
+                },
+                error: function () {
+                    showNotification('❌ Failed to update booking status', 'error');
                 }
             });
         });
@@ -287,13 +321,15 @@ include ROOT_DIR . '/includes/header.php';
         });
 
         function showNotification(message, type) {
-            var messageDiv = $('<div class="' + (type === 'success' ? 'success-message' : 'error-message') + '"></div>').text(message);
-            notificationArea.html(messageDiv);
+            const className = type === 'success' ? 'success-message' : 'error-message';
+            const notification = $('<div class="' + className + '">' + message + '</div>');
+            notificationArea.html(notification);
+
             setTimeout(function () {
-                messageDiv.fadeOut('slow', function () {
+                notification.fadeOut(function () {
                     $(this).remove();
                 });
-            }, 5000);
+            }, 3000);
         }
 
         function escapeHtml(str) {

@@ -1123,3 +1123,19 @@ body:not(.home-page) .floating-menu-toggle {
     margin-bottom: 20px;
     border: 1px solid #c3e6cb;
 }
+
+/* Completed booking styling for "All Bookings" view */
+.booking-completed {
+    background-color: #f0f9ff !important;
+    opacity: 0.7;
+}
+
+.booking-completed td {
+    text-decoration: line-through;
+    color: #999;
+}
+
+.booking-completed .action-btn.completed {
+    background-color: #27ae60;
+    color: white;
+}
