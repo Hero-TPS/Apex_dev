@@ -268,18 +268,18 @@ if (isset($_GET['id'])) {
                 url: '<?= BASE_URL ?>/modules/Bookings/api/index.php?action=update',
                 data: formData,
                 dataType: 'json',
-                success: function (response) {
-                    loading.hide();
-                    if (response.success) {
-                        result.html('<div class="success-message">' + response.message + '</div>');
-                        setTimeout(function () {
-                            window.location.href = '<?= BASE_URL ?>/modules/Bookings/view.php?id=' + <?= (int) $booking['id'] ?>;
-                        }, 1000);
-                    } else {
-                        result.html('<div class="error-message">' + response.message + '</div>');
-                        submitBtn.show();
-                    }
-                },
+success: function (response) {
+    loading.hide();
+    if (response.success) {
+        result.html('<div class="success-message">' + response.message + '</div>');
+        setTimeout(function () {
+            window.location.href = '<?= BASE_URL ?>/modules/Bookings/view.php?id=' + <?= (int) $booking['id'] ?>;
+        }, 1000);
+    } else {
+        result.html('<div class="error-message">' + response.message + '</div>');
+        submitBtn.show();
+    }
+},
                 error: function () {
                     loading.hide();
                     submitBtn.show();

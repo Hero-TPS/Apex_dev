@@ -104,10 +104,9 @@ function formatPhoneNumberForWhatsApp($rawPhone) {
 
 /**
  * Create WhatsApp booking confirmation message
- * @param array $bookingDetails - Booking data
- * @param bool $isUpdate - True if this is an update, false for new booking
+ * Automatically detects if booking was updated by checking updated_at timestamp
  */
-function createWhatsAppMessage($bookingDetails, $isUpdate = false) {
+function createWhatsAppMessage($bookingDetails) {
     $start = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time']);
     $forDate = $start->format('d/m/y');
     $startTime = $start->format('H:i');
@@ -115,8 +114,19 @@ function createWhatsAppMessage($bookingDetails, $isUpdate = false) {
     $costInfo = $bookingDetails['cost'] > 0 ? "💰 Cost: R" . number_format($bookingDetails['cost'], 2) . "\n" : '';
     $notesInfo = !empty($bookingDetails['description']) ? "📝 Notes: " . $bookingDetails['description'] . "\n" : '';
 
-    // Change title based on whether it's an update or new booking
+    // ✅ Check if booking was updated (has updated_at timestamp)
+    $isUpdate = !empty($bookingDetails['updated_at']);
     $title = $isUpdate ? "*BOOKING UPDATED AND CONFIRMED* ✅\n\n" : "*BOOKING CONFIRMED* ✅\n\n";
+
+    // ✅ Add timestamp notice - created or updated
+    $timestampInfo = '';
+    if ($isUpdate) {
+        $updatedDate = new DateTime($bookingDetails['updated_at']);
+        $timestampInfo = "\n[Updated: " . $updatedDate->format('d/m/y H:i') . "]\n";
+    } elseif (!empty($bookingDetails['date_created'])) {
+        $createdDate = new DateTime($bookingDetails['date_created']);
+        $timestampInfo = "\n[Created: " . $createdDate->format('d/m/y H:i') . "]\n";
+    }
 
     return $title .
            "Good day " . $bookingDetails['client_name'] . ",\n\n" .
@@ -126,10 +136,10 @@ function createWhatsAppMessage($bookingDetails, $isUpdate = false) {
            $costInfo .
            $flightInfo .
            $notesInfo .
-           "🚗 Looking forward to being of service to you. 👍\n\n" .
+           $timestampInfo .
+           "\n🚗 Looking forward to being of service to you. 👍\n\n" .
            "Regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
 }
-
 /**
  * Create WhatsApp thank you message
  */

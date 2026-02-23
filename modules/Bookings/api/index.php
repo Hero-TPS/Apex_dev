@@ -482,8 +482,8 @@ function handleUpdateBooking()
                 'client' => $bookingDetails['client_name']
             ]);
 
-            // ✅ Pass TRUE as second parameter to indicate this is an update
-            $fullMessage = createWhatsAppMessage($bookingDetails, true);
+            // ✅ Function will auto-detect if booking was updated
+            $fullMessage = createWhatsAppMessage($bookingDetails);
 
             jsonResponse([
                 'success' => true,
