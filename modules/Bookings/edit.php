@@ -177,123 +177,149 @@ if (isset($_GET['id'])) {
 </div>
 
 <script>
-    $(document).ready(function () {
-        var initialPickupValue = "<?php echo addslashes(htmlspecialchars($booking['original_pickup'], ENT_QUOTES)); ?>";
-        var initialDestinationValue = "<?php echo addslashes(htmlspecialchars($booking['original_destination'], ENT_QUOTES)); ?>";
+$(document).ready(function () {
+    var initialPickupValue = "<?php echo addslashes(htmlspecialchars($booking['original_pickup'], ENT_QUOTES)); ?>";
+    var initialDestinationValue = "<?php echo addslashes(htmlspecialchars($booking['original_destination'], ENT_QUOTES)); ?>";
 
-        function updatePickupOptions() {
-            var selectedContact = $('#contact').find('option:selected');
-            var address = selectedContact.data('address');
-            var phone = selectedContact.data('phone');
-            var pickupSelect = $('#pickup');
-            $('#phone').val(phone);
+    function updatePickupOptions() {
+        var selectedContact = $('#contact').find('option:selected');
+        var address = selectedContact.data('address');
+        var phone = selectedContact.data('phone');
+        var pickupSelect = $('#pickup');
+        $('#phone').val(phone);
 
-            var options = '';
-            var isStandardPickup = false;
+        var options = '';
+        var isStandardPickup = false;
 
-            if (address) {
-                options += '<option value="' + escapeHtml(address) + '">' + escapeHtml(address) + '</option>';
-                if (initialPickupValue === address) {
-                    isStandardPickup = true;
-                }
+        if (address) {
+            options += '<option value="' + escapeHtml(address) + '">' + escapeHtml(address) + '</option>';
+            if (initialPickupValue === address) {
+                isStandardPickup = true;
             }
-            options += '<option value="other">Other</option>';
-            pickupSelect.html(options);
-
-            if (isStandardPickup) {
-                pickupSelect.val(initialPickupValue);
-                $('#otherPickupGroup').hide();
-            } else {
-                pickupSelect.val('other');
-                $('#otherPickup').val(initialPickupValue);
-                $('#otherPickupGroup').show();
-                $('#otherPickup').prop('required', true);
-            }
-            pickupSelect.trigger('change');
         }
+        options += '<option value="other">Other</option>';
+        pickupSelect.html(options);
 
-        $('#contact').on('change', updatePickupOptions);
-        updatePickupOptions();
-
-        $('#destination').on('change', function () {
-            if ($(this).val() === 'other') {
-                $('#otherDestination').val(initialDestinationValue);
-                $('#otherDestinationGroup').show();
-                $('#otherDestination').prop('required', true);
-            } else {
-                $('#otherDestinationGroup').hide();
-                $('#otherDestination').prop('required', false);
-            }
-        });
-
-        if ($('#destination').val() === 'other') {
-            $('#otherDestination').val(initialDestinationValue);
-            $('#otherDestinationGroup').show();
-            $('#otherDestination').prop('required', true);
-        }
-
-        $('#cost').on('change', function () {
-            var selected = $(this).val();
-            if (selected === 'other') {
-                $('#otherCost').val(<?php echo floatval($booking['cost']); ?>).prop('required', true);
-                $('#otherCostGroup').show();
-            } else {
-                $('#otherCostGroup').hide();
-                $('#otherCost').prop('required', false);
-            }
-        });
-
-        if ($('#cost').val() === 'other') {
-            $('#otherCost').val(<?php echo floatval($booking['cost']); ?>).prop('required', true);
-            $('#otherCostGroup').show();
+        if (isStandardPickup) {
+            pickupSelect.val(initialPickupValue);
+            $('#otherPickupGroup').hide();
+            $('#otherPickup').prop('required', false);
         } else {
-            $('#otherCostGroup').hide();
+            pickupSelect.val('other');
+            $('#otherPickup').val(initialPickupValue);
+            $('#otherPickupGroup').show();
+            $('#otherPickup').prop('required', true);
         }
-
-        $('#editBookingForm').on('submit', function (e) {
-            e.preventDefault();
-            var submitBtn = $('#submitBtn');
-            var loading = $('#loading');
-            var result = $('#result');
-            submitBtn.hide();
-            loading.show();
-            result.html('');
-
-            // ✅ Get payment method
-            var paymentMethod = $('#payment_method').is(':checked') ? 'eft' : 'cash';
-            var formData = $(this).serialize() + '&payment_method=' + paymentMethod;
-
-            $.ajax({
-                type: 'POST',
-                url: '<?= BASE_URL ?>/modules/Bookings/api/index.php?action=update',
-                data: formData,
-                dataType: 'json',
-success: function (response) {
-    loading.hide();
-    if (response.success) {
-        result.html('<div class="success-message">' + response.message + '</div>');
-        setTimeout(function () {
-            window.location.href = '<?= BASE_URL ?>/modules/Bookings/view.php?id=' + <?= (int) $booking['id'] ?>;
-        }, 1000);
-    } else {
-        result.html('<div class="error-message">' + response.message + '</div>');
-        submitBtn.show();
     }
-},
-                error: function () {
-                    loading.hide();
-                    submitBtn.show();
-                    result.html('<div class="error-message">❌ An unexpected error occurred.</div>');
-                }
-            });
-        });
 
-        function escapeHtml(str) {
-            var div = document.createElement('div');
-            div.appendChild(document.createTextNode(str || ''));
-            return div.innerHTML;
+    $('#contact').on('change', updatePickupOptions);
+    updatePickupOptions();
+
+    // ✅ ADD: Handle pickup "other" option toggle
+    $('#pickup').on('change', function () {
+        if ($(this).val() === 'other') {
+            $('#otherPickupGroup').show();
+            $('#otherPickup').prop('required', true);
+            if ($('#otherPickup').val() === '') {
+                $('#otherPickup').val(initialPickupValue);
+            }
+        } else {
+            $('#otherPickupGroup').hide();
+            $('#otherPickup').prop('required', false);
         }
     });
+
+    // ✅ Handle destination "other" option toggle
+    $('#destination').on('change', function () {
+        if ($(this).val() === 'other') {
+            $('#otherDestinationGroup').show();
+            $('#otherDestination').prop('required', true);
+            if ($('#otherDestination').val() === '') {
+                $('#otherDestination').val(initialDestinationValue);
+            }
+        } else {
+            $('#otherDestinationGroup').hide();
+            $('#otherDestination').prop('required', false);
+        }
+    });
+
+    // Initialize destination on page load
+    if ($('#destination').val() === 'other') {
+        $('#otherDestination').val(initialDestinationValue);
+        $('#otherDestinationGroup').show();
+        $('#otherDestination').prop('required', true);
+    }
+
+    // ✅ Handle cost "other" option toggle
+    $('#cost').on('change', function () {
+        var selected = $(this).val();
+        if (selected === 'other') {
+            $('#otherCostGroup').show();
+            $('#otherCost').prop('required', true);
+            if ($('#otherCost').val() === '' || $('#otherCost').val() === '0') {
+                $('#otherCost').val(<?php echo floatval($booking['cost']); ?>);
+            }
+        } else {
+            $('#otherCostGroup').hide();
+            $('#otherCost').prop('required', false);
+        }
+    });
+
+    // Initialize cost on page load
+    if ($('#cost').val() === 'other') {
+        $('#otherCost').val(<?php echo floatval($booking['cost']); ?>);
+        $('#otherCostGroup').show();
+        $('#otherCost').prop('required', true);
+    } else {
+        $('#otherCostGroup').hide();
+        $('#otherCost').prop('required', false);
+    }
+
+    // Form submission
+    $('#editBookingForm').on('submit', function (e) {
+        e.preventDefault();
+        var submitBtn = $('#submitBtn');
+        var loading = $('#loading');
+        var result = $('#result');
+        submitBtn.hide();
+        loading.show();
+        result.html('');
+
+        // ✅ Get payment method
+        var paymentMethod = $('#payment_method').is(':checked') ? 'eft' : 'cash';
+        var formData = $(this).serialize() + '&payment_method=' + paymentMethod;
+
+        $.ajax({
+            type: 'POST',
+            url: '<?= BASE_URL ?>/modules/Bookings/api/index.php?action=update',
+            data: formData,
+            dataType: 'json',
+            success: function (response) {
+                loading.hide();
+                if (response.success) {
+                    result.html('<div class="success-message">' + response.message + '</div>');
+                    setTimeout(function () {
+                        window.location.href = '<?= BASE_URL ?>/modules/Bookings/view.php?id=' + <?= (int) $booking['id'] ?>;
+                    }, 1000);
+                } else {
+                    result.html('<div class="error-message">' + response.message + '</div>');
+                    submitBtn.show();
+                }
+            },
+            error: function () {
+                loading.hide();
+                submitBtn.show();
+                result.html('<div class="error-message">❌ An unexpected error occurred.</div>');
+            }
+        });
+    });
+
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str || ''));
+        return div.innerHTML;
+    }
+});
 </script>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>

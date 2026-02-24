@@ -95,6 +95,7 @@ function handleGetBookings()
             $recentBookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $bookings = array_reverse($recentBookings);
         } else {
+            // ✅ UPCOMING: Exclude completed bookings
             $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
             $sql = "
                 SELECT 
@@ -103,7 +104,7 @@ function handleGetBookings()
                     c.name AS client_name 
                 FROM bookings b
                 JOIN contacts c ON b.contact_id = c.id
-                WHERE b.trip_date >= ?
+                WHERE b.trip_date >= ? AND b.status != 'completed'
                 ORDER BY b.trip_date ASC, b.start_time ASC
                 LIMIT 100
             ";

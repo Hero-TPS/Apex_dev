@@ -68,8 +68,8 @@ include ROOT_DIR . '/includes/header.php';
 <div class="menu-section">
     <h3 class="menu-toggle" data-target="maintenance-section">⚙️ Maintenance</h3>
     <div id="maintenance-section" class="menu-content">
-        <a href="Maintenance/" class="dashboard-button db-maintenance">Manage Lists</a>
-        <a href="Maintenance/logs.php" class="dashboard-button db-maintenance">System Logs</a>
+        <a href="maintenance/" class="dashboard-button db-maintenance">Manage Lists</a>
+        <a href="maintenance/logs.php" class="dashboard-button db-maintenance">System Logs</a>
     </div>
 </div>
 
