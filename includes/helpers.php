@@ -44,6 +44,7 @@ function fetchColumn(PDO $pdo, string $tableName, string $columnName, string $or
         return [];
     }
 }
+
 /**
  * Generate 15-minute time options for drop downs
  */
@@ -107,7 +108,10 @@ function formatPhoneNumberForWhatsApp($rawPhone) {
  * Automatically detects if booking was updated by checking updated_at timestamp
  */
 function createWhatsAppMessage($bookingDetails) {
-    $start = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time']);
+    // ✅ Use configured timezone
+    $timezone = new DateTimeZone(TIME_ZONE);
+    
+    $start = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time'], $timezone);
     $forDate = $start->format('d/m/y');
     $startTime = $start->format('H:i');
     $flightInfo = !empty($bookingDetails['flight_number']) ? "✈️ Flight Number: " . $bookingDetails['flight_number'] . "\n" : '';
@@ -121,11 +125,11 @@ function createWhatsAppMessage($bookingDetails) {
     // ✅ Add timestamp notice - created or updated
     $timestampInfo = '';
     if ($isUpdate) {
-        $updatedDate = new DateTime($bookingDetails['updated_at']);
-        $timestampInfo = "\n[Updated: " . $updatedDate->format('d/m/y H:i') . "]\n";
+        $updatedDate = new DateTime($bookingDetails['updated_at'], $timezone);
+        $timestampInfo = "\n✏️ Updated: " . $updatedDate->format('d/m/y H:i') . "\n";
     } elseif (!empty($bookingDetails['date_created'])) {
-        $createdDate = new DateTime($bookingDetails['date_created']);
-        $timestampInfo = "\n[Created: " . $createdDate->format('d/m/y H:i') . "]\n";
+        $createdDate = new DateTime($bookingDetails['date_created'], $timezone);
+        $timestampInfo = "\n🕒 Created: " . $createdDate->format('d/m/y H:i') . "\n";
     }
 
     return $title .
@@ -140,53 +144,117 @@ function createWhatsAppMessage($bookingDetails) {
            "\n🚗 Looking forward to being of service to you. 👍\n\n" .
            "Regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
 }
-/**
- * Create WhatsApp thank you message
- */
-function createThankYouMessage($bookingDetails) {
-    $invoice_url = WEB_APP_URL . "/invoice.php?id=" . $bookingDetails['id'];
-    return "Good day " . $bookingDetails['client_name'] . ",\n\n" .
-           "Thank you for your recent trip with " . BUSINESS_NAME . "! 👍\n\n" .
-           "Link to your invoice for your records:\n" . $invoice_url . "\n\n" .
-           "Looking forward to be of service to you again soon! 🚗";
-}
 
 /**
- * Create Google Calendar event description
+ * Build WhatsApp URL
  */
-function createEventDescription($bookingDetails) {
-    $phone = formatPhoneNumberForWhatsApp($bookingDetails['client_phone']);
-    $detail_view_url = WEB_APP_URL . "/BookingDetail.php?id=" . $bookingDetails['id'];
-
-    $description = "💰 Cost: R" . number_format($bookingDetails['cost'], 2) . "\n";
-    $description .= "📞 Phone: " . $phone . "\n\n";
-    $description .= "📍 Pickup: " . $bookingDetails['pickup_location'] . "\n";
-    $description .= "🎯 Destination: " . $bookingDetails['destination'] . "\n\n";
-
-    if (!empty($bookingDetails['flight_number'])) {
-        $description .= "✈️ Flight Number: " . $bookingDetails['flight_number'] . "\n";
+function buildWhatsAppUrl($phone, $message) {
+    $cleanPhone = formatPhoneNumberForWhatsApp($phone);
+    if (!$cleanPhone) {
+        return '#';
     }
-    if (!empty($bookingDetails['description'])) {
-        $description .= "Notes: " . $bookingDetails['description'] . "\n";
-    }
-
-    $description .= "\n---\n";
-    $description .= "🔗 View Full Booking Details:\n" . $detail_view_url;
-
-    return $description;
+    return 'https://wa.me/' . $cleanPhone . '?text=' . urlencode($message);
 }
 
-function getSystemVariable($pdo, $name) {
-    $stmt = $pdo->prepare("SELECT value FROM system_variables WHERE name = ?");
-    $stmt->execute([$name]);
-    return $stmt->fetchColumn();
+/**
+ * Sanitize filename for safe storage
+ */
+function sanitizeFilename($filename) {
+    $filename = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $filename);
+    $filename = preg_replace('/_+/', '_', $filename);
+    return $filename;
 }
 
-function dd($value) {
+/**
+ * Format bytes to human readable size
+ */
+function formatBytes($bytes, $precision = 2) {
+    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    $bytes = max($bytes, 0);
+    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+    $pow = min($pow, count($units) - 1);
+    $bytes /= (1 << (10 * $pow));
+    return round($bytes, $precision) . ' ' . $units[$pow];
+}
+
+/**
+ * Get file extension from filename
+ */
+function getFileExtension($filename) {
+    return strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+}
+
+/**
+ * Check if file type is allowed
+ */
+function isAllowedFileType($filename, array $allowedTypes = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx']) {
+    $ext = getFileExtension($filename);
+    return in_array($ext, $allowedTypes, true);
+}
+
+/**
+ * Generate a random string
+ */
+function generateRandomString($length = 10) {
+    $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    $charactersLength = strlen($characters);
+    $randomString = '';
+    for ($i = 0; $i < $length; $i++) {
+        $randomString .= $characters[random_int(0, $charactersLength - 1)];
+    }
+    return $randomString;
+}
+
+/**
+ * Redirect to a URL
+ */
+function redirect($url) {
+    header("Location: $url");
+    exit;
+}
+
+/**
+ * Get current page URL
+ */
+function getCurrentUrl() {
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'];
+    $uri = $_SERVER['REQUEST_URI'];
+    return $protocol . '://' . $host . $uri;
+}
+
+/**
+ * Check if request is AJAX
+ */
+function isAjaxRequest() {
+    return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+           strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+}
+
+/**
+ * JSON response helper
+ */
+function jsonResponse($data, $statusCode = 200) {
+    http_response_code($statusCode);
+    header('Content-Type: application/json');
+    echo json_encode($data);
+    exit;
+}
+
+/**
+ * Escape HTML entities
+ */
+function e($string) {
+    return htmlspecialchars($string ?? '', ENT_QUOTES, 'UTF-8');
+}
+
+/**
+ * Debug helper - dump and die
+ */
+function dd($var) {
     echo '<pre>';
-    print_r($value);
+    var_dump($var);
     echo '</pre>';
     die();
 }
-
-
+?>
