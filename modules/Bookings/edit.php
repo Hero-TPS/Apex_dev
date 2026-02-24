@@ -125,6 +125,13 @@ if (isset($_GET['id'])) {
                 <label for="otherDestination">Specify Other Destination</label>
                 <input type="text" id="otherDestination" name="other_destination">
             </div>
+            <!-- ✅ ADD: Add to destinations list checkbox -->
+            <div class="form-group hidden" id="addToDestinationGroup">
+                <label>
+                    <input type="checkbox" id="addToDestinations" name="add_to_destinations">
+                    🔄 Add new destination to list
+                </label>
+            </div>
             <div class="form-group">
                 <label>
                     <input type="checkbox" id="swapLocations" name="swap_locations" <?php if ($booking['was_swapped']) echo 'checked'; ?>>
@@ -220,9 +227,6 @@ $(document).ready(function () {
         if ($(this).val() === 'other') {
             $('#otherPickupGroup').removeClass('hidden');
             $('#otherPickup').prop('required', true);
-            if ($('#otherPickup').val() === '') {
-                $('#otherPickup').val(initialPickupValue);
-            }
         } else {
             $('#otherPickupGroup').addClass('hidden');
             $('#otherPickup').prop('required', false);
@@ -233,12 +237,11 @@ $(document).ready(function () {
     $('#destination').on('change', function () {
         if ($(this).val() === 'other') {
             $('#otherDestinationGroup').removeClass('hidden');
+            $('#addToDestinationGroup').removeClass('hidden');
             $('#otherDestination').prop('required', true);
-            if ($('#otherDestination').val() === '') {
-                $('#otherDestination').val(initialDestinationValue);
-            }
         } else {
             $('#otherDestinationGroup').addClass('hidden');
+            $('#addToDestinationGroup').addClass('hidden');
             $('#otherDestination').prop('required', false);
         }
     });
@@ -247,6 +250,7 @@ $(document).ready(function () {
     if ($('#destination').val() === 'other') {
         $('#otherDestination').val(initialDestinationValue);
         $('#otherDestinationGroup').removeClass('hidden');
+        $('#addToDestinationGroup').removeClass('hidden');
         $('#otherDestination').prop('required', true);
     }
 
@@ -256,9 +260,6 @@ $(document).ready(function () {
         if (selected === 'other') {
             $('#otherCostGroup').removeClass('hidden');
             $('#otherCost').prop('required', true);
-            if ($('#otherCost').val() === '' || $('#otherCost').val() === '0') {
-                $('#otherCost').val(<?php echo floatval($booking['cost']); ?>);
-            }
         } else {
             $('#otherCostGroup').addClass('hidden');
             $('#otherCost').prop('required', false);
