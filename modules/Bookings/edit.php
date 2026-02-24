@@ -202,12 +202,12 @@ $(document).ready(function () {
 
         if (isStandardPickup) {
             pickupSelect.val(initialPickupValue);
-            $('#otherPickupGroup').hide();
+            $('#otherPickupGroup').addClass('hidden');
             $('#otherPickup').prop('required', false);
         } else {
             pickupSelect.val('other');
             $('#otherPickup').val(initialPickupValue);
-            $('#otherPickupGroup').show();
+            $('#otherPickupGroup').removeClass('hidden');
             $('#otherPickup').prop('required', true);
         }
     }
@@ -215,16 +215,16 @@ $(document).ready(function () {
     $('#contact').on('change', updatePickupOptions);
     updatePickupOptions();
 
-    // ✅ ADD: Handle pickup "other" option toggle
+    // ✅ Handle pickup "other" option toggle
     $('#pickup').on('change', function () {
         if ($(this).val() === 'other') {
-            $('#otherPickupGroup').show();
+            $('#otherPickupGroup').removeClass('hidden');
             $('#otherPickup').prop('required', true);
             if ($('#otherPickup').val() === '') {
                 $('#otherPickup').val(initialPickupValue);
             }
         } else {
-            $('#otherPickupGroup').hide();
+            $('#otherPickupGroup').addClass('hidden');
             $('#otherPickup').prop('required', false);
         }
     });
@@ -232,13 +232,13 @@ $(document).ready(function () {
     // ✅ Handle destination "other" option toggle
     $('#destination').on('change', function () {
         if ($(this).val() === 'other') {
-            $('#otherDestinationGroup').show();
+            $('#otherDestinationGroup').removeClass('hidden');
             $('#otherDestination').prop('required', true);
             if ($('#otherDestination').val() === '') {
                 $('#otherDestination').val(initialDestinationValue);
             }
         } else {
-            $('#otherDestinationGroup').hide();
+            $('#otherDestinationGroup').addClass('hidden');
             $('#otherDestination').prop('required', false);
         }
     });
@@ -246,7 +246,7 @@ $(document).ready(function () {
     // Initialize destination on page load
     if ($('#destination').val() === 'other') {
         $('#otherDestination').val(initialDestinationValue);
-        $('#otherDestinationGroup').show();
+        $('#otherDestinationGroup').removeClass('hidden');
         $('#otherDestination').prop('required', true);
     }
 
@@ -254,13 +254,13 @@ $(document).ready(function () {
     $('#cost').on('change', function () {
         var selected = $(this).val();
         if (selected === 'other') {
-            $('#otherCostGroup').show();
+            $('#otherCostGroup').removeClass('hidden');
             $('#otherCost').prop('required', true);
             if ($('#otherCost').val() === '' || $('#otherCost').val() === '0') {
                 $('#otherCost').val(<?php echo floatval($booking['cost']); ?>);
             }
         } else {
-            $('#otherCostGroup').hide();
+            $('#otherCostGroup').addClass('hidden');
             $('#otherCost').prop('required', false);
         }
     });
@@ -268,10 +268,10 @@ $(document).ready(function () {
     // Initialize cost on page load
     if ($('#cost').val() === 'other') {
         $('#otherCost').val(<?php echo floatval($booking['cost']); ?>);
-        $('#otherCostGroup').show();
+        $('#otherCostGroup').removeClass('hidden');
         $('#otherCost').prop('required', true);
     } else {
-        $('#otherCostGroup').hide();
+        $('#otherCostGroup').addClass('hidden');
         $('#otherCost').prop('required', false);
     }
 
