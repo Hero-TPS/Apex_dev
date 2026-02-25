@@ -122,13 +122,17 @@ function createWhatsAppMessage($bookingDetails) {
     $isUpdate = !empty($bookingDetails['updated_at']);
     $title = $isUpdate ? "*BOOKING UPDATED AND CONFIRMED* ✅\n\n" : "*BOOKING CONFIRMED* ✅\n\n";
 
-    // ✅ Add timestamp notice - created or updated
+    // ✅ Add timestamp notice - created or updated (convert from UTC to local timezone)
     $timestampInfo = '';
     if ($isUpdate) {
-        $updatedDate = new DateTime($bookingDetails['updated_at'], $timezone);
+        // Create DateTime in UTC (server timezone), then convert to local
+        $updatedDate = new DateTime($bookingDetails['updated_at'], new DateTimeZone('UTC'));
+        $updatedDate->setTimezone($timezone);
         $timestampInfo = "\n✏️ Updated: " . $updatedDate->format('d/m/y H:i') . "\n";
     } elseif (!empty($bookingDetails['date_created'])) {
-        $createdDate = new DateTime($bookingDetails['date_created'], $timezone);
+        // Create DateTime in UTC (server timezone), then convert to local
+        $createdDate = new DateTime($bookingDetails['date_created'], new DateTimeZone('UTC'));
+        $createdDate->setTimezone($timezone);
         $timestampInfo = "\n🕒 Created: " . $createdDate->format('d/m/y H:i') . "\n";
     }
 

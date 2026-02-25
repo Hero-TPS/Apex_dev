@@ -123,11 +123,22 @@ if (isset($_GET['id'])) {
             <?= $booking['status'] === 'completed' ? '✅ Completed' : '⏳ Confirmed' ?>
         </div>
         <div class="detail-item">
-            <strong>Created:</strong> <?= date('d/m/Y H:i', strtotime($booking['date_created'])) ?>
+            <strong>Created:</strong>
+            <?php
+            $timezone = new DateTimeZone(TIME_ZONE);
+            $createdDate = new DateTime($booking['date_created'], new DateTimeZone('UTC'));
+            $createdDate->setTimezone($timezone);
+            echo $createdDate->format('d/m/Y H:i');
+            ?>
         </div>
         <?php if (!empty($booking['updated_at'])): ?>
             <div class="detail-item">
-                <strong>Last Updated:</strong> <?= date('d/m/Y H:i', strtotime($booking['updated_at'])) ?>
+                <strong>Last Updated:</strong>
+                <?php
+                $updatedDate = new DateTime($booking['updated_at'], new DateTimeZone('UTC'));
+                $updatedDate->setTimezone($timezone);
+                echo $updatedDate->format('d/m/Y H:i');
+                ?>
             </div>
         <?php endif; ?>
         <div class="form-group">
