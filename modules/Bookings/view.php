@@ -154,8 +154,8 @@ if (isset($_GET['id'])) {
         <a href="<?= BASE_URL ?>/modules/Bookings/invoice.php?id=<?= (int) $booking['id'] ?>" target="_blank"
             class="page-action-btn invoice">📄 View
             Invoice</a>
-        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createThankYouMessage($booking)) ?>"
-            target="_blank" class="page-action-btn back">🙏 Send Thank You</a>
+        <!-- <a href="https://wa.me/<?//= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?//= urlencode(createThankYouMessage($booking)) ?>"
+            target="_blank" class="page-action-btn back">🙏 Send Thank You</a> -->
     </div>
 
     <!-- Delete Confirmation Modal -->
