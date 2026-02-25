@@ -10,6 +10,8 @@ include ROOT_DIR . '/includes/header.php';
 // Check for highlight parameter
 $highlightClientId = $_GET['highlight'] ?? null;
 ?>
+<!-- Summary Stats -->
+<div id="client-stats" style="margin-bottom: 20px;"></div>
 
 <!-- Booking Filter Toggle -->
 <button id="toggleBookingsFilter" class="toggle-btn">
@@ -18,10 +20,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
 
 <!-- Client Search -->
 <div class="client-search-container">
-    <input 
-        type="text" 
-        id="clientSearch" 
-        class="client-search-input"
+    <input type="text" id="clientSearch" class="client-search-input"
         placeholder="🔍 Search clients by name, phone or address...">
 </div>
 
@@ -80,8 +79,8 @@ $highlightClientId = $_GET['highlight'] ?? null;
 
         $('#toggleBookingsFilter').on('click', function () {
             showOnlyWithBookings = !showOnlyWithBookings;
-            $(this).text(showOnlyWithBookings 
-                ? '👁️ Show All Clients' 
+            $(this).text(showOnlyWithBookings
+                ? '👁️ Show All Clients'
                 : '👁️ Show Only Clients With Bookings'
             );
             loadContacts();
@@ -98,6 +97,29 @@ $highlightClientId = $_GET['highlight'] ?? null;
                     tableBody.empty();
                     if (response.success && response.contacts.length > 0) {
                         allClients = response.contacts;
+
+                        // ✅ ADD: Display summary stats
+                        var totalClients = response.contacts.length;
+                        var clientsWithBookings = response.contacts.filter(c => c.booking_count > 0).length;
+                        var totalBookings = response.contacts.reduce((sum, c) => sum + (c.booking_count || 0), 0);
+
+                        $('#client-stats').html(`
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">${totalClients}</div>
+                    <div class="stat-label">Total Clients</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${clientsWithBookings}</div>
+                    <div class="stat-label">Clients with Bookings</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${totalBookings}</div>
+                    <div class="stat-label">Total Bookings</div>
+                </div>
+            </div>
+        `);
+
                         response.contacts.forEach(function (contact) {
                             var rowClass = (highlightId && contact.id == highlightId) ? 'highlight-row' : '';
                             var row = '<tr class="' + rowClass + '" data-client-id="' + contact.id + '">' +
@@ -182,7 +204,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
         // Search functionality
         $('#clientSearch').on('keyup', function () {
             var searchText = $(this).val().toLowerCase();
-            
+
             if (searchText.length === 0) {
                 tableBody.find('tr').show();
                 return;
