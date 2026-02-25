@@ -155,7 +155,17 @@ function handleGetBookings()
             'error' => $e->getMessage(),
             'show' => $show ?? 'upcoming'
         ]);
-        $response['message'] = 'Database error occurred.';
+        $response['message'] = 'Database error: ' . $e->getMessage();
+        $response['error_type'] = 'database';
+    } catch (Exception $e) {
+        // ✅ Catch ALL other exceptions (timezone, date, etc.)
+        logError('BOOKING', 'Error fetching bookings', [
+            'error' => $e->getMessage(),
+            'type' => get_class($e),
+            'show' => $show ?? 'upcoming'
+        ]);
+        $response['message'] = 'Server error: ' . $e->getMessage();
+        $response['error_type'] = 'general';
     }
 
     jsonResponse($response);

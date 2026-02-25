@@ -138,9 +138,29 @@ include ROOT_DIR . '/includes/header.php';
                         $('.bookings-table').hide();
                     }
                 },
-                error: function () {
+                error: function (xhr, status, error) {
                     tableBody.empty();
-                    showNotification('❌ Could not load bookings. Please check the server connection.', 'error');
+                    let errorMsg = 'Failed to load bookings';
+                    
+                    // Try to parse JSON error response
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.message) {
+                            errorMsg = response.message;
+                        }
+                    } catch (e) {
+                        // If not JSON, use status text
+                        errorMsg = xhr.statusText || error || 'Unknown error occurred';
+                    }
+                    
+                    // Log to console for debugging
+                    console.error('Booking load error:', {
+                        status: xhr.status,
+                        error: errorMsg,
+                        response: xhr.responseText
+                    });
+                    
+                    showNotification('❌ ' + errorMsg, 'error');
                 }
             });
         }
@@ -215,12 +235,12 @@ include ROOT_DIR . '/includes/header.php';
                                 .removeClass('view-details-btn')
                                 .addClass('completed');
 
-                            // Optionally add a visual indicator to the row
+                            // Add visual indicator to the row
                             row.addClass('booking-completed');
 
                             showNotification('✓ Booking marked as completed', 'success');
                         }
-                        // If undoing completion (always in "All Bookings" view)
+                        // If undoing completion
                         else {
                             button
                                 .text('Mark Done')
@@ -228,7 +248,7 @@ include ROOT_DIR . '/includes/header.php';
                                 .removeClass('completed')
                                 .addClass('view-details-btn');
 
-                            // Remove completed styling if present
+                            // Remove completed styling
                             row.removeClass('booking-completed');
 
                             showNotification('✓ Booking status changed to confirmed', 'success');
