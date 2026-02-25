@@ -13,13 +13,6 @@ require_once __DIR__ . '/../helpers.php';
 
 header('Content-Type: application/json');
 
-function jsonResponse(array $payload, int $httpCode = 200)
-{
-    http_response_code($httpCode);
-    echo json_encode($payload, JSON_UNESCAPED_UNICODE);
-    exit;
-}
-
 $action = $_REQUEST['action'] ?? null;
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 

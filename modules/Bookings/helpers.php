@@ -207,3 +207,31 @@ function createBookingInGoogleCalendar(array $bookingData, DateTime $start, Date
         return null;
     }
 }
+
+/**
+ * Create event description for Google Calendar
+ */
+function createEventDescription(array $bookingData): string
+{
+    $pickup = $bookingData['was_swapped'] ? $bookingData['original_destination'] : $bookingData['original_pickup'];
+    $destination = $bookingData['was_swapped'] ? $bookingData['original_pickup'] : $bookingData['original_destination'];
+    
+    $description = "📍 Pickup: " . $pickup . "\n";
+    $description .= "🎯 Destination: " . $destination . "\n";
+    $description .= "💰 Cost: R" . number_format($bookingData['cost'], 2) . "\n";
+    $description .= "💳 Payment: " . ($bookingData['payment_method'] === 'eft' ? 'EFT' : 'Cash') . "\n";
+    
+    if (!empty($bookingData['client_phone'])) {
+        $description .= "📞 Phone: " . $bookingData['client_phone'] . "\n";
+    }
+    
+    if (!empty($bookingData['flight_number'])) {
+        $description .= "✈️ Flight: " . $bookingData['flight_number'] . "\n";
+    }
+    
+    if (!empty($bookingData['description'])) {
+        $description .= "\n📝 Notes: " . $bookingData['description'];
+    }
+    
+    return $description;
+}
