@@ -105,7 +105,7 @@ $uber_reasons_text = implode("\n", $uber_reasons);
 
             $.ajax({
                 type: 'POST',
-                url: '<?= BASE_URL ?>/Maintenance/api/index.php?action=update_lists',
+                url: '<?= BASE_URL ?>/maintenance/api/index.php?action=update_lists',
                 data: $(this).serialize(),
                 dataType: 'json',
                 success: function (response) {
@@ -141,7 +141,7 @@ $uber_reasons_text = implode("\n", $uber_reasons);
 
             $.ajax({
                 type: 'POST',
-                url: '<?= BASE_URL ?>/Maintenance/api/index.php?action=update_variables',
+                url: '<?= BASE_URL ?>/maintenance/api/index.php?action=update_variables',
                 data: $(this).serialize(),
                 dataType: 'json',
                 success: function (response) {

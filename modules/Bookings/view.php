@@ -147,27 +147,27 @@ if (isset($_GET['id'])) {
         </div>
     </div>
 
-    <!-- Action Buttons -->
-    <div class="invoice-actions">
-        <?php if ($showStatusButton): ?>
-            <button id="toggleStatusBtn" class="page-action-btn <?= $booking['status'] === 'completed' ? 'save' : 'toggle' ?>"
-                data-status="<?= htmlspecialchars($booking['status']) ?>">
-                <?= $booking['status'] === 'completed' ? 'Undo Done' : 'Mark Done' ?>
-            </button>
-        <?php endif; ?>
-        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
-            target="_blank" class="page-action-btn whatsapp">💬 Send Confirmation</a>
-        <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
-            Edit Booking</a>
-        <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
-        <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= (int) $booking['contact_id'] ?>&contact_name=<?= urlencode($booking['client_name']) ?>"
-            class="page-action-btn rebook"> ➕ Book again</a>
-        <a href="<?= BASE_URL ?>/modules/Bookings/invoice.php?id=<?= (int) $booking['id'] ?>" target="_blank"
-            class="page-action-btn invoice">📄 View
-            Invoice</a>
-        <!-- <a href="https://wa.me/<?//= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?//= urlencode(createThankYouMessage($booking)) ?>"
-            target="_blank" class="page-action-btn back">🙏 Send Thank You</a> -->
-    </div>
+<!-- Action Buttons -->
+<div class="invoice-actions">
+    <?php if ($showStatusButton): ?>
+        <button id="toggleStatusBtn" class="page-action-btn <?= $booking['status'] === 'completed' ? 'save' : 'toggle' ?>"
+            data-status="<?= htmlspecialchars($booking['status']) ?>">
+            <?= $booking['status'] === 'completed' ? 'Undo Done' : 'Mark Done' ?>
+        </button>
+    <?php endif; ?>
+    <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
+        target="_blank" class="page-action-btn whatsapp">💬 Send Confirmation</a>
+    <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
+        Edit Booking</a>
+    <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
+    <a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=<?= (int) $booking['contact_id'] ?>" 
+        class="page-action-btn view-details-btn">📅 View All Client Bookings</a>
+    <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= (int) $booking['contact_id'] ?>&contact_name=<?= urlencode($booking['client_name']) ?>"
+        class="page-action-btn rebook"> ➕ Book again</a>
+    <a href="<?= BASE_URL ?>/modules/Bookings/invoice.php?id=<?= (int) $booking['id'] ?>" target="_blank"
+        class="page-action-btn invoice">📄 View
+        Invoice</a>
+</div>
 
     <!-- Delete Confirmation Modal -->
     <div id="deleteConfirmationModal" class="modal-overlay" style="display: none;">
