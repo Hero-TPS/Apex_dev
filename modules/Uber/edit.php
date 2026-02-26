@@ -5,6 +5,7 @@ $show_breadcrumb = true;
 $breadcrumb = ' > Uber > Edit';
 
 require_once __DIR__ . '/../../config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
 include ROOT_DIR . '/includes/header.php';
 
 $record_id = intval($_GET['id'] ?? 0);
@@ -22,7 +23,7 @@ if ($record_id <= 0) {
     <h2>✏️ Edit Uber Income</h2>
     <form id="uberEditForm">
         <input type="hidden" id="record_id" name="id" value="<?= $record_id ?>">
-        
+
         <div class="form-group">
             <label>Week Period</label>
             <input type="text" id="week_display" readonly style="background: #f5f5f5;">
@@ -42,6 +43,25 @@ if ($record_id <= 0) {
         <div class="form-group">
             <label for="mobile_data_cost">Mobile Data Cost (R)</label>
             <input type="number" id="mobile_data_cost" name="mobile_data_cost" step="0.01" min="0" required>
+        </div>
+
+        <div class="form-group">
+            <label for="additional_cost">Additional Costs (R)</label>
+            <input type="number" id="additional_cost" name="additional_cost" step="0.01" min="0">
+            <small>Extra expenses like parking, tolls, car wash, etc.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="cost_reason">Cost Reason</label>
+            <select id="cost_reason" name="cost_reason">
+                <option value="">Select reason (optional)</option>
+                <?php
+                $cost_reasons = fetchColumn($pdo, 'uber_cost_reasons', 'reason', 'reason ASC');
+                foreach ($cost_reasons as $reason):
+                    ?>
+                    <option value="<?= htmlspecialchars($reason) ?>"><?= htmlspecialchars($reason) ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
 
         <div class="form-group">
@@ -65,115 +85,112 @@ if ($record_id <= 0) {
 </div>
 
 <script>
-$(document).ready(function() {
-    const recordId = <?= $record_id ?>;
-    const loading = $('#loading');
-    const form = $('#editForm');
-    const result = $('#result');
+    $(document).ready(function () {
+        const recordId = <?= $record_id ?>;
+        const loading = $('#loading');
+        const form = $('#editForm');
+        const result = $('#result');
 
-    // Load Uber income record
-    $.ajax({
-        url: '<?= BASE_URL ?>/modules/Uber/api/index.php?action=get_single&id=' + recordId,
-        method: 'GET',
-        dataType: 'json',
-        success: function(response) {
-            loading.hide();
-            if (response.success && response.record) {
-                const record = response.record;
-                
-                // Format week display
-                const weekStart = new Date(record.week_start * 1000);
-                const weekEnd = new Date(record.week_end * 1000);
-                const options = { day: 'numeric', month: 'short', year: 'numeric', timeZone: '<?= TIME_ZONE ?>' };
-                const weekDisplay = weekStart.toLocaleDateString('en-GB', options) + ' – ' + weekEnd.toLocaleDateString('en-GB', options);
-                
-                $('#week_display').val(weekDisplay);
-                $('#total_income').val(record.total_income);
-                $('#cash_received').val(record.cash_received);
-                $('#mobile_data_cost').val(record.mobile_data_cost);
-                $('#total_trips').val(record.total_trips);
-                $('#total_time_online').val(record.total_time_online);
-                
-                updateCardIncome();
-                form.show();
-            } else {
-                result.html('<div class="error-message">Uber income record not found</div>');
-            }
-        },
-        error: function() {
-            loading.hide();
-            result.html('<div class="error-message">Failed to load Uber income record</div>');
-        }
-    });
-
-    // Calculate and display card income
-    function updateCardIncome() {
-        const total = parseFloat($('#total_income').val()) || 0;
-        const cash = parseFloat($('#cash_received').val()) || 0;
-        const card = total - cash;
-        
-        if (card >= 0) {
-            $('#card_income_display').text('Card income: R' + card.toFixed(2));
-            $('#cash_received').css('border-color', '');
-        } else {
-            $('#card_income_display').text('⚠️ Cash exceeds total income!');
-            $('#cash_received').css('border-color', 'red');
-        }
-    }
-
-    $('#total_income, #cash_received').on('input', updateCardIncome);
-
-    // Handle form submission
-    $('#uberEditForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        const totalIncome = parseFloat($('#total_income').val());
-        const cashReceived = parseFloat($('#cash_received').val());
-        const mobileDataCost = parseFloat($('#mobile_data_cost').val());
-        const totalTrips = parseInt($('#total_trips').val());
-        const totalTimeOnline = parseFloat($('#total_time_online').val());
-
-        // Validate cash doesn't exceed total
-        if (cashReceived > totalIncome) {
-            result.html('<div class="error-message">Cash received cannot exceed total income</div>');
-            return;
-        }
-
-        const submitBtn = $('#submitBtn');
-        submitBtn.prop('disabled', true).text('Updating...');
-        result.html('');
-
+        // Load Uber income record
         $.ajax({
-            type: 'POST',
-            url: '<?= BASE_URL ?>/modules/Uber/api/index.php',
-            data: {
-                action: 'update',
-                id: recordId,
-                total_income: totalIncome,
-                cash_received: cashReceived,
-                mobile_data_cost: mobileDataCost,
-                total_trips: totalTrips,
-                total_time_online: totalTimeOnline
-            },
+            url: '<?= BASE_URL ?>/modules/Uber/api/index.php?action=get_single&id=' + recordId,
+            type: 'GET',
             dataType: 'json',
-            success: function(response) {
-                submitBtn.prop('disabled', false).text('💾 Update Income');
-                if (response.success) {
-                    result.html('<div class="success-message">' + response.message + '. Redirecting...</div>');
-                    setTimeout(function() {
-                        window.location.href = '<?= BASE_URL ?>/modules/Uber/';
-                    }, 2000);
+            success: function (response) {
+                if (response.success && response.record) {
+                    const record = response.record;
+
+                    // Format week display
+                    const startDate = new Date(record.week_start * 1000);
+                    const endDate = new Date(record.week_end * 1000);
+                    const weekDisplay = startDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
+                        ' – ' + endDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+                    // Populate form fields
+                    $('#week_display').val(weekDisplay);
+                    $('#total_income').val(parseFloat(record.total_income).toFixed(2));
+                    $('#cash_received').val(parseFloat(record.cash_received).toFixed(2));
+                    $('#mobile_data_cost').val(parseFloat(record.mobile_data_cost).toFixed(2));
+                    $('#additional_cost').val(parseFloat(record.additional_cost || 0).toFixed(2));
+                    $('#cost_reason').val(record.cost_reason || '');
+                    $('#total_trips').val(record.total_trips);
+                    $('#total_time_online').val(parseFloat(record.total_time_online).toFixed(1));
+
+                    updateCardIncome();
+                    loading.hide();
+                    form.show();
                 } else {
-                    result.html('<div class="error-message">' + response.message + '</div>');
+                    loading.html('<div class="error-message">✗ Record not found</div>');
                 }
             },
-            error: function() {
-                submitBtn.prop('disabled', false).text('💾 Update Income');
-                result.html('<div class="error-message">❌ An error occurred. Please try again.</div>');
+            error: function () {
+                loading.html('<div class="error-message">✗ Failed to load record</div>');
             }
         });
+
+        // Update card income display
+        function updateCardIncome() {
+            const totalIncome = parseFloat($('#total_income').val()) || 0;
+            const cashReceived = parseFloat($('#cash_received').val()) || 0;
+            const cardIncome = totalIncome - cashReceived;
+            $('#card_income_display').text('Card income: R' + cardIncome.toFixed(2));
+        }
+
+        $('#total_income, #cash_received').on('input', updateCardIncome);
+
+        // Form submission
+        $('#uberEditForm').on('submit', function (e) {
+            e.preventDefault();
+
+            const submitBtn = $('#submitBtn');
+
+            submitBtn.prop('disabled', true).text('Updating...');
+
+            const formData = {
+                action: 'update',
+                id: $('#record_id').val(),
+                total_income: $('#total_income').val(),
+                cash_received: $('#cash_received').val(),
+                mobile_data_cost: $('#mobile_data_cost').val(),
+                additional_cost: $('#additional_cost').val() || 0,
+                cost_reason: $('#cost_reason').val(),
+                total_trips: $('#total_trips').val(),
+                total_time_online: $('#total_time_online').val()
+            };
+
+            $.ajax({
+                url: '<?= BASE_URL ?>/modules/Uber/api/index.php',
+                type: 'POST',
+                data: formData,
+                dataType: 'json',
+                success: function (response) {
+                    if (response.success) {
+                        result.html('<div class="success-message">✓ ' + response.message + '</div>');
+                        setTimeout(() => {
+                            window.location.href = '<?= BASE_URL ?>/modules/Uber/';
+                        }, 1500);
+                    } else {
+                        result.html('<div class="error-message">✗ ' + response.message + '</div>');
+                    }
+                },
+                error: function (xhr) {
+                    let errorMsg = 'Failed to update Uber income';
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.message) {
+                            errorMsg = response.message;
+                        }
+                    } catch (e) {
+                        errorMsg = xhr.responseText || 'Unknown error occurred';
+                    }
+                    result.html('<div class="error-message">✗ ' + errorMsg + '</div>');
+                },
+                complete: function () {
+                    submitBtn.prop('disabled', false).text('💾 Update Income');
+                }
+            });
+        });
     });
-});
 </script>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>

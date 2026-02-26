@@ -5,6 +5,7 @@ $show_breadcrumb = true;
 $breadcrumb = ' > Uber > Add';
 
 require_once __DIR__ . '/../../config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
 include ROOT_DIR . '/includes/header.php';
 
 // Generate last 8 Mondays (2 months back)
@@ -62,6 +63,25 @@ while ($row = $stmt->fetch()) {
         </div>
 
         <div class="form-group">
+            <label for="additional_cost">Additional Costs (R)</label>
+            <input type="number" id="additional_cost" name="additional_cost" step="0.01" min="0" value="0">
+            <small>Extra expenses like parking, tolls, car wash, etc.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="cost_reason">Cost Reason</label>
+            <select id="cost_reason" name="cost_reason">
+                <option value="">Select reason (optional)</option>
+                <?php
+                $cost_reasons = fetchColumn($pdo, 'uber_cost_reasons', 'reason', 'reason ASC');
+                foreach ($cost_reasons as $reason):
+                    ?>
+                    <option value="<?= htmlspecialchars($reason) ?>"><?= htmlspecialchars($reason) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <div class="form-group">
             <label for="total_trips">Total Trips <span class="required">*</span></label>
             <input type="number" id="total_trips" name="total_trips" min="0" required>
         </div>
@@ -77,82 +97,61 @@ while ($row = $stmt->fetch()) {
 </div>
 
 <script>
-$(document).ready(function() {
-    // Calculate card income automatically
-    function updateCardIncome() {
-        const total = parseFloat($('#total_income').val()) || 0;
-        const cash = parseFloat($('#cash_received').val()) || 0;
-        const card = total - cash;
-        
-        if (card >= 0) {
-            $('#cash_received').css('border-color', '');
-        } else {
-            $('#cash_received').css('border-color', 'red');
-        }
-    }
+    $(document).ready(function () {
+        $('#uberForm').on('submit', function (e) {
+            e.preventDefault();
 
-    $('#total_income, #cash_received').on('input', updateCardIncome);
+            const submitBtn = $('#submitBtn');
+            const result = $('#result');
 
-    $('#uberForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        const weekMonday = $('#week_monday').val();
-        const totalIncome = parseFloat($('#total_income').val());
-        const cashReceived = parseFloat($('#cash_received').val());
-        const mobileDataCost = parseFloat($('#mobile_data_cost').val());
-        const totalTrips = parseInt($('#total_trips').val());
-        const totalTimeOnline = parseFloat($('#total_time_online').val());
+            submitBtn.prop('disabled', true).text('Saving...');
 
-        // Validate cash doesn't exceed total
-        if (cashReceived > totalIncome) {
-            $('#result').html('<div class="error-message">Cash received cannot exceed total income</div>');
-            return;
-        }
-
-        // Convert Monday date to Unix timestamp
-        const mondayDate = new Date(weekMonday + 'T00:00:00');
-        const mondayUnix = Math.floor(mondayDate.getTime() / 1000);
-        
-        // Calculate Sunday (6 days later)
-        const sundayUnix = mondayUnix + (6 * 24 * 60 * 60);
-
-        const submitBtn = $('#submitBtn');
-        const result = $('#result');
-        submitBtn.prop('disabled', true).text('Saving...');
-        result.html('');
-
-        $.ajax({
-            type: 'POST',
-            url: '<?= BASE_URL ?>/modules/Uber/api/index.php',
-            data: {
+            const formData = {
                 action: 'add',
-                week_monday_unix: mondayUnix,
-                week_sunday_unix: sundayUnix,
-                total_income: totalIncome,
-                cash_received: cashReceived,
-                mobile_data_cost: mobileDataCost,
-                total_trips: totalTrips,
-                total_time_online: totalTimeOnline
-            },
-            dataType: 'json',
-            success: function(response) {
-                submitBtn.prop('disabled', false).text('💾 Save Income');
-                if (response.success) {
-                    result.html('<div class="success-message">' + response.message + '. Redirecting...</div>');
-                    setTimeout(function() {
-                        window.location.href = '<?= BASE_URL ?>/modules/Uber/';
-                    }, 2000);
-                } else {
-                    result.html('<div class="error-message">' + response.message + '</div>');
+                week_monday: $('#week_monday').val(),
+                total_income: $('#total_income').val(),
+                cash_received: $('#cash_received').val(),
+                mobile_data_cost: $('#mobile_data_cost').val(),
+                additional_cost: $('#additional_cost').val() || 0,
+                cost_reason: $('#cost_reason').val(),
+                total_trips: $('#total_trips').val(),
+                total_time_online: $('#total_time_online').val()
+            };
+
+            $.ajax({
+                url: '<?= BASE_URL ?>/modules/Uber/api/index.php',
+                type: 'POST',
+                data: formData,
+                dataType: 'json',
+                success: function (response) {
+                    if (response.success) {
+                        result.html('<div class="success-message">✓ ' + response.message + '</div>');
+                        $('#uberForm')[0].reset();
+                        setTimeout(() => {
+                            window.location.href = '<?= BASE_URL ?>/modules/Uber/';
+                        }, 1500);
+                    } else {
+                        result.html('<div class="error-message">✗ ' + response.message + '</div>');
+                    }
+                },
+                error: function (xhr) {
+                    let errorMsg = 'Failed to save Uber income';
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.message) {
+                            errorMsg = response.message;
+                        }
+                    } catch (e) {
+                        errorMsg = xhr.responseText || 'Unknown error occurred';
+                    }
+                    result.html('<div class="error-message">✗ ' + errorMsg + '</div>');
+                },
+                complete: function () {
+                    submitBtn.prop('disabled', false).text('💾 Save Income');
                 }
-            },
-            error: function() {
-                submitBtn.prop('disabled', false).text('💾 Save Income');
-                result.html('<div class="error-message">❌ An error occurred. Please try again.</div>');
-            }
+            });
         });
     });
-});
 </script>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>

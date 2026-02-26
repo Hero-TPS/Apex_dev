@@ -14,10 +14,12 @@ include ROOT_DIR . '/includes/header.php';
 $current_destinations = fetchColumn($pdo, 'destinations', 'name', 'name ASC');
 $current_costs = fetchColumn($pdo, 'costs', 'amount', 'amount ASC');
 $current_durations = fetchColumn($pdo, 'durations', 'hours', 'hours ASC');
+$uber_reasons = fetchColumn($pdo, 'uber_cost_reasons', 'reason', 'reason ASC');
 
 $destinations_text = implode("\n", $current_destinations);
 $costs_text = implode("\n", $current_costs);
 $durations_text = implode("\n", $current_durations);
+$uber_reasons_text = implode("\n", $uber_reasons);
 ?>
 
 <!-- Maintenance Form -->
@@ -26,32 +28,30 @@ $durations_text = implode("\n", $current_durations);
     <form id="maintenanceForm">
         <div class="form-group">
             <label for="destinations">Destinations</label>
-            <textarea 
-                id="destinations" 
-                name="destinations" 
-                rows="8" 
+            <textarea id="destinations" name="destinations" rows="8"
                 placeholder="Enter one destination per line"><?php echo htmlspecialchars($destinations_text); ?></textarea>
             <small>Used in booking pickup/destination dropdowns</small>
         </div>
 
         <div class="form-group">
             <label for="costs">Costs (ZAR)</label>
-            <textarea 
-                id="costs" 
-                name="costs" 
-                rows="8" 
+            <textarea id="costs" name="costs" rows="8"
                 placeholder="Enter one cost per line, e.g.&#10;250&#10;300.50&#10;400"><?php echo htmlspecialchars($costs_text); ?></textarea>
             <small>Enter amounts without 'R' or commas</small>
         </div>
 
         <div class="form-group">
             <label for="durations">Durations (hours)</label>
-            <textarea 
-                id="durations" 
-                name="durations" 
-                rows="5" 
+            <textarea id="durations" name="durations" rows="5"
                 placeholder="Enter one duration per line, e.g.&#10;0.5 (30 mins)&#10;1&#10;1.5"><?php echo htmlspecialchars($durations_text); ?></textarea>
             <small>Use decimal format: 0.5 = 30 mins</small>
+        </div>
+
+        <div class="form-group">
+            <label for="uber_cost_reasons">Uber Additional Cost Reasons</label>
+            <textarea id="uber_cost_reasons" name="uber_cost_reasons" rows="8"
+                placeholder="Enter one reason per line"><?php echo htmlspecialchars($uber_reasons_text); ?></textarea>
+            <small>Reasons for additional Uber expenses</small>
         </div>
 
         <button type="submit" class="page-action-btn save" id="submitBtn">
@@ -70,29 +70,21 @@ $durations_text = implode("\n", $current_durations);
         $stmt = $pdo->query("SELECT * FROM system_variables ORDER BY label");
         $variables = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($variables as $row):
-        ?>
+            ?>
             <div class="form-group">
                 <label for="var_<?= htmlspecialchars($row['name']) ?>"><?= htmlspecialchars($row['label']) ?></label>
                 <?php if ($row['type'] === 'number'): ?>
-                    <input 
-                        type="number" 
-                        id="var_<?= htmlspecialchars($row['name']) ?>" 
-                        name="variables[<?= htmlspecialchars($row['name']) ?>]" 
-                        value="<?= htmlspecialchars($row['value']) ?>"
-                        step="0.01"
-                        min="0"
-                        required>
+                    <input type="number" id="var_<?= htmlspecialchars($row['name']) ?>"
+                        name="variables[<?= htmlspecialchars($row['name']) ?>]" value="<?= htmlspecialchars($row['value']) ?>"
+                        step="0.01" min="0" required>
                 <?php else: ?>
-                    <input 
-                        type="text" 
-                        id="var_<?= htmlspecialchars($row['name']) ?>" 
-                        name="variables[<?= htmlspecialchars($row['name']) ?>]" 
-                        value="<?= htmlspecialchars($row['value']) ?>"
+                    <input type="text" id="var_<?= htmlspecialchars($row['name']) ?>"
+                        name="variables[<?= htmlspecialchars($row['name']) ?>]" value="<?= htmlspecialchars($row['value']) ?>"
                         required>
                 <?php endif; ?>
             </div>
         <?php endforeach; ?>
-        
+
         <button type="submit" class="page-action-btn save" id="varSubmitBtn">
             💾 Save Variables
         </button>
@@ -101,79 +93,79 @@ $durations_text = implode("\n", $current_durations);
 </div>
 
 <script>
-$(document).ready(function() {
-    // Handle dropdown lists form
-    $('#maintenanceForm').on('submit', function(e) {
-        e.preventDefault();
-        var submitBtn = $('#submitBtn');
-        var result = $('#listsResult');
-        
-        submitBtn.prop('disabled', true).text('Saving...');
-        result.html('');
+    $(document).ready(function () {
+        // Handle dropdown lists form
+        $('#maintenanceForm').on('submit', function (e) {
+            e.preventDefault();
+            var submitBtn = $('#submitBtn');
+            var result = $('#listsResult');
 
-        $.ajax({
-            type: 'POST',
-            url: '<?= BASE_URL ?>/Maintenance/api/index.php?action=update_lists',
-            data: $(this).serialize(),
-            dataType: 'json',
-            success: function(response) {
-                submitBtn.prop('disabled', false).text('💾 Save Changes');
-                if (response.success) {
-                    result.html('<div class="success-message">' + response.message + '</div>');
-                } else {
-                    result.html('<div class="error-message">' + response.message + '</div>');
+            submitBtn.prop('disabled', true).text('Saving...');
+            result.html('');
+
+            $.ajax({
+                type: 'POST',
+                url: '<?= BASE_URL ?>/Maintenance/api/index.php?action=update_lists',
+                data: $(this).serialize(),
+                dataType: 'json',
+                success: function (response) {
+                    submitBtn.prop('disabled', false).text('💾 Save Changes');
+                    if (response.success) {
+                        result.html('<div class="success-message">' + response.message + '</div>');
+                    } else {
+                        result.html('<div class="error-message">' + response.message + '</div>');
+                    }
+
+                    setTimeout(function () {
+                        result.fadeOut(function () {
+                            $(this).html('').show();
+                        });
+                    }, 5000);
+                },
+                error: function (xhr, status, error) {
+                    submitBtn.prop('disabled', false).text('💾 Save Changes');
+                    result.html('<div class="error-message">❌ Failed to save. Please try again.</div>');
+                    console.error('Error:', error, xhr.responseText);
                 }
-                
-                setTimeout(function() {
-                    result.fadeOut(function() {
-                        $(this).html('').show();
-                    });
-                }, 5000);
-            },
-            error: function(xhr, status, error) {
-                submitBtn.prop('disabled', false).text('💾 Save Changes');
-                result.html('<div class="error-message">❌ Failed to save. Please try again.</div>');
-                console.error('Error:', error, xhr.responseText);
-            }
+            });
+        });
+
+        // Handle system variables form
+        $('#variablesForm').on('submit', function (e) {
+            e.preventDefault();
+            var submitBtn = $('#varSubmitBtn');
+            var result = $('#variablesResult');
+
+            submitBtn.prop('disabled', true).text('Saving...');
+            result.html('');
+
+            $.ajax({
+                type: 'POST',
+                url: '<?= BASE_URL ?>/Maintenance/api/index.php?action=update_variables',
+                data: $(this).serialize(),
+                dataType: 'json',
+                success: function (response) {
+                    submitBtn.prop('disabled', false).text('💾 Save Variables');
+                    if (response.success) {
+                        result.html('<div class="success-message">' + response.message + '</div>');
+                    } else {
+                        result.html('<div class="error-message">' + response.message + '</div>');
+                    }
+
+                    setTimeout(function () {
+                        result.fadeOut(function () {
+                            $(this).html('').show();
+                        });
+                    }, 5000);
+                },
+                error: function (xhr, status, error) {
+                    submitBtn.prop('disabled', false).text('💾 Save Variables');
+                    result.html('<div class="error-message">❌ Failed to save. Please try again.</div>');
+                    console.error('Error:', error, xhr.responseText);
+                }
+            });
         });
     });
-
-    // Handle system variables form
-    $('#variablesForm').on('submit', function(e) {
-        e.preventDefault();
-        var submitBtn = $('#varSubmitBtn');
-        var result = $('#variablesResult');
-        
-        submitBtn.prop('disabled', true).text('Saving...');
-        result.html('');
-
-        $.ajax({
-            type: 'POST',
-            url: '<?= BASE_URL ?>/Maintenance/api/index.php?action=update_variables',
-            data: $(this).serialize(),
-            dataType: 'json',
-            success: function(response) {
-                submitBtn.prop('disabled', false).text('💾 Save Variables');
-                if (response.success) {
-                    result.html('<div class="success-message">' + response.message + '</div>');
-                } else {
-                    result.html('<div class="error-message">' + response.message + '</div>');
-                }
-                
-                setTimeout(function() {
-                    result.fadeOut(function() {
-                        $(this).html('').show();
-                    });
-                }, 5000);
-            },
-            error: function(xhr, status, error) {
-                submitBtn.prop('disabled', false).text('💾 Save Variables');
-                result.html('<div class="error-message">❌ Failed to save. Please try again.</div>');
-                console.error('Error:', error, xhr.responseText);
-            }
-        });
-    });
-});
 </script>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>

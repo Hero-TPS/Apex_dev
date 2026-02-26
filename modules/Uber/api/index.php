@@ -50,7 +50,7 @@ try {
 function handleGetAll()
 {
     global $pdo;
-    
+
     try {
         $stmt = $pdo->query("
             SELECT * FROM uber_income 
@@ -75,7 +75,7 @@ function handleGetAll()
         }
 
         jsonResponse(['success' => true, 'data' => $records]);
-        
+
     } catch (PDOException $e) {
         logError('UBER', 'Failed to fetch Uber income records', [
             'error' => $e->getMessage()
@@ -87,24 +87,24 @@ function handleGetAll()
 function handleGetSingle()
 {
     global $pdo;
-    
+
     $id = intval($_GET['id'] ?? 0);
-    
+
     if ($id <= 0) {
         jsonResponse(['success' => false, 'message' => 'Invalid record ID'], 400);
     }
-    
+
     try {
         $stmt = $pdo->prepare("SELECT * FROM uber_income WHERE id = ?");
         $stmt->execute([$id]);
         $record = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if (!$record) {
             jsonResponse(['success' => false, 'message' => 'Record not found'], 404);
         }
-        
+
         jsonResponse(['success' => true, 'record' => $record]);
-        
+
     } catch (PDOException $e) {
         logError('UBER', 'Failed to fetch single Uber record', [
             'error' => $e->getMessage(),
@@ -117,16 +117,16 @@ function handleGetSingle()
 function handleCheckExists()
 {
     global $pdo;
-    
+
     $weekStart = intval($_POST['week_monday_unix'] ?? 0);
-    
+
     try {
         $stmt = $pdo->prepare("SELECT id FROM uber_income WHERE week_start = ?");
         $stmt->execute([$weekStart]);
         $exists = $stmt->fetch() !== false;
-        
+
         jsonResponse(['exists' => $exists]);
-        
+
     } catch (PDOException $e) {
         logError('UBER', 'Failed to check if week exists', [
             'error' => $e->getMessage(),
@@ -139,15 +139,29 @@ function handleCheckExists()
 function handleAdd()
 {
     global $pdo;
-    
+
     try {
-        $weekStart = intval($_POST['week_monday_unix'] ?? 0);
-        $weekEnd = intval($_POST['week_sunday_unix'] ?? ($weekStart + 604799));
+        $weekMonday = trim($_POST['week_monday'] ?? '');
         $totalIncome = floatval($_POST['total_income'] ?? 0);
         $cashReceived = floatval($_POST['cash_received'] ?? 0);
         $mobileDataCost = floatval($_POST['mobile_data_cost'] ?? 0);
+        $additionalCost = floatval($_POST['additional_cost'] ?? 0); // ✅ NEW
+        $costReason = trim($_POST['cost_reason'] ?? ''); // ✅ NEW
         $totalTrips = intval($_POST['total_trips'] ?? 0);
         $totalTimeOnline = floatval($_POST['total_time_online'] ?? 0);
+
+        if (empty($weekMonday)) {
+            jsonResponse(['success' => false, 'message' => 'Week start date is required'], 400);
+        }
+
+        $tz = new DateTimeZone(TIME_ZONE);
+        $dt = new DateTime($weekMonday, $tz);
+        $dt->setTime(0, 0, 0);
+        $weekStart = $dt->getTimestamp();
+
+        $endDt = clone $dt;
+        $endDt->modify('+6 days')->setTime(23, 59, 59);
+        $weekEnd = $endDt->getTimestamp();
 
         if ($totalIncome <= 0) {
             jsonResponse(['success' => false, 'message' => 'Total income must be greater than zero'], 400);
@@ -155,8 +169,8 @@ function handleAdd()
 
         $stmt = $pdo->prepare("
             INSERT INTO uber_income 
-            (week_start, week_end, total_income, cash_received, mobile_data_cost, total_trips, total_time_online, created_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            (week_start, week_end, total_income, cash_received, mobile_data_cost, additional_cost, cost_reason, total_trips, total_time_online, created_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         $stmt->execute([
             $weekStart,
@@ -164,6 +178,8 @@ function handleAdd()
             $totalIncome,
             $cashReceived,
             $mobileDataCost,
+            $additionalCost, // ✅ NEW
+            $costReason, // ✅ NEW
             $totalTrips,
             $totalTimeOnline
         ]);
@@ -171,11 +187,12 @@ function handleAdd()
         logInfo('UBER', 'Uber income created', [
             'record_id' => $pdo->lastInsertId(),
             'week_start' => date('Y-m-d', $weekStart),
-            'total_income' => $totalIncome
+            'total_income' => $totalIncome,
+            'additional_cost' => $additionalCost // ✅ NEW
         ]);
 
         jsonResponse(['success' => true, 'message' => 'Uber income saved successfully']);
-        
+
     } catch (PDOException $e) {
         logError('UBER', 'Failed to create Uber income', [
             'error' => $e->getMessage()
@@ -187,12 +204,14 @@ function handleAdd()
 function handleUpdate()
 {
     global $pdo;
-    
+
     try {
         $id = intval($_POST['id'] ?? 0);
         $totalIncome = floatval($_POST['total_income'] ?? 0);
         $cashReceived = floatval($_POST['cash_received'] ?? 0);
         $mobileDataCost = floatval($_POST['mobile_data_cost'] ?? 0);
+        $additionalCost = floatval($_POST['additional_cost'] ?? 0); // ✅ NEW
+        $costReason = trim($_POST['cost_reason'] ?? ''); // ✅ NEW
         $totalTrips = intval($_POST['total_trips'] ?? 0);
         $totalTimeOnline = floatval($_POST['total_time_online'] ?? 0);
 
@@ -205,6 +224,8 @@ function handleUpdate()
             SET total_income = ?, 
                 cash_received = ?, 
                 mobile_data_cost = ?, 
+                additional_cost = ?,
+                cost_reason = ?,
                 total_trips = ?, 
                 total_time_online = ?
             WHERE id = ?
@@ -213,17 +234,20 @@ function handleUpdate()
             $totalIncome,
             $cashReceived,
             $mobileDataCost,
+            $additionalCost, // ✅ NEW
+            $costReason, // ✅ NEW
             $totalTrips,
             $totalTimeOnline,
             $id
         ]);
 
         logInfo('UBER', 'Uber income updated', [
-            'record_id' => $id
+            'record_id' => $id,
+            'additional_cost' => $additionalCost // ✅ NEW
         ]);
 
         jsonResponse(['success' => true, 'message' => 'Uber income updated successfully']);
-        
+
     } catch (PDOException $e) {
         logError('UBER', 'Failed to update Uber income', [
             'error' => $e->getMessage(),
@@ -236,27 +260,27 @@ function handleUpdate()
 function handleDelete()
 {
     global $pdo;
-    
+
     $id = intval($_POST['id'] ?? 0);
-    
+
     if ($id <= 0) {
         jsonResponse(['success' => false, 'message' => 'Invalid record ID'], 400);
     }
-    
+
     try {
         $stmt = $pdo->prepare("DELETE FROM uber_income WHERE id = ?");
         $stmt->execute([$id]);
-        
+
         if ($stmt->rowCount() > 0) {
             logInfo('UBER', 'Uber income deleted', [
                 'record_id' => $id
             ]);
-            
+
             jsonResponse(['success' => true, 'message' => 'Uber income deleted successfully']);
         } else {
             jsonResponse(['success' => false, 'message' => 'Record not found'], 404);
         }
-        
+
     } catch (PDOException $e) {
         logError('UBER', 'Failed to delete Uber income', [
             'error' => $e->getMessage(),
