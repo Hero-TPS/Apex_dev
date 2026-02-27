@@ -73,7 +73,8 @@ function getWeeklyMetrics($pdo, $startUnix, $endUnix) {
     $totalTripKm = (float) ($row['km'] ?? 0);
 
     // === CAR RENTAL ===
-    $carRental = (float) getSystemVariable($pdo, 'car_rental_price', 0);
+    //$carRental = (float) getSystemVariable($pdo, 'car_rental_price', 0);
+    $carRental =2600;
 
     // === CALCULATIONS ===
     $totalIncome = $bookingIncome + $uberIncome;
@@ -149,7 +150,8 @@ function getMonthlyMetrics($pdo, $year, $month)
     $totalTripKm = (float) ($row['km'] ?? 0);
 
     // === CAR RENTAL ===
-    $carRental = (float) getSystemVariable($pdo, 'car_rental_price', 0) * getWeeksInMonth($year, $month);
+    //$carRental = (float) getSystemVariable($pdo, 'car_rental_price', 0) * getWeeksInMonth($year, $month);
+    $carRental = 2600 * getWeeksInMonth($year, $month);
 
     // === CALCULATIONS ===
     $totalIncome = $bookingIncome + $uberIncome;

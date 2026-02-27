@@ -121,6 +121,7 @@ See you tomorrow! 🚗
 - [ ] Modify `getMonthlyMetrics()` function
 - [ ] Update financial dashboard displays
 - [ ] Test that additional costs are deducted from net profit
+- [ ] Fix missing `getSystemsVariable()` function. Now hard coded. Check Maintenance
 
 **Calculation:**
 ```
