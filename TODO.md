@@ -59,7 +59,47 @@ See you tomorrow! 🚗
 │                                   Bookings│
 └─────────────────────────────────────────┘
 ```
+### 3. Send Custom WhatsApp Message to Client
+- [ ] Add "Send Message" button to booking view page (`modules/Bookings/view.php`)
+- [ ] Add "Send Message" button to client list (`modules/Clients/index.php`)
+- [ ] Create modal with textarea for custom message
+- [ ] Pre-fill client name and phone number
+- [ ] Open WhatsApp with custom typed message
+- [ ] Store client context (name, phone) in modal
 
+**Modal Design:**
+```
+┌─────────────────────────────────────┐
+│  💬 Send Message to [Client Name]  │
+├─────────────────────────────────────┤
+│  📱 Phone: [Phone Number]          │
+│                                     │
+│  Message:                           │
+│  ┌─────────────────────────────┐   │
+│  │                             │   │
+│  │  [Type your message here]   │   │
+│  │                             │   │
+│  │                             │   │
+│  └─────────────────────────────┘   │
+│                                     │
+│  [Cancel]  [Send via WhatsApp 💬]  │
+└─────────────────────────────────────┘
+```
+
+**Features:**
+- Modal overlay (similar to delete confirmation)
+- Textarea for free-form message typing
+- Pre-fill with "Hi [Client Name],"
+- Button opens WhatsApp Web with typed message
+- Works from both booking view and client list
+- Escape key to close modal
+
+**Files to Update:**
+- `modules/Bookings/view.php` - Add button and modal
+- `modules/Clients/index.php` - Add button to each client row
+- `assets/css/styles.css` - Modal styles (reuse existing modal styles)
+
+---
 ---
 
 ## 📋 Backlog (Future Sessions)
