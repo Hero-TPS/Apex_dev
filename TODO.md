@@ -59,6 +59,9 @@ See you tomorrow! 🚗
 │                                   Bookings│
 └─────────────────────────────────────────┘
 ```
+
+---
+
 ### 3. Send Custom WhatsApp Message to Client
 - [ ] Add "Send Message" button to booking view page (`modules/Bookings/view.php`)
 - [ ] Add "Send Message" button to client list (`modules/Clients/index.php`)
@@ -71,7 +74,7 @@ See you tomorrow! 🚗
 ```
 ┌─────────────────────────────────────┐
 │  💬 Send Message to [Client Name]  │
-├─────────────────────────────────────┤
+├─────────────────��───────────────────┤
 │  📱 Phone: [Phone Number]          │
 │                                     │
 │  Message:                           │
@@ -100,11 +103,17 @@ See you tomorrow! 🚗
 - `assets/css/styles.css` - Modal styles (reuse existing modal styles)
 
 ---
----
 
 ## 📋 Backlog (Future Sessions)
 
-### Timezone Comprehensive Audit
+### High Priority
+
+#### Fix Missing `getSystemVariable()` Function
+- [ ] Currently hardcoded values in financials
+- [ ] Check Maintenance module for proper implementation
+- [ ] Update `financials/helper.php` to use system variables properly
+
+#### Timezone Comprehensive Audit
 - [ ] Fix timestamps showing UTC+4 instead of UTC+2
 - [ ] Audit all `NOW()` MySQL functions
 - [ ] Audit all PHP `DateTime` objects
@@ -113,15 +122,12 @@ See you tomorrow! 🚗
 
 **Note:** Deferred because existing pickup times work correctly. Needs careful testing.
 
----
-
-### Financials: Uber Additional Costs Integration
+#### Financials: Uber Additional Costs Integration
 - [ ] Update `financials/helper.php` to include `additional_cost` in expense calculations
 - [ ] Modify `getWeeklyMetrics()` function
 - [ ] Modify `getMonthlyMetrics()` function
 - [ ] Update financial dashboard displays
 - [ ] Test that additional costs are deducted from net profit
-- [ ] Fix missing `getSystemsVariable()` function. Now hard coded. Check Maintenance
 
 **Calculation:**
 ```
@@ -129,35 +135,61 @@ Total Expenses = Fuel + Car Rental + Mobile Data + Additional Costs
 Net Profit = Total Income - Total Expenses
 ```
 
-### Bookings: Misc. notes
-- [ ] Tone down on logging every action taken.
 ---
 
-### Clients: Misc. notes
-- [ ] Show bookings payment method in lists
-- [ ] Improve client search. Search by name, should be includes. Possible expanded search to include phone and address
-- [ ] List of names and phone number from clients who has made bookings bofore. Also discuss starting a WA group for them. I am using a WA business account.
-- [ ] Add to above: discuss ideas to have direct communications with my existing clients via WA
+### Bookings Module Enhancements
+- [ ] Reduce logging verbosity (tone down on logging every action)
+- [ ] WhatsApp message history tracking (see detailed spec below)
+
 ---
 
-### Uber: Misc. notes
-- [ ] 
+### Clients Module Enhancements
+- [ ] Show payment method in booking lists
+- [ ] Improve client search functionality:
+  - Change to "includes" search (not exact match)
+  - Expand search to include phone and address fields
+  - Consider fuzzy matching
+- [ ] Create list of clients with prior bookings:
+  - Export names and phone numbers
+  - Discuss WhatsApp Business group creation
+  - Ideas for direct WhatsApp communication with existing clients
+- [ ] WhatsApp Business integration for bulk messaging
+
 ---
 
-### Fuel: Misc. notes
+### Fuel Module
 - [ ] Show payment method in lists
+
 ---
 
-### WhatsApp Message History (Optional)
+### WhatsApp Message History (Detailed Spec)
 - [ ] Log all WhatsApp confirmations sent
-- [ ] Create `whatsapp_log` table
-- [ ] Display in booking view page
+- [ ] Create `whatsapp_log` table with columns:
+  - `id` INT AUTO_INCREMENT PRIMARY KEY
+  - `booking_id` INT (foreign key)
+  - `contact_id` INT (foreign key)
+  - `message_type` VARCHAR (confirmation, custom, thank_you, etc.)
+  - `message_content` TEXT
+  - `sent_at` TIMESTAMP
+  - `sent_by` VARCHAR (user identifier)
+- [ ] Display message history in booking view page
+- [ ] Display message history in client bookings page
 - [ ] Useful for tracking "I never got a confirmation" disputes
+- [ ] Add filter/search in message log
 
-### Misc Overall
-- [ ] Check breadcrumbs of all pages. considter seperate function for it. OR, main menu
-- [ ] Maintainance: clean up past overdue
-- [ ] Clean up of unused functions.
+---
+
+### General System Improvements
+- [ ] **Breadcrumbs:** Check consistency across all pages
+  - Consider creating helper function for breadcrumb generation
+  - OR implement proper main menu navigation
+- [ ] **Maintenance cleanup:**
+  - Remove past overdue bookings (archive vs delete decision)
+  - Add manual cleanup tool in Maintenance section
+- [ ] **Code cleanup:**
+  - Identify and remove unused functions
+  - Document remaining functions
+  - Consider creating functions.md reference
 
 ---
 
@@ -292,6 +324,7 @@ Ready to continue! Reference TODO.md in the repo.
 Priority tasks:
 1. Dashboard widget for tomorrow's booking confirmations
 2. Client stats on clients page
+3. Custom WhatsApp message modal
 
 Let's start with #1...
 ```
@@ -307,6 +340,9 @@ Let's start with #1...
 - Mobile-responsive improvements
 - Calendar sync for multiple drivers
 - Customer rating/feedback system
+- Push notifications for booking reminders
+- Multi-language support
+- Client portal for self-service booking
 
 ---
 
