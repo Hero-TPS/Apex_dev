@@ -1,6 +1,6 @@
 # HPTS-XAMPP Development TODO
 
-**Last Updated:** 2026-02-26  
+**Last Updated:** 2026-02-28  
 **Timezone:** Africa/Johannesburg (UTC+2 / SAST)
 
 ---
@@ -39,30 +39,10 @@ See you tomorrow! 🚗
 - Database migration for `last_confirmed_at` column
 - Create helper function for message template
 
----
-
-### 2. Clients Page: Summary Statistics
-- [ ] Add stats widget to `modules/Clients/index.php`
-- [ ] Display at top of page (below title, before table)
-- [ ] Show three metrics:
-  - Total Clients
-  - Clients with Bookings
-  - Total Bookings (across all clients)
-- [ ] Update via AJAX when filtering (e.g., "Show Only With Bookings")
-- [ ] Add styles to `assets/css/styles.css`
-
-**Design:**
-```
-┌─────────────────────────────────────────┐
-│  [50]              [35]           [127] │
-│  Total Clients     With Bookings  Total │
-│                                   Bookings│
-└─────────────────────────────────────────┘
-```
 
 ---
 
-### 3. Send Custom WhatsApp Message to Client
+### 2. Send Custom WhatsApp Message to Client
 - [ ] Add "Send Message" button to booking view page (`modules/Bookings/view.php`)
 - [ ] Add "Send Message" button to client list (`modules/Clients/index.php`)
 - [ ] Create modal with textarea for custom message
@@ -193,7 +173,23 @@ Net Profit = Total Income - Total Expenses
 
 ---
 
-## ✅ Recently Completed (2026-02-26)
+## ✅ Recently Completed (2026-02-28)
+
+
+### Clients Page: Summary Statistics
+- [x] Added stats widget to `modules/Clients/index.php`
+- [x] Displays at top of page (below title, before table)
+- [x] Shows three metrics: Total Clients, Clients with Bookings, Total Bookings
+- [x] Updates via AJAX when filtering ("Show Only With Bookings")
+- [x] Styles added to `assets/css/styles.css`
+
+**Implementation Details:**
+- Stats container on line 14
+- JavaScript calculation lines 102-121
+- Real-time updates when toggling filter
+- Clean card-based design with stats-grid layout
+
+---
 
 ### Uber Income: Additional Costs Tracking
 - [x] Added `additional_cost` DECIMAL(10,2) column to `uber_income` table
