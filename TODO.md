@@ -129,6 +129,23 @@ Total Expenses = Fuel + Car Rental + Mobile Data + Additional Costs
 Net Profit = Total Income - Total Expenses
 ```
 
+### Bookings: Misc. notes
+- [ ] Tone down on logging every action taken.
+---
+
+### Clients: Misc. notes
+- [ ] Show bookings payment method in lists
+- [ ] Improve client search. Search by name, should be includes. Possible expanded search to include phone and address
+- [ ] List of names and phone number from clients who has made bookings bofore. Also discuss starting a WA group for them. I am using a WA business account.
+- [ ] Add to above: discuss ideas to have direct communications with my existing clients via WA
+---
+
+### Uber: Misc. notes
+- [ ] 
+---
+
+### Fuel: Misc. notes
+- [ ] Show payment method in lists
 ---
 
 ### WhatsApp Message History (Optional)
@@ -136,6 +153,11 @@ Net Profit = Total Income - Total Expenses
 - [ ] Create `whatsapp_log` table
 - [ ] Display in booking view page
 - [ ] Useful for tracking "I never got a confirmation" disputes
+
+### Misc Overall
+- [ ] Check breadcrumbs of all pages. considter seperate function for it. OR, main menu
+- [ ] Maintainance: clean up past overdue
+- [ ] Clean up of unused functions.
 
 ---
 
