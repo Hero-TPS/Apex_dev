@@ -120,6 +120,7 @@ Net Profit = Total Income - Total Expenses
 ### Bookings Module Enhancements
 - [ ] Reduce logging verbosity (tone down on logging every action)
 - [ ] WhatsApp message history tracking (see detailed spec below)
+- [ ] add link to booking view in Calendar event
 
 ---
 
@@ -164,7 +165,7 @@ Net Profit = Total Income - Total Expenses
   - Consider creating helper function for breadcrumb generation
   - OR implement proper main menu navigation
 - [ ] **Maintenance cleanup:**
-  - Remove past overdue bookings (archive vs delete decision)
+  - Mark past overdue bookings as done
   - Add manual cleanup tool in Maintenance section
 - [ ] **Code cleanup:**
   - Identify and remove unused functions
