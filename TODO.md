@@ -1,4 +1,4 @@
-# HPTS-XAMPP Development TODO
+{# HPTS-XAMPP Development TODO
 
 **Last Updated:** 2026-02-28  
 **Timezone:** Africa/Johannesburg (UTC+2 / SAST)
@@ -122,7 +122,7 @@ Net Profit = Total Income - Total Expenses
 - [ ] WhatsApp message history tracking (see detailed spec below)
 - [ ] Add link to booking view in Calendar event
 - [ ] when updating a client name in booking edit, update the pickup address as well
-  - If the current pickup is other, overwrite (reset) is to the new address
+  - If the current pickup is other, overwrite (reset) it to the new address
 ---
 
 ### Clients Module Enhancements
@@ -142,8 +142,8 @@ Net Profit = Total Income - Total Expenses
 ### Fuel Module
 - [ ] Show payment method in lists
 - [ ] Condsider showing weekly and monthly as with booking reports
-- [ ] Add total cost and kms for weekly and montly
-- [ ] keep exsisting report as is
+- [ ] Add total cost and kms for weekly and monthly
+- [ ] keep existing report as is
 
 ---
 
@@ -317,24 +317,6 @@ Net Profit = Total Income - Total Expenses
 - `config.php` - Database & constants
 - `includes/helpers.php` - Global helper functions
 - `assets/css/styles.css` - All styles
-
----
-
-## 🚀 Starting Next Session
-
-**Copy-paste this to start:**
-
-```
-Ready to continue! Reference TODO.md in the repo.
-
-Priority tasks:
-1. Dashboard widget for tomorrow's booking confirmations
-2. Client stats on clients page
-3. Custom WhatsApp message modal
-
-Let's start with #1...
-```
-
 ---
 
 ## 💡 Ideas for Future Consideration
