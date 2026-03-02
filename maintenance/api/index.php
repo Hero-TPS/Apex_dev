@@ -193,6 +193,40 @@ try {
             'variables' => array_keys($variables)
         ]);
 
+        } elseif ($action === 'add_variable' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $name  = trim($_POST['name']  ?? '');
+            $label = trim($_POST['label'] ?? '');
+            $type  = trim($_POST['type']  ?? 'text');
+            $value = trim($_POST['value'] ?? '');
+    
+            if (empty($name) || empty($label) || empty($value)) {
+                throw new Exception('All fields are required.');
+            }
+            if (!preg_match('/^[a-zA-Z0-9_]+$/', $name)) {
+                throw new Exception('Key must contain only letters, numbers, and underscores.');
+            }
+            if (!in_array($type, ['number', 'text'])) {
+                $type = 'text';
+            }
+    
+            // Check for duplicate key
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM system_variables WHERE name = ?");
+            $stmt->execute([$name]);
+            if ($stmt->fetchColumn() > 0) {
+                throw new Exception("A variable with key '{$name}' already exists.");
+            }
+    
+            $stmt = $pdo->prepare("INSERT INTO system_variables (name, label, type, value) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$name, $label, $type, $value]);
+    
+            $response['success'] = true;
+            $response['message'] = "✅ Variable '{$label}' added.";
+    
+            logInfo('MAINTENANCE', 'System variable added', [
+                'name'  => $name,
+                'label' => $label,
+                'type'  => $type
+            ]);
     } else {
         $response['message'] = 'Unsupported action or method';
     }

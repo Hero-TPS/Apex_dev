@@ -92,6 +92,38 @@ $uber_reasons_text = implode("\n", $uber_reasons);
     <div id="variablesResult"></div>
 </div>
 
+<!-- Add System Variable -->
+<div class="form-container">
+    <h2>➕ Add System Variable</h2>
+    <form id="addVariableForm">
+        <div class="form-group">
+            <label for="new_var_name">Key (name)</label>
+            <input type="text" id="new_var_name" name="name" placeholder="e.g. car_rental_price" required
+                pattern="[a-zA-Z0-9_]+" title="Letters, numbers and underscores only">
+            <small>Used in code: getSystemVariable($pdo, 'your_key')</small>
+        </div>
+        <div class="form-group">
+            <label for="new_var_label">Label (display name)</label>
+            <input type="text" id="new_var_label" name="label" placeholder="e.g. Car Rental Price" required>
+        </div>
+        <div class="form-group">
+            <label for="new_var_type">Type</label>
+            <select id="new_var_type" name="type">
+                <option value="number">Number</option>
+                <option value="text">Text</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="new_var_value">Value</label>
+            <input type="text" id="new_var_value" name="value" placeholder="e.g. 2600" required>
+        </div>
+        <button type="submit" class="page-action-btn save" id="addVarBtn">
+            ➕ Add Variable
+        </button>
+    </form>
+    <div id="addVariableResult"></div>
+</div>
+
 <script>
     $(document).ready(function () {
         // Handle dropdown lists form
@@ -161,6 +193,39 @@ $uber_reasons_text = implode("\n", $uber_reasons);
                 error: function (xhr, status, error) {
                     submitBtn.prop('disabled', false).text('💾 Save Variables');
                     result.html('<div class="error-message">❌ Failed to save. Please try again.</div>');
+                    console.error('Error:', error, xhr.responseText);
+                }
+            });
+        });
+
+        // Handle add variable form
+        $('#addVariableForm').on('submit', function (e) {
+            e.preventDefault();
+            var btn = $('#addVarBtn');
+            var result = $('#addVariableResult');
+
+            btn.prop('disabled', true).text('Adding...');
+            result.html('');
+
+            $.ajax({
+                type: 'POST',
+                url: '<?= BASE_URL ?>/maintenance/api/index.php?action=add_variable',
+                data: $(this).serialize(),
+                dataType: 'json',
+                success: function (response) {
+                    btn.prop('disabled', false).text('➕ Add Variable');
+                    if (response.success) {
+                        result.html('<div class="success-message">' + response.message + '</div>');
+                        $('#addVariableForm')[0].reset();
+                        // Reload page after short delay so new var appears in the edit list
+                        setTimeout(function () { location.reload(); }, 1500);
+                    } else {
+                        result.html('<div class="error-message">' + response.message + '</div>');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    btn.prop('disabled', false).text('➕ Add Variable');
+                    result.html('<div class="error-message">❌ Failed to add variable.</div>');
                     console.error('Error:', error, xhr.responseText);
                 }
             });

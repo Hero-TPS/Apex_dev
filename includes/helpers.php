@@ -261,4 +261,15 @@ function dd($var) {
     echo '</pre>';
     die();
 }
+
+/**
+ * Get a system variable value from the database.
+ * Returns $default if the variable is not found.
+ */
+function getSystemVariable(PDO $pdo, string $name, $default = null) {
+    $stmt = $pdo->prepare("SELECT value FROM system_variables WHERE name = ?");
+    $stmt->execute([$name]);
+    $result = $stmt->fetchColumn();
+    return ($result !== false) ? $result : $default;
+}
 ?>

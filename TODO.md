@@ -89,9 +89,9 @@ See you tomorrow! 🚗
 ### High Priority
 
 #### Fix Missing `getSystemVariable()` Function
-- [ ] Currently hardcoded values in financials
-- [ ] Check Maintenance module for proper implementation
-- [ ] Update `financials/helper.php` to use system variables properly
+- [x] Currently hardcoded values in financials
+- [x] Check Maintenance module for proper implementation
+- [x] Update `financials/helper.php` to use system variables properly
 
 #### Timezone Comprehensive Audit
 - [ ] Fix timestamps showing UTC+4 instead of UTC+2
@@ -120,8 +120,9 @@ Net Profit = Total Income - Total Expenses
 ### Bookings Module Enhancements
 - [ ] Reduce logging verbosity (tone down on logging every action)
 - [ ] WhatsApp message history tracking (see detailed spec below)
-- [ ] add link to booking view in Calendar event
-
+- [ ] Add link to booking view in Calendar event
+- [ ] when updating a client name in booking edit, update the pickup address as well
+  - If the current pickup is other, overwrite (reset) is to the new address
 ---
 
 ### Clients Module Enhancements
@@ -140,6 +141,9 @@ Net Profit = Total Income - Total Expenses
 
 ### Fuel Module
 - [ ] Show payment method in lists
+- [ ] Condsider showing weekly and monthly as with booking reports
+- [ ] Add total cost and kms for weekly and montly
+- [ ] keep exsisting report as is
 
 ---
 
@@ -171,6 +175,11 @@ Net Profit = Total Income - Total Expenses
   - Identify and remove unused functions
   - Document remaining functions
   - Consider creating functions.md reference
+
+---
+
+### notes to remember for updating to live
+- [ ] fix table Variables
 
 ---
 
