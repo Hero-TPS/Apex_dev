@@ -108,6 +108,7 @@ See you tomorrow! 🚗
 - [ ] Modify `getMonthlyMetrics()` function
 - [ ] Update financial dashboard displays
 - [ ] Test that additional costs are deducted from net profit
+- [ ] additional costs should be multiple, such as add another
 
 **Calculation:**
 ```
