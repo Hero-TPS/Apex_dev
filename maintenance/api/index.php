@@ -1,6 +1,7 @@
 <?php
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
 
 $response = ['success' => false, 'message' => 'Invalid action.'];
 
@@ -50,12 +51,14 @@ try {
             $formItems = array_unique(array_filter(preg_split('/\r\n|\r|\n/', $_POST['costs'])));
             $formItems = array_map('trim', $formItems);
             $formDisplay = array_map(function ($v) {
-                return number_format((float) $v, 2, '.', ''); }, $formItems);
+                return number_format((float) $v, 2, '.', '');
+            }, $formItems);
 
             $stmt = $pdo->query("SELECT amount FROM costs");
             $dbFloats = $stmt->fetchAll(PDO::FETCH_COLUMN);
             $dbDisplay = array_map(function ($v) {
-                return number_format((float) $v, 2, '.', ''); }, $dbFloats);
+                return number_format((float) $v, 2, '.', '');
+            }, $dbFloats);
 
             $itemsToAdd = array_diff($formDisplay, $dbDisplay);
             $itemsToDelete = array_diff($dbDisplay, $formDisplay);
@@ -90,12 +93,14 @@ try {
             $formItems = array_unique(array_filter(preg_split('/\r\n|\r|\n/', $_POST['durations'])));
             $formItems = array_map('trim', $formItems);
             $formDisplay = array_map(function ($v) {
-                return number_format((float) $v, 1, '.', ''); }, $formItems);
+                return number_format((float) $v, 1, '.', '');
+            }, $formItems);
 
             $stmt = $pdo->query("SELECT hours FROM durations");
             $dbFloats = $stmt->fetchAll(PDO::FETCH_COLUMN);
             $dbDisplay = array_map(function ($v) {
-                return number_format((float) $v, 1, '.', ''); }, $dbFloats);
+                return number_format((float) $v, 1, '.', '');
+            }, $dbFloats);
 
             $itemsToAdd = array_diff($formDisplay, $dbDisplay);
             $itemsToDelete = array_diff($dbDisplay, $formDisplay);
@@ -178,55 +183,24 @@ try {
 
         $updatedCount = 0;
         foreach ($variables as $name => $value) {
-            $stmt = $pdo->prepare("UPDATE system_variables SET value = ? WHERE name = ?");
-            $stmt->execute([$value, $name]);
-            if ($stmt->rowCount() > 0) {
-                $updatedCount++;
-            }
+            // Only allow variables defined in code
+            if (!array_key_exists($name, SYSTEM_VARIABLES))
+                continue;
+
+            $stmt = $pdo->prepare("
+                    INSERT INTO system_variables (name, value) VALUES (?, ?)
+                    ON DUPLICATE KEY UPDATE value = VALUES(value)
+                ");
+            $stmt->execute([$name, $value]);
+            $updatedCount++;
         }
 
         $response['success'] = true;
-        $response['message'] = "✅ Updated {$updatedCount} system variable(s)";
+        $response['message'] = "✅ Updated {$updatedCount} variable(s)";
 
         logInfo('MAINTENANCE', 'System variables updated', [
-            'count' => $updatedCount,
             'variables' => array_keys($variables)
         ]);
-
-        } elseif ($action === 'add_variable' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $name  = trim($_POST['name']  ?? '');
-            $label = trim($_POST['label'] ?? '');
-            $type  = trim($_POST['type']  ?? 'text');
-            $value = trim($_POST['value'] ?? '');
-    
-            if (empty($name) || empty($label) || empty($value)) {
-                throw new Exception('All fields are required.');
-            }
-            if (!preg_match('/^[a-zA-Z0-9_]+$/', $name)) {
-                throw new Exception('Key must contain only letters, numbers, and underscores.');
-            }
-            if (!in_array($type, ['number', 'text'])) {
-                $type = 'text';
-            }
-    
-            // Check for duplicate key
-            $stmt = $pdo->prepare("SELECT COUNT(*) FROM system_variables WHERE name = ?");
-            $stmt->execute([$name]);
-            if ($stmt->fetchColumn() > 0) {
-                throw new Exception("A variable with key '{$name}' already exists.");
-            }
-    
-            $stmt = $pdo->prepare("INSERT INTO system_variables (name, label, type, value) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$name, $label, $type, $value]);
-    
-            $response['success'] = true;
-            $response['message'] = "✅ Variable '{$label}' added.";
-    
-            logInfo('MAINTENANCE', 'System variable added', [
-                'name'  => $name,
-                'label' => $label,
-                'type'  => $type
-            ]);
     } else {
         $response['message'] = 'Unsupported action or method';
     }

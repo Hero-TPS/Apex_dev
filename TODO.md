@@ -1,6 +1,6 @@
 {# HPTS-XAMPP Development TODO
 
-**Last Updated:** 2026-02-28  
+**Last Updated:** 2026-03-03 
 **Timezone:** Africa/Johannesburg (UTC+2 / SAST)
 
 ---
@@ -180,7 +180,12 @@ Net Profit = Total Income - Total Expenses
 ---
 
 ### notes to remember for updating to live
-- [ ] fix table Variables
+- [ ] fix table Variables: -- Ensure name is unique (required for ON DUPLICATE KEY UPDATE)
+ALTER TABLE system_variables ADD UNIQUE KEY uq_name (name);
+
+-- Optional cleanup (label/type now live in code, not DB)
+ALTER TABLE system_variables DROP COLUMN label;
+ALTER TABLE system_variables DROP COLUMN type;
 
 ---
 

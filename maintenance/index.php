@@ -62,26 +62,25 @@ $uber_reasons_text = implode("\n", $uber_reasons);
 </div>
 
 <!-- System Variables -->
-<div class="form-container variables-section">
+<div class="form-container">
     <h2>⚙️ System Variables</h2>
     <form id="variablesForm">
-        <?php
-        // Fetch existing system variables
-        $stmt = $pdo->query("SELECT * FROM system_variables ORDER BY label");
-        $variables = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($variables as $row):
-            ?>
+        <?php foreach (SYSTEM_VARIABLES as $name => $def):
+            $stmt = $pdo->prepare("SELECT value FROM system_variables WHERE name = ?");
+            $stmt->execute([$name]);
+            $saved = $stmt->fetchColumn();
+            $value = ($saved !== false) ? $saved : $def['default'];
+        ?>
             <div class="form-group">
-                <label for="var_<?= htmlspecialchars($row['name']) ?>"><?= htmlspecialchars($row['label']) ?></label>
-                <?php if ($row['type'] === 'number'): ?>
-                    <input type="number" id="var_<?= htmlspecialchars($row['name']) ?>"
-                        name="variables[<?= htmlspecialchars($row['name']) ?>]" value="<?= htmlspecialchars($row['value']) ?>"
-                        step="0.01" min="0" required>
+                <label><?= htmlspecialchars($def['label']) ?></label>
+                <?php if ($def['type'] === 'number'): ?>
+                    <input type="number" name="variables[<?= htmlspecialchars($name) ?>]"
+                        value="<?= htmlspecialchars($value) ?>" step="0.01" min="0" required>
                 <?php else: ?>
-                    <input type="text" id="var_<?= htmlspecialchars($row['name']) ?>"
-                        name="variables[<?= htmlspecialchars($row['name']) ?>]" value="<?= htmlspecialchars($row['value']) ?>"
-                        required>
+                    <input type="text" name="variables[<?= htmlspecialchars($name) ?>]"
+                        value="<?= htmlspecialchars($value) ?>" required>
                 <?php endif; ?>
+                <small>Default: <?= htmlspecialchars($def['default']) ?></small>
             </div>
         <?php endforeach; ?>
 
@@ -90,38 +89,6 @@ $uber_reasons_text = implode("\n", $uber_reasons);
         </button>
     </form>
     <div id="variablesResult"></div>
-</div>
-
-<!-- Add System Variable -->
-<div class="form-container">
-    <h2>➕ Add System Variable</h2>
-    <form id="addVariableForm">
-        <div class="form-group">
-            <label for="new_var_name">Key (name)</label>
-            <input type="text" id="new_var_name" name="name" placeholder="e.g. car_rental_price" required
-                pattern="[a-zA-Z0-9_]+" title="Letters, numbers and underscores only">
-            <small>Used in code: getSystemVariable($pdo, 'your_key')</small>
-        </div>
-        <div class="form-group">
-            <label for="new_var_label">Label (display name)</label>
-            <input type="text" id="new_var_label" name="label" placeholder="e.g. Car Rental Price" required>
-        </div>
-        <div class="form-group">
-            <label for="new_var_type">Type</label>
-            <select id="new_var_type" name="type">
-                <option value="number">Number</option>
-                <option value="text">Text</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="new_var_value">Value</label>
-            <input type="text" id="new_var_value" name="value" placeholder="e.g. 2600" required>
-        </div>
-        <button type="submit" class="page-action-btn save" id="addVarBtn">
-            ➕ Add Variable
-        </button>
-    </form>
-    <div id="addVariableResult"></div>
 </div>
 
 <script>

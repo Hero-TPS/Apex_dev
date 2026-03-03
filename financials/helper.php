@@ -10,7 +10,8 @@ include ROOT_DIR . '/core/Time.php';
 /**
  * Count number of Mondays (billing weeks) in a given month
  */
-function getWeeksInMonth($year, $month) {
+function getWeeksInMonth($year, $month)
+{
     $tz = new DateTimeZone(Time::TIME_ZONE);
     $start = new DateTime("$year-$month-01", $tz);
     $end = new DateTime("$year-$month-01", $tz);
@@ -31,7 +32,8 @@ function getWeeksInMonth($year, $month) {
 /**
  * Get financial metrics for a single week (Mon–Sun, SAST)
  */
-function getWeeklyMetrics($pdo, $startUnix, $endUnix) {
+function getWeeklyMetrics($pdo, $startUnix, $endUnix)
+{
 
     $dateRange = Time::weekIdToDateRange($startUnix);
     $unixRange = Time::weekIdToUnixRange($startUnix);
@@ -73,7 +75,7 @@ function getWeeklyMetrics($pdo, $startUnix, $endUnix) {
     $totalTripKm = (float) ($row['km'] ?? 0);
 
     // === CAR RENTAL ===
-    $carRental = (float) getSystemVariable($pdo, 'car_rental_price', 0);
+    $carRental = (float) getSystemVariable($pdo, 'car_rental_price');
 
     // === CALCULATIONS ===
     $totalIncome = $bookingIncome + $uberIncome;
@@ -149,8 +151,7 @@ function getMonthlyMetrics($pdo, $year, $month)
     $totalTripKm = (float) ($row['km'] ?? 0);
 
     // === CAR RENTAL ===
-    $carRental = (float) getSystemVariable($pdo, 'car_rental_price', 0) * getWeeksInMonth($year, $month);
- 
+    $carRental = (float) getSystemVariable($pdo, 'car_rental_price') * getWeeksInMonth($year, $month);
 
     // === CALCULATIONS ===
     $totalIncome = $bookingIncome + $uberIncome;

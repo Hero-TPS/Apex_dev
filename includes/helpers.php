@@ -266,10 +266,14 @@ function dd($var) {
  * Get a system variable value from the database.
  * Returns $default if the variable is not found.
  */
-function getSystemVariable(PDO $pdo, string $name, $default = null) {
+const SYSTEM_VARIABLES = [
+    'car_rental_price'      => ['label' => 'Car Rental Price (R)',      'type' => 'number', 'default' => 2600],
+    'financial_months_back' => ['label' => 'Financial History (months)', 'type' => 'number', 'default' => 6],
+];
+
+function getSystemVariable(PDO $pdo, string $name) {
     $stmt = $pdo->prepare("SELECT value FROM system_variables WHERE name = ?");
     $stmt->execute([$name]);
     $result = $stmt->fetchColumn();
-    return ($result !== false) ? $result : $default;
+    return ($result !== false) ? $result : (SYSTEM_VARIABLES[$name]['default'] ?? null);
 }
-?>

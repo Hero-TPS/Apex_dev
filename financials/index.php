@@ -11,7 +11,8 @@ $breadcrumb = ' > Financials';
 include ROOT_DIR . '/includes/header.php';
 
 $monthsBack = (int) getSystemVariable($pdo, 'financial_months_back');
-if ($monthsBack < 1) $monthsBack = 3;
+if ($monthsBack < 1)
+    $monthsBack = 3;
 
 
 $months = [];
@@ -19,8 +20,8 @@ $today = new DateTime();
 for ($i = 0; $i < $monthsBack; $i++) {
     $date = clone $today;
     $date->modify("-$i months");
-    $year = (int)$date->format('Y');
-    $month = (int)$date->format('n');
+    $year = (int) $date->format('Y');
+    $month = (int) $date->format('n');
     $months[] = ['year' => $year, 'month' => $month];
 }
 usort($months, function ($a, $b) {
@@ -50,26 +51,31 @@ usort($months, function ($a, $b) {
             <div class="metric-row"><span>Bookings:</span> <span>R<?= number_format($metrics['booking_income'], 2) ?></span>
             </div>
             <div class="metric-row"><span>Total Income:</span>
-                <strong>R<?= number_format($metrics['total_income'], 2) ?></strong></div>
+                <strong>R<?= number_format($metrics['total_income'], 2) ?></strong>
+            </div>
 
             <div class="metric-row"><span>Uber Cash:</span> <span>R<?= number_format($metrics['uber_cash'], 2) ?></span>
             </div>
             <div class="metric-row"><span>Uber Payout:</span>
-                <strong>R<?= number_format($metrics['uber_payout'], 2) ?></strong></div>
+                <strong>R<?= number_format($metrics['uber_payout'], 2) ?></strong>
+            </div>
 
             <div class="metric-row"><span>Fuel:</span> <span>R<?= number_format($metrics['fuel_cost'], 2) ?></span></div>
             <div class="metric-row"><span>Car Rental:</span> <span>R<?= number_format($metrics['car_rental'], 2) ?></span>
             </div>
             <div class="metric-row"><span>Mobile Data:</span>
-                <span>R<?= number_format($metrics['mobile_data_cost'], 2) ?></span></div>
+                <span>R<?= number_format($metrics['mobile_data_cost'], 2) ?></span>
+            </div>
             <div class="metric-row"><span>Total Expenses:</span>
-                <strong>R<?= number_format($metrics['total_expenses'], 2) ?></strong></div>
+                <strong>R<?= number_format($metrics['total_expenses'], 2) ?></strong>
+            </div>
 
             <div class="metric-row"><span>Booking Trips:</span> <span><?= $metrics['booking_trips'] ?></span></div>
             <div class="metric-row"><span>Uber Trips:</span> <span><?= $metrics['uber_trips'] ?></span></div>
             <div class="metric-row"><span>Total Trips:</span> <strong><?= $metrics['total_trips'] ?></strong></div>
             <div class="metric-row"><span>Income/Trip:</span>
-                <span>R<?= number_format($metrics['income_per_trip'], 2) ?></span></div>
+                <span>R<?= number_format($metrics['income_per_trip'], 2) ?></span>
+            </div>
             <div class="metric-row"><span>Cost/km:</span> <span>R<?= number_format($metrics['cost_per_km'], 2) ?></span>
             </div>
             <div class="metric-row"><span>Income/km:</span> <span>R<?= number_format($metrics['income_per_km'], 2) ?></span>
