@@ -321,6 +321,22 @@ $(document).ready(function () {
         return div.innerHTML;
     }
 });
+
+$('#contact').on('change', function () {
+    var selected = $(this).find('option:selected');
+    var newAddress = selected.data('address') || '';
+
+    // Reset pickup to client's address
+    $('#pickup_location').val(newAddress);
+
+    // If pickup was 'other', clear it back to default
+    if ($('#pickup_location').val() === 'other') {
+        $('#pickup_location').val('');
+    }
+
+    // Update phone
+    $('#phone').val(selected.data('phone') || '');
+});
 </script>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>

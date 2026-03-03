@@ -119,10 +119,10 @@ Net Profit = Total Income - Total Expenses
 ---
 
 ### Bookings Module Enhancements
-- [ ] Reduce logging verbosity (tone down on logging every action)
+- [x] Reduce logging verbosity (tone down on logging every action)
 - [ ] WhatsApp message history tracking (see detailed spec below)
-- [ ] Add link to booking view in Calendar event
-- [ ] when updating a client name in booking edit, update the pickup address as well
+- [x] Add link to booking view in Calendar event
+- [x] when updating a client name in booking edit, update the pickup address as well
   - If the current pickup is other, overwrite (reset) it to the new address
 ---
 

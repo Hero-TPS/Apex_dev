@@ -1,8 +1,4 @@
 <?php
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-ini_set('log_errors', 1);
 // modules/Bookings/api/index.php
 // Unified Bookings API router
 
@@ -276,16 +272,9 @@ function handleAddBooking()
             if ($googleEventId) {
                 $updateStmt = $pdo->prepare("UPDATE bookings SET google_calendar_event_id = ? WHERE id = ?");
                 $updateStmt->execute([$googleEventId, $booking_id]);
-                
-                logInfo('BOOKING', 'Booking created with calendar event', [
-                    'booking_id' => $booking_id,
-                    'google_event_id' => $googleEventId,
-                    'client' => $bookingData['client_name']
-                ]);
             } else {
                 logWarning('BOOKING', 'Booking created but calendar event failed', [
-                    'booking_id' => $booking_id,
-                    'client' => $bookingData['client_name']
+                    'booking_id' => $booking_id
                 ]);
             }
         }
@@ -328,11 +317,6 @@ function handleUpdateBooking()
                 throw new Exception('Booking not found.');
             }
 
-            logInfo('BOOKING', 'Payment method updated', [
-                'booking_id' => $booking_id,
-                'payment_method' => $payment_method
-            ]);
-
             jsonResponse(['success' => true, 'message' => 'Payment method updated.']);
         }
 
@@ -351,11 +335,6 @@ function handleUpdateBooking()
             if ($stmt->rowCount() === 0) {
                 throw new Exception('Booking not found.');
             }
-
-            logInfo('BOOKING', 'Booking status updated', [
-                'booking_id' => $booking_id,
-                'status' => $status
-            ]);
 
             jsonResponse([
                 'success' => true,
@@ -483,12 +462,6 @@ function handleUpdateBooking()
             if (!empty($bookingDetails['google_calendar_event_id'])) {
                 updateBookingInGoogleCalendar($bookingDetails, $start_datetime, $end_datetime);
             }
-
-            logInfo('BOOKING', 'Booking updated', [
-                'booking_id' => $booking_id,
-                'changed' => $changed,
-                'client' => $bookingDetails['client_name']
-            ]);
 
             // ✅ Function will auto-detect if booking was updated
             $fullMessage = createWhatsAppMessage($bookingDetails);
