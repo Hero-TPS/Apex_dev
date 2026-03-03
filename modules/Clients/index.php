@@ -203,17 +203,37 @@ $highlightClientId = $_GET['highlight'] ?? null;
 
         // Search functionality
         $('#clientSearch').on('keyup', function () {
-            var searchText = $(this).val().toLowerCase();
+            var searchText = $(this).val().toLowerCase().trim();
 
             if (searchText.length === 0) {
                 tableBody.find('tr').show();
                 return;
             }
 
+            // Split into words for fuzzy "all words must match" search
+            var words = searchText.split(/\s+/).filter(w => w.length > 0);
+
             tableBody.find('tr').each(function () {
                 var row = $(this);
-                var text = row.text().toLowerCase();
-                row.toggle(text.indexOf(searchText) > -1);
+                var clientId = parseInt(row.data('client-id'));
+                var client = allClients.find(c => c.id === clientId);
+                if (!client) { row.hide(); return; }
+
+                // Build searchable string from relevant fields only
+                var haystack = [
+                    client.name || '',
+                    client.phone || '',
+                    client.address || '',
+                    client.email || '',
+                    client.additional_info || ''
+                ].join(' ').toLowerCase();
+
+                // All words must be found somewhere in the haystack
+                var match = words.every(function (word) {
+                    return haystack.indexOf(word) > -1;
+                });
+
+                row.toggle(match);
             });
         });
 

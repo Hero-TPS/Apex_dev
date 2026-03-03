@@ -1169,3 +1169,34 @@ body:not(.home-page) .floating-menu-toggle {
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
+
+.client-info-card {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.client-info-card h3 {
+  margin-top: 0;
+  color: #2c3e50;
+}
+
+.client-detail {
+  margin: 10px 0;
+  display: flex;
+  gap: 10px;
+}
+
+.client-detail strong {
+  min-width: 120px;
+  color: #666;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}

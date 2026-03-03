@@ -55,39 +55,6 @@ try {
 }
 ?>
 
-<style>
-.client-info-card {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.client-info-card h3 {
-    margin-top: 0;
-    color: #2c3e50;
-}
-
-.client-detail {
-    margin: 10px 0;
-    display: flex;
-    gap: 10px;
-}
-
-.client-detail strong {
-    min-width: 120px;
-    color: #666;
-}
-
-.action-buttons {
-    display: flex;
-    gap: 10px;
-    margin-top: 15px;
-    flex-wrap: wrap;
-}
-</style>
-
 <div class="client-info-card">
     <h3>👤 <?= htmlspecialchars($client['name']) ?></h3>
     
@@ -151,6 +118,7 @@ try {
                 <th>Pickup</th>
                 <th>Destination</th>
                 <th>Cost</th>
+                <th>Payment</th>
                 <th>Status</th>
                 <th>Actions</th>
             </tr>
@@ -167,6 +135,7 @@ try {
                     <td data-label="Pickup"><?= htmlspecialchars($pickup) ?></td>
                     <td data-label="Destination"><?= htmlspecialchars($destination) ?></td>
                     <td data-label="Cost">R<?= number_format($booking['cost'], 2) ?></td>
+                    <td data-label="Payment"><?= $booking['payment_method'] === 'eft' ? '🏦 EFT' : '💵 Cash' ?></td>
                     <td data-label="Status"><?= $booking['status_display'] ?></td>
                     <td data-label="Actions">
                         <div class="actions-container">
