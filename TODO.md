@@ -128,7 +128,7 @@ Net Profit = Total Income - Total Expenses
 
 ### Clients Module Enhancements
 - [ ] Show payment method in booking lists
-- [ ] Improve client search functionality:
+- [x] Improve client search functionality:
   - Change to "includes" search (not exact match)
   - Expand search to include phone and address fields
   - Consider fuzzy matching
@@ -180,12 +180,12 @@ Net Profit = Total Income - Total Expenses
 ---
 
 ### notes to remember for updating to live
-- [ ] fix table Variables: -- Ensure name is unique (required for ON DUPLICATE KEY UPDATE)
+- [ ] fix table Variables: '-- Ensure name is unique (required for ON DUPLICATE KEY UPDATE)
 ALTER TABLE system_variables ADD UNIQUE KEY uq_name (name);
 
 -- Optional cleanup (label/type now live in code, not DB)
 ALTER TABLE system_variables DROP COLUMN label;
-ALTER TABLE system_variables DROP COLUMN type;
+ALTER TABLE system_variables DROP COLUMN type;'
 
 ---
 
