@@ -5,8 +5,6 @@
 
 ---
 
-## 🎯 Next Session Priority
-
 ### 1. Dashboard: Tomorrow's Booking Confirmations Widget
 - [ ] Create dashboard widget showing tomorrow's bookings
 - [ ] Display bookings where `trip_date = tomorrow` AND not confirmed today
@@ -108,7 +106,6 @@ See you tomorrow! 🚗
 - [ ] Modify `getMonthlyMetrics()` function
 - [ ] Update financial dashboard displays
 - [ ] Test that additional costs are deducted from net profit
-- [ ] additional costs should be multiple, such as add another
 
 **Calculation:**
 ```
@@ -146,6 +143,11 @@ Net Profit = Total Income - Total Expenses
 - [ ] Add total cost and kms for weekly and monthly
 - [ ] keep existing report as is
 
+---
+
+### Uber Module
+- [ ] Additional costs should be multiple, such as add another cost
+  - mobile data to be moved from a seperate field to additional cost
 ---
 
 ### WhatsApp Message History (Detailed Spec)
