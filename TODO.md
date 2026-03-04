@@ -1,4 +1,4 @@
-{# HPTS-XAMPP Development TODO
+# HPTS-XAMPP Development TODO
 
 **Last Updated:** 2026-03-03 
 **Timezone:** Africa/Johannesburg (UTC+2 / SAST)
@@ -37,7 +37,6 @@ See you tomorrow! 🚗
 - Database migration for `last_confirmed_at` column
 - Create helper function for message template
 
-
 ---
 
 ### 2. Send Custom WhatsApp Message to Client
@@ -52,7 +51,7 @@ See you tomorrow! 🚗
 ```
 ┌─────────────────────────────────────┐
 │  💬 Send Message to [Client Name]  │
-├─────────────────��───────────────────┤
+├─────────────────────────────────────┤
 │  📱 Phone: [Phone Number]          │
 │                                     │
 │  Message:                           │
@@ -119,8 +118,9 @@ Net Profit = Total Income - Total Expenses
 - [x] Reduce logging verbosity (tone down on logging every action)
 - [ ] WhatsApp message history tracking (see detailed spec below)
 - [x] Add link to booking view in Calendar event
-- [x] when updating a client name in booking edit, update the pickup address as well
+- [x] When updating a client name in booking edit, update the pickup address as well
   - If the current pickup is other, overwrite (reset) it to the new address
+
 ---
 
 ### Clients Module Enhancements
@@ -139,15 +139,16 @@ Net Profit = Total Income - Total Expenses
 
 ### Fuel Module
 - [ ] Show payment method in lists
-- [ ] Condsider showing weekly and monthly as with booking reports
+- [ ] Consider showing weekly and monthly as with booking reports
 - [ ] Add total cost and kms for weekly and monthly
-- [ ] keep existing report as is
+- [ ] Keep existing report as is
 
 ---
 
 ### Uber Module
 - [ ] Additional costs should be multiple, such as add another cost
-  - mobile data to be moved from a seperate field to additional cost
+  - Mobile data to be moved from a separate field to additional cost
+
 ---
 
 ### WhatsApp Message History (Detailed Spec)
@@ -181,18 +182,20 @@ Net Profit = Total Income - Total Expenses
 
 ---
 
-### notes to remember for updating to live
-- [ ] fix table Variables: '-- Ensure name is unique (required for ON DUPLICATE KEY UPDATE)
+### Notes to Remember for Updating to Live
+- [ ] Fix table Variables:
+```sql
+-- Ensure name is unique (required for ON DUPLICATE KEY UPDATE)
 ALTER TABLE system_variables ADD UNIQUE KEY uq_name (name);
 
 -- Optional cleanup (label/type now live in code, not DB)
 ALTER TABLE system_variables DROP COLUMN label;
-ALTER TABLE system_variables DROP COLUMN type;'
+ALTER TABLE system_variables DROP COLUMN type;
+```
 
 ---
 
 ## ✅ Recently Completed (2026-02-28)
-
 
 ### Clients Page: Summary Statistics
 - [x] Added stats widget to `modules/Clients/index.php`
@@ -325,6 +328,7 @@ ALTER TABLE system_variables DROP COLUMN type;'
 - `config.php` - Database & constants
 - `includes/helpers.php` - Global helper functions
 - `assets/css/styles.css` - All styles
+
 ---
 
 ## 💡 Ideas for Future Consideration
