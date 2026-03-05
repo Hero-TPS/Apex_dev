@@ -127,12 +127,10 @@ function createWhatsAppMessage($bookingDetails) {
     if ($isUpdate) {
         // Create DateTime in UTC (server timezone), then convert to local
         $updatedDate = new DateTime($bookingDetails['updated_at'], new DateTimeZone('UTC'));
-        $updatedDate->setTimezone($timezone);
         $timestampInfo = "\n✏️ Updated: " . $updatedDate->format('d/m/y H:i') . "\n";
     } elseif (!empty($bookingDetails['date_created'])) {
         // Create DateTime in UTC (server timezone), then convert to local
         $createdDate = new DateTime($bookingDetails['date_created'], new DateTimeZone('UTC'));
-        $createdDate->setTimezone($timezone);
         $timestampInfo = "\n🕒 Created: " . $createdDate->format('d/m/y H:i') . "\n";
     }
 

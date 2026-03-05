@@ -127,7 +127,6 @@ if (isset($_GET['id'])) {
             <?php
             $timezone = new DateTimeZone(TIME_ZONE);
             $createdDate = new DateTime($booking['date_created'], new DateTimeZone('UTC'));
-            $createdDate->setTimezone($timezone);
             echo $createdDate->format('d/m/Y H:i');
             ?>
         </div>
@@ -136,7 +135,6 @@ if (isset($_GET['id'])) {
                 <strong>Last Updated:</strong>
                 <?php
                 $updatedDate = new DateTime($booking['updated_at'], new DateTimeZone('UTC'));
-                $updatedDate->setTimezone($timezone);
                 echo $updatedDate->format('d/m/Y H:i');
                 ?>
             </div>
