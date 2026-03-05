@@ -1,11 +1,57 @@
 # HPTS-XAMPP Development TODO
 
-**Last Updated:** 2026-03-03 
+**Last Updated:** 2026-03-05
 **Timezone:** Africa/Johannesburg (UTC+2 / SAST)
 
 ---
 
-### 1. Dashboard: Tomorrow's Booking Confirmations Widget
+## 📋 Backlog (Future Sessions)
+
+### High Priority
+
+#### Fix Missing `getSystemVariable()` Function
+- [x] Currently hardcoded values in financials
+- [x] Check Maintenance module for proper implementation
+- [x] Update `financials/helper.php` to use system variables properly
+
+#### Timezone Comprehensive Audit
+**Standard:** SAST (UTC+2) everywhere — DB stores SAST, PHP displays SAST, no UTC conversion.
+
+**Completed this session:**
+- [x] Diagnosed root cause: live server MySQL running on UTC-10 (SYSTEM), local XAMPP on SAST (SYSTEM)
+- [x] Fixed MySQL session timezone: added `$pdo->exec("SET time_zone = '+02:00'");` to `config.php`
+- [x] Fixed booking `date_created` / `updated_at` display: removed incorrect UTC→SAST double-conversion in `includes/helpers.php` and `modules/Bookings/view.php`
+  - Was: `new DateTime($value, new DateTimeZone('UTC'))` then `setTimezone($timezone)` — added 2hrs
+  - Fix: `new DateTime($value, new DateTimeZone(TIME_ZONE))` — value is already SAST from MySQL
+
+**Still to do:**
+- [ ] Discuss and migrate `TIMESTAMP` columns in `uber_income` and `fuel_logs` to `DATETIME` (SAST)
+  - `uber_income`: `week_start`, `week_end` — confirm if `DATE` or `DATETIME` is appropriate
+  - `fuel_logs`: `log_timestamp` — confirm if `DATE` or `DATETIME` is appropriate
+  - Live data exists — migration SQL must be carefully written and tested on local first
+- [ ] Full audit: check all remaining PHP files for any `DateTimeZone('UTC')` conversions
+- [ ] Full audit: check all `NOW()` usages in SQL — should all be correct now via session timezone fix
+- [ ] Test on both local (XAMPP) and hosted server after all changes
+- [ ] Ensure consistency across booking creation, updates, WhatsApp messages
+
+**Note:** `bookings.date_created` and `bookings.updated_at` are `TIMESTAMP` columns. Now correct via session timezone fix. Do not change these to DATETIME until TIMESTAMP→DATETIME migration is fully understood.
+
+#### Financials: Uber Additional Costs Integration
+- [ ] Update `financials/helper.php` to include `additional_cost` in expense calculations
+- [ ] Modify `getWeeklyMetrics()` function
+- [ ] Modify `getMonthlyMetrics()` function
+- [ ] Update financial dashboard displays
+- [ ] Test that additional costs are deducted from net profit
+
+**Calculation:**
+```
+Total Expenses = Fuel + Car Rental + Mobile Data + Additional Costs
+Net Profit = Total Income - Total Expenses
+```
+
+---
+
+### Dashboard: Tomorrow's Booking Confirmations Widget
 - [ ] Create dashboard widget showing tomorrow's bookings
 - [ ] Display bookings where `trip_date = tomorrow` AND not confirmed today
 - [ ] "Send Confirmation" button → opens WhatsApp with pre-filled message
@@ -39,7 +85,7 @@ See you tomorrow! 🚗
 
 ---
 
-### 2. Send Custom WhatsApp Message to Client
+### Send Custom WhatsApp Message to Client
 - [ ] Add "Send Message" button to booking view page (`modules/Bookings/view.php`)
 - [ ] Add "Send Message" button to client list (`modules/Clients/index.php`)
 - [ ] Create modal with textarea for custom message
@@ -78,39 +124,6 @@ See you tomorrow! 🚗
 - `modules/Bookings/view.php` - Add button and modal
 - `modules/Clients/index.php` - Add button to each client row
 - `assets/css/styles.css` - Modal styles (reuse existing modal styles)
-
----
-
-## 📋 Backlog (Future Sessions)
-
-### High Priority
-
-#### Fix Missing `getSystemVariable()` Function
-- [x] Currently hardcoded values in financials
-- [x] Check Maintenance module for proper implementation
-- [x] Update `financials/helper.php` to use system variables properly
-
-#### Timezone Comprehensive Audit
-- [ ] Fix timestamps showing UTC+4 instead of UTC+2
-- [ ] Audit all `NOW()` MySQL functions
-- [ ] Audit all PHP `DateTime` objects
-- [ ] Test on both local (XAMPP) and hosted server
-- [ ] Ensure consistency across booking creation, updates, WhatsApp messages
-
-**Note:** Deferred because existing pickup times work correctly. Needs careful testing.
-
-#### Financials: Uber Additional Costs Integration
-- [ ] Update `financials/helper.php` to include `additional_cost` in expense calculations
-- [ ] Modify `getWeeklyMetrics()` function
-- [ ] Modify `getMonthlyMetrics()` function
-- [ ] Update financial dashboard displays
-- [ ] Test that additional costs are deducted from net profit
-
-**Calculation:**
-```
-Total Expenses = Fuel + Car Rental + Mobile Data + Additional Costs
-Net Profit = Total Income - Total Expenses
-```
 
 ---
 
@@ -159,7 +172,7 @@ Net Profit = Total Income - Total Expenses
   - `contact_id` INT (foreign key)
   - `message_type` VARCHAR (confirmation, custom, thank_you, etc.)
   - `message_content` TEXT
-  - `sent_at` TIMESTAMP
+  - `sent_at` DATETIME
   - `sent_by` VARCHAR (user identifier)
 - [ ] Display message history in booking view page
 - [ ] Display message history in client bookings page
@@ -195,7 +208,22 @@ ALTER TABLE system_variables DROP COLUMN type;
 
 ---
 
-## ✅ Recently Completed (2026-02-28)
+## ✅ Recently Completed (2026-03-05)
+
+### Timezone: MySQL Session Fix
+- [x] Added `$pdo->exec("SET time_zone = '+02:00'");` to `config.php`
+- [x] Fixes `NOW()` returning wrong time on live server (was UTC-10 / SYSTEM)
+- [x] Both local and live now use SAST for all MySQL operations
+
+### Timezone: Booking Timestamp Display Fix
+- [x] Fixed `date_created` and `updated_at` showing 2 hours ahead on booking view
+- [x] Removed incorrect UTC→SAST conversion in `includes/helpers.php`
+- [x] Removed incorrect UTC→SAST conversion in `modules/Bookings/view.php`
+- [x] Root cause: values are already SAST (via session timezone), double-conversion added 2hrs
+
+---
+
+## ✅ Previously Completed (2026-02-28)
 
 ### Clients Page: Summary Statistics
 - [x] Added stats widget to `modules/Clients/index.php`
@@ -286,12 +314,15 @@ ALTER TABLE system_variables DROP COLUMN type;
 5. **Error handling** - Show specific errors, log to console for debugging
 6. **WhatsApp links** - Use `formatPhoneNumberForWhatsApp()` helper
 7. **Consistent naming** - Follow existing patterns in repo
+8. **Timezone standard** - SAST throughout; DB stores SAST, PHP displays SAST, no UTC conversion
+9. **MySQL session timezone** - Always set via `SET time_zone = '+02:00'` in `config.php`; never rely on server SYSTEM timezone
 
 ### Code Patterns:
 - API responses: `jsonResponse(['success' => bool, 'message' => string])`
 - Logging: `logInfo()`, `logError()`, `logWarning()`, `logCritical()`
 - Phone formatting: `formatPhoneNumberForWhatsApp($phone)`
 - Escaping: `htmlspecialchars()` for output, PDO prepared statements for queries
+- Dates: `new DateTime($value, new DateTimeZone(TIME_ZONE))` — never assume UTC from DB
 
 ---
 
