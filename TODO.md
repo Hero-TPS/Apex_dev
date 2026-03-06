@@ -173,18 +173,6 @@ See you tomorrow! 🚗
 
 ---
 
-### Notes to Remember for Updating to Live
-- [ ] Fix table Variables:
-```sql
--- Ensure name is unique (required for ON DUPLICATE KEY UPDATE)
-ALTER TABLE system_variables ADD UNIQUE KEY uq_name (name);
-
--- Optional cleanup (label/type now live in code, not DB)
-ALTER TABLE system_variables DROP COLUMN label;
-ALTER TABLE system_variables DROP COLUMN type;
-```
-
----
 
 ## ✅ Recently Completed (2026-03-05)
 
