@@ -55,6 +55,14 @@ ALTER TABLE uber_income
 
 ---
 
+### 2. Save gate code
+- [ ] Run on live DB
+
+```sql
+-- Add gate_code
+ALTER TABLE bookings ADD COLUMN gate_code VARCHAR(255) NULL DEFAULT NULL;
+---
+
 ## ✅ Completed
 
 _(none yet)_

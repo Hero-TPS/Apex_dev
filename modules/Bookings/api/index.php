@@ -40,6 +40,9 @@ try {
         case 'delete':
             handleDeleteBooking();
             break;
+        case 'update_gate_code':         // ✅ NEW
+            handleUpdateGateCode();
+            break;
         case 'weekly_bookings':
             handleWeeklyBookings();
             break;
@@ -88,7 +91,6 @@ function handleGetBookings()
             $recentBookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $bookings = array_reverse($recentBookings);
         } else {
-            // ✅ UPCOMING: Exclude completed bookings
             $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
             $sql = "
                 SELECT 
@@ -147,7 +149,6 @@ function handleGetBookings()
         $response['message'] = 'Database error: ' . $e->getMessage();
         $response['error_type'] = 'database';
     } catch (Exception $e) {
-        // ✅ Catch ALL other exceptions (timezone, date, etc.)
         logError('BOOKING', 'Error fetching bookings', [
             'error' => $e->getMessage(),
             'type' => get_class($e),
@@ -170,14 +171,15 @@ function handleAddBooking()
         }
 
         // Get values
-        $contact_id = $_POST['contact_id'] ?? '';
-        $trip_date = $_POST['trip_date'] ?? '';
-        $start_time = $_POST['start_time'] ?? '';
-        $duration = $_POST['duration'] ?? '';
-        $original_pickup = $_POST['original_pickup'] ?? '';
+        $contact_id          = $_POST['contact_id'] ?? '';
+        $trip_date           = $_POST['trip_date'] ?? '';
+        $start_time          = $_POST['start_time'] ?? '';
+        $duration            = $_POST['duration'] ?? '';
+        $original_pickup     = $_POST['original_pickup'] ?? '';
         $original_destination = $_POST['original_destination'] ?? '';
-        $cost = $_POST['cost'] ?? '';
-        $payment_method = $_POST['payment_method'] ?? 'cash';
+        $cost                = $_POST['cost'] ?? '';
+        $payment_method      = $_POST['payment_method'] ?? 'cash';
+        $was_swapped         = isset($_POST['swap_locations']) ? 1 : 0; // ✅ FIX
 
         // Handle "Other" fields
         if ($original_pickup === 'other') {
@@ -191,7 +193,7 @@ function handleAddBooking()
         }
 
         $flight_number = $_POST['flight_number'] ?? '';
-        $description = $_POST['description'] ?? '';
+        $description   = $_POST['description'] ?? '';
 
         // Validate
         if (empty($contact_id))
@@ -216,7 +218,7 @@ function handleAddBooking()
         $end_time = $end->format('H:i:s');
 
         // Add new destination to list if requested
-        if ($original_destination === 'other' && isset($_POST['add_to_destinations'])) {
+        if (isset($_POST['add_to_destinations'])) {
             $newDestination = trim($_POST['other_original_destination'] ?? '');
             if (!empty($newDestination)) {
                 $check = $pdo->prepare("SELECT id FROM destinations WHERE name = ? LIMIT 1");
@@ -232,9 +234,9 @@ function handleAddBooking()
         $stmt = $pdo->prepare("
             INSERT INTO bookings (
                 contact_id, trip_date, start_time, end_time,
-                original_pickup, original_destination, cost, payment_method,
+                original_pickup, original_destination, was_swapped, cost, payment_method,
                 flight_number, description
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -244,6 +246,7 @@ function handleAddBooking()
             $end_time,
             $original_pickup,
             $original_destination,
+            $was_swapped,           // ✅ FIX
             $cost,
             $payment_method,
             $flight_number,
@@ -264,8 +267,9 @@ function handleAddBooking()
         $bookingData = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($bookingData) {
-            $bookingData['pickup_location'] = $original_pickup;
-            $bookingData['destination'] = $original_destination;
+            // Apply swap for calendar event location
+            $bookingData['pickup_location'] = $was_swapped ? $original_destination : $original_pickup;
+            $bookingData['destination']     = $was_swapped ? $original_pickup : $original_destination;
 
             $googleEventId = createBookingInGoogleCalendar($bookingData, $start, $end);
 
@@ -344,21 +348,21 @@ function handleUpdateBooking()
 
         // Full booking update
         if (isset($_REQUEST['booking_id'])) {
-            $booking_id = intval($_REQUEST['booking_id'] ?? 0);
-            $contact_id = intval($_REQUEST['contact_id'] ?? 0);
-            $trip_date = trim($_REQUEST['trip_date'] ?? '');
-            $start_time = trim($_REQUEST['start_time'] ?? '');
-            $duration = floatval($_REQUEST['duration'] ?? 1);
-            $pickup_location = trim($_REQUEST['original_pickup'] ?? '');
+            $booking_id           = intval($_REQUEST['booking_id'] ?? 0);
+            $contact_id           = intval($_REQUEST['contact_id'] ?? 0);
+            $trip_date            = trim($_REQUEST['trip_date'] ?? '');
+            $start_time           = trim($_REQUEST['start_time'] ?? '');
+            $duration             = floatval($_REQUEST['duration'] ?? 1);
+            $pickup_location      = trim($_REQUEST['original_pickup'] ?? '');
             $other_pickup_location = trim($_REQUEST['other_pickup_location'] ?? '');
-            $destination = trim($_REQUEST['original_destination'] ?? '');
-            $other_destination = trim($_REQUEST['other_destination'] ?? '');
-            $cost = trim($_REQUEST['cost'] ?? '');
-            $other_cost = trim($_REQUEST['other_cost'] ?? '');
-            $flight_number = trim($_REQUEST['flight_number'] ?? '');
-            $description_input = trim($_REQUEST['description'] ?? '');
-            $payment_method = trim($_REQUEST['payment_method'] ?? 'cash');
-            $swap_locations = isset($_REQUEST['swap_locations']);
+            $destination          = trim($_REQUEST['original_destination'] ?? '');
+            $other_destination    = trim($_REQUEST['other_destination'] ?? '');
+            $cost                 = trim($_REQUEST['cost'] ?? '');
+            $other_cost           = trim($_REQUEST['other_cost'] ?? '');
+            $flight_number        = trim($_REQUEST['flight_number'] ?? '');
+            $description_input    = trim($_REQUEST['description'] ?? '');
+            $payment_method       = trim($_REQUEST['payment_method'] ?? 'cash');
+            $swap_locations       = isset($_REQUEST['swap_locations']);
 
             // Handle "Other" fields
             if ($pickup_location === 'other') {
@@ -402,25 +406,8 @@ function handleUpdateBooking()
                 throw new Exception('Booking not found.');
             }
 
-            // Check for actual changes
-            $changed = (
-                $current['contact_id'] != $contact_id ||
-                $current['trip_date'] != $trip_date ||
-                $current['start_time'] != $start_time ||
-                $current['end_time'] != $end_time_formatted ||
-                $current['original_pickup'] != $original_pickup ||
-                $current['original_destination'] != $original_destination ||
-                $current['was_swapped'] != ($swap_locations ? 1 : 0) ||
-                $current['cost'] != $final_cost ||
-                $current['flight_number'] != $flight_number ||
-                $current['description'] != $description_input ||
-                $current['payment_method'] != $payment_method
-            );
-
-            // ✅ DON'T modify description - save as-is, no timestamp appended
             $description_to_save = $description_input;
 
-            // ✅ Update booking and set updated_at timestamp
             $sql = "UPDATE bookings SET 
                         contact_id = ?, trip_date = ?, start_time = ?, end_time = ?,
                         original_pickup = ?, original_destination = ?, was_swapped = ?,
@@ -458,12 +445,10 @@ function handleUpdateBooking()
             $bookingDetails['pickup_location'] = $pickup;
             $bookingDetails['destination'] = $destination;
 
-            // Update Google Calendar if linked
             if (!empty($bookingDetails['google_calendar_event_id'])) {
                 updateBookingInGoogleCalendar($bookingDetails, $start_datetime, $end_datetime);
             }
 
-            // ✅ Function will auto-detect if booking was updated
             $fullMessage = createWhatsAppMessage($bookingDetails);
 
             jsonResponse([
@@ -500,19 +485,16 @@ function handleDeleteBooking()
     }
 
     try {
-        // Fetch full booking (including Google event ID)
         $booking = getBookingById($pdo, $bookingId);
         if (!$booking) {
             jsonResponse(['success' => false, 'message' => "Booking not found or already deleted."], 404);
         }
 
-        // Delete from database
         $deleted = deleteBookingFromDb($pdo, $bookingId);
         if (!$deleted) {
             jsonResponse(['success' => false, 'message' => "Booking could not be deleted."], 404);
         }
 
-        // Delete from Google Calendar if linked
         $googleEventId = $booking['google_calendar_event_id'] ?? null;
         $calendarDeleted = false;
         if (!empty($googleEventId)) {
@@ -526,7 +508,6 @@ function handleDeleteBooking()
             'client' => $booking['client_name'] ?? null
         ]);
 
-        // Build success message
         $message = "Booking deleted from database.";
         if (!empty($googleEventId)) {
             $message .= $calendarDeleted
@@ -548,6 +529,32 @@ function handleDeleteBooking()
             'booking_id' => $bookingId
         ]);
         jsonResponse(['success' => false, 'message' => 'An unexpected error occurred.'], 500);
+    }
+}
+
+function handleUpdateGateCode()  // ✅ NEW
+{
+    global $pdo;
+
+    $id        = intval($_POST['id'] ?? 0);
+    $gate_code = trim($_POST['gate_code'] ?? '');
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid booking ID.'], 400);
+    }
+
+    try {
+        $stmt = $pdo->prepare("UPDATE bookings SET gate_code = ? WHERE id = ?");
+        $stmt->execute([$gate_code, $id]);
+
+        jsonResponse(['success' => true, 'message' => 'Gate code saved.']);
+
+    } catch (PDOException $e) {
+        logError('BOOKING', 'Failed to save gate code', [
+            'error' => $e->getMessage(),
+            'booking_id' => $id
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Failed to save gate code.'], 500);
     }
 }
 
@@ -585,10 +592,7 @@ function handleWeeklyBookings()
             ];
         }, $weeks);
 
-        jsonResponse([
-            'success' => true,
-            'data' => $formatted
-        ]);
+        jsonResponse(['success' => true, 'data' => $formatted]);
 
     } catch (PDOException $e) {
         logError('BOOKING_REPORT', 'Weekly report generation failed', [
@@ -629,10 +633,7 @@ function handleMonthlyBookings()
             ];
         }, $months);
 
-        jsonResponse([
-            'success' => true,
-            'data' => $formatted
-        ]);
+        jsonResponse(['success' => true, 'data' => $formatted]);
 
     } catch (PDOException $e) {
         logError('BOOKING_REPORT', 'Monthly report generation failed', [

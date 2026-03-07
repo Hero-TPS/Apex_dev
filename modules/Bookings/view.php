@@ -5,10 +5,7 @@ $page_title = 'Booking Details';
 $page_subtitle = 'View Booking';
 $show_breadcrumb = true;
 
-// ✅ Load config FIRST (defines BASE_URL)
 require_once __DIR__ . '/../../config.php';
-
-// ✅ NOW we can use BASE_URL in breadcrumb
 $breadcrumb = ' > <a href="' . BASE_URL . '/modules/Bookings/">Bookings</a> > Booking Details';
 
 include ROOT_DIR . '/includes/header.php';
@@ -51,7 +48,6 @@ if (isset($_GET['id'])) {
 
 <?php if ($booking): ?>
     <?php
-    // Determine date context
     $now = new DateTime('now', new DateTimeZone(TIME_ZONE));
     $tripDate = new DateTime($booking['trip_date']);
     $today = $now->format('Y-m-d');
@@ -125,8 +121,7 @@ if (isset($_GET['id'])) {
         <div class="detail-item">
             <strong>Created:</strong>
             <?php
-            $timezone = new DateTimeZone(TIME_ZONE);
-            $createdDate = new DateTime($booking['date_created'], new DateTimeZone('UTC'));
+            $createdDate = new DateTime($booking['date_created'], new DateTimeZone(TIME_ZONE));
             echo $createdDate->format('d/m/Y H:i');
             ?>
         </div>
@@ -134,14 +129,23 @@ if (isset($_GET['id'])) {
             <div class="detail-item">
                 <strong>Last Updated:</strong>
                 <?php
-                $updatedDate = new DateTime($booking['updated_at'], new DateTimeZone('UTC'));
+                $updatedDate = new DateTime($booking['updated_at'], new DateTimeZone(TIME_ZONE));
                 echo $updatedDate->format('d/m/Y H:i');
                 ?>
             </div>
         <?php endif; ?>
-        <div class="form-group">
-            <label for="gate_code">Gate code</label>
-            <textarea id="gate_code" name="gate_code"></textarea>
+
+        <!-- Gate Code -->
+        <div class="detail-item full-width">
+            <strong>Gate Code:</strong>
+            <div style="display: flex; gap: 8px; align-items: flex-start; margin-top: 4px;">
+                <textarea id="gate_code" name="gate_code" rows="2"
+                    style="flex: 1; resize: vertical;"><?= htmlspecialchars($booking['gate_code'] ?? '') ?></textarea>
+                <button id="saveGateCodeBtn" class="page-action-btn save" style="width: auto; white-space: nowrap;">
+                    💾 Save
+                </button>
+            </div>
+            <div id="gate-code-result" style="margin-top: 4px;"></div>
         </div>
     </div>
 
@@ -158,13 +162,12 @@ if (isset($_GET['id'])) {
     <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
         Edit Booking</a>
     <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
-    <a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=<?= (int) $booking['contact_id'] ?>" 
+    <a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=<?= (int) $booking['contact_id'] ?>"
         class="page-action-btn view-details-btn">📅 View All Client Bookings</a>
     <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= (int) $booking['contact_id'] ?>&contact_name=<?= urlencode($booking['client_name']) ?>"
         class="page-action-btn rebook"> ➕ Book again</a>
     <a href="<?= BASE_URL ?>/modules/Bookings/invoice.php?id=<?= (int) $booking['id'] ?>" target="_blank"
-        class="page-action-btn invoice">📄 View
-        Invoice</a>
+        class="page-action-btn invoice">📄 View Invoice</a>
 </div>
 
     <!-- Delete Confirmation Modal -->
@@ -201,21 +204,16 @@ if (isset($_GET['id'])) {
                 $.ajax({
                     type: 'POST',
                     url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
-                    data: {
-                        action: 'delete',
-                        id: bookingId
-                    },
+                    data: { action: 'delete', id: bookingId },
                     dataType: 'json',
                     success: function (response) {
                         if (response.success) {
-                            var notif = $('<div class="success-message">' + response.message + '</div>');
-                            $('#notification-area').html(notif);
+                            $('#notification-area').html('<div class="success-message">' + response.message + '</div>');
                             setTimeout(function () {
                                 window.location.href = '<?= BASE_URL ?>/modules/Bookings/';
                             }, 2000);
                         } else {
-                            var notif = $('<div class="error-message">' + response.message + '</div>');
-                            $('#notification-area').html(notif);
+                            $('#notification-area').html('<div class="error-message">' + response.message + '</div>');
                         }
                     },
                     error: function () {
@@ -245,20 +243,46 @@ if (isset($_GET['id'])) {
                     dataType: 'json',
                     success: function (res) {
                         if (res.success) {
-                            // Update button
                             if (newStatus === 'completed') {
                                 button.text('Undo Done').data('status', 'completed').removeClass('toggle').addClass('save');
-                            } else {
-                                button.text('Mark Done').data('status', 'confirmed').removeClass('save').addClass('toggle');
-                            }
-
-                            // ✅ Update status display
-                            if (newStatus === 'completed') {
                                 $('#status-display').html('<strong>Status:</strong> ✅ Completed');
                             } else {
+                                button.text('Mark Done').data('status', 'confirmed').removeClass('save').addClass('toggle');
                                 $('#status-display').html('<strong>Status:</strong> ⏳ Confirmed');
                             }
                         }
+                    }
+                });
+            });
+
+            // Gate code save
+            $('#saveGateCodeBtn').on('click', function () {
+                var btn = $(this);
+                var resultArea = $('#gate-code-result');
+                btn.prop('disabled', true).text('Saving...');
+
+                $.ajax({
+                    url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                    type: 'POST',
+                    data: {
+                        action: 'update_gate_code',
+                        id: bookingId,
+                        gate_code: $('#gate_code').val()
+                    },
+                    dataType: 'json',
+                    success: function (res) {
+                        if (res.success) {
+                            resultArea.html('<span class="success-message" style="font-size:0.85em;">✓ Saved</span>');
+                        } else {
+                            resultArea.html('<span class="error-message" style="font-size:0.85em;">✗ ' + res.message + '</span>');
+                        }
+                        setTimeout(function () { resultArea.html(''); }, 3000);
+                    },
+                    error: function () {
+                        resultArea.html('<span class="error-message" style="font-size:0.85em;">✗ Failed to save</span>');
+                    },
+                    complete: function () {
+                        btn.prop('disabled', false).text('💾 Save');
                     }
                 });
             });
