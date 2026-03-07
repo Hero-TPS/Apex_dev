@@ -139,7 +139,7 @@ See you tomorrow! 🚗
 ---
 
 ### Uber Module
-- [ ] Additional costs should be multiple, such as add another cost
+- [x] Additional costs should be multiple, such as add another cost
   - Mobile data to be moved from a separate field to additional cost
 
 ---

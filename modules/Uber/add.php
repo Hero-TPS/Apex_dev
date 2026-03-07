@@ -27,6 +27,9 @@ while ($row = $stmt->fetch()) {
     $dt->setTimezone(new DateTimeZone(TIME_ZONE));
     $existing_weeks_ymd[] = $dt->format('Y-m-d');
 }
+
+// Fetch cost reasons for dropdown
+$cost_reasons = fetchColumn($pdo, 'uber_cost_reasons', 'reason', 'reason ASC');
 ?>
 
 <div class="form-container">
@@ -58,30 +61,6 @@ while ($row = $stmt->fetch()) {
         </div>
 
         <div class="form-group">
-            <label for="mobile_data_cost">Mobile Data Cost (R)</label>
-            <input type="number" id="mobile_data_cost" name="mobile_data_cost" step="0.01" min="0" value="0" required>
-        </div>
-
-        <div class="form-group">
-            <label for="additional_cost">Additional Costs (R)</label>
-            <input type="number" id="additional_cost" name="additional_cost" step="0.01" min="0" value="0">
-            <small>Extra expenses like parking, tolls, car wash, etc.</small>
-        </div>
-
-        <div class="form-group">
-            <label for="cost_reason">Cost Reason</label>
-            <select id="cost_reason" name="cost_reason">
-                <option value="">Select reason (optional)</option>
-                <?php
-                $cost_reasons = fetchColumn($pdo, 'uber_cost_reasons', 'reason', 'reason ASC');
-                foreach ($cost_reasons as $reason):
-                    ?>
-                    <option value="<?= htmlspecialchars($reason) ?>"><?= htmlspecialchars($reason) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-
-        <div class="form-group">
             <label for="total_trips">Total Trips <span class="required">*</span></label>
             <input type="number" id="total_trips" name="total_trips" min="0" required>
         </div>
@@ -91,13 +70,54 @@ while ($row = $stmt->fetch()) {
             <input type="number" id="total_time_online" name="total_time_online" step="0.01" min="0" required>
         </div>
 
+        <div class="form-group">
+            <label>Additional Costs</label>
+            <div id="additional-costs-container">
+                <!-- Cost rows added dynamically -->
+            </div>
+            <button type="button" class="btn" id="addCostBtn" style="margin-top: 8px; width: auto;">+ Add Cost</button>
+        </div>
+
         <button type="submit" class="btn" id="submitBtn">💾 Save Income</button>
     </form>
     <div id="result"></div>
 </div>
 
 <script>
+    const costReasons = <?= json_encode($cost_reasons) ?>;
+
+    function buildReasonOptions(selected = '') {
+        let options = '<option value="">Select reason</option>';
+        costReasons.forEach(r => {
+            options += `<option value="${r}" ${r === selected ? 'selected' : ''}>${r}</option>`;
+        });
+        return options;
+    }
+
+    function addCostRow(reason = '', amount = '') {
+        const row = $(`
+            <div class="cost-row" style="display: flex; gap: 8px; margin-bottom: 6px; align-items: center;">
+                <select name="cost_reasons[]" style="flex: 2;">
+                    ${buildReasonOptions(reason)}
+                </select>
+                <input type="number" name="cost_amounts[]" step="0.01" min="0" placeholder="Amount (R)"
+                    value="${amount}" style="flex: 1;">
+                <button type="button" class="remove-cost-btn action-btn delete-btn" style="width: auto;">✕</button>
+            </div>
+        `);
+        $('#additional-costs-container').append(row);
+    }
+
     $(document).ready(function () {
+
+        $('#addCostBtn').on('click', function () {
+            addCostRow();
+        });
+
+        $(document).on('click', '.remove-cost-btn', function () {
+            $(this).closest('.cost-row').remove();
+        });
+
         $('#uberForm').on('submit', function (e) {
             e.preventDefault();
 
@@ -111,11 +131,10 @@ while ($row = $stmt->fetch()) {
                 week_monday: $('#week_monday').val(),
                 total_income: $('#total_income').val(),
                 cash_received: $('#cash_received').val(),
-                mobile_data_cost: $('#mobile_data_cost').val(),
-                additional_cost: $('#additional_cost').val() || 0,
-                cost_reason: $('#cost_reason').val(),
                 total_trips: $('#total_trips').val(),
-                total_time_online: $('#total_time_online').val()
+                total_time_online: $('#total_time_online').val(),
+                'cost_reasons[]': $('select[name="cost_reasons[]"]').map(function () { return $(this).val(); }).get(),
+                'cost_amounts[]': $('input[name="cost_amounts[]"]').map(function () { return $(this).val(); }).get()
             };
 
             $.ajax({
@@ -127,6 +146,7 @@ while ($row = $stmt->fetch()) {
                     if (response.success) {
                         result.html('<div class="success-message">✓ ' + response.message + '</div>');
                         $('#uberForm')[0].reset();
+                        $('#additional-costs-container').empty();
                         setTimeout(() => {
                             window.location.href = '<?= BASE_URL ?>/modules/Uber/';
                         }, 1500);
@@ -138,9 +158,7 @@ while ($row = $stmt->fetch()) {
                     let errorMsg = 'Failed to save Uber income';
                     try {
                         const response = JSON.parse(xhr.responseText);
-                        if (response.message) {
-                            errorMsg = response.message;
-                        }
+                        if (response.message) errorMsg = response.message;
                     } catch (e) {
                         errorMsg = xhr.responseText || 'Unknown error occurred';
                     }
