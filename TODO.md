@@ -23,7 +23,7 @@
 
 **Calculation:**
 ```
-Total Expenses = Fuel + Car Rental + Mobile Data + Additional Costs
+Total Expenses = Fuel + Car Rental + Additional Costs
 Net Profit = Total Income - Total Expenses
 ```
 
