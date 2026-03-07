@@ -111,6 +111,8 @@ See you tomorrow! 🚗
 - [x] Add link to booking view in Calendar event
 - [x] When updating a client name in booking edit, update the pickup address as well
   - If the current pickup is other, overwrite (reset) it to the new address
+- [ ] Swop destination does not work in add
+- [ ] Save Gate code in booking view. only have a button called update. No add or edit. Add field to table
 
 ---
 
