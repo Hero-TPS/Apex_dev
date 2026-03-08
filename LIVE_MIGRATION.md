@@ -8,7 +8,7 @@ Run in order. Check off each one after executing.
 ## Pending
 
 ### 1. System Variables Table Cleanup
-- [ ] Run on live DB
+- [x] Run on live DB
 
 ```sql
 -- Ensure name is unique (required for ON DUPLICATE KEY UPDATE)
@@ -22,7 +22,7 @@ ALTER TABLE system_variables DROP COLUMN type;
 ---
 
 ### 2. Uber Additional Costs — New Table & Migration
-- [ ] Run on live DB
+- [x] Run on live DB
 
 ```sql
 -- Create new uber_additional_costs table
@@ -56,7 +56,7 @@ ALTER TABLE uber_income
 ---
 
 ### 3. Bookings — Add gate_code Column
-- [ ] Run on live DB
+- [x] Run on live DB
 
 ```sql
 ALTER TABLE bookings ADD COLUMN gate_code VARCHAR(255) NULL DEFAULT NULL;
@@ -65,7 +65,7 @@ ALTER TABLE bookings ADD COLUMN gate_code VARCHAR(255) NULL DEFAULT NULL;
 ---
 
 ### 4. Bookings — Mark Past Overdue as Completed
-- [ ] Run on live DB
+- [x] Run on live DB
 
 ```sql
 UPDATE bookings

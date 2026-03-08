@@ -5,11 +5,36 @@
 
 ---
 
-## 📋 Backlog (Future Sessions)
+### Bookings Module Enhancements and Fixes
+- [ ] WhatsApp message history tracking (see detailed spec below)
+- [ ] Some clients wants to make a booking on a date, but do not have the time or details. I need ideas how to handle this vie calendar
 
-### High Priority
+---
 
-#### Financials: Uber Additional Costs Integration
+### Clients Module Enhancements and Fixes
+- [ ] Show payment method in booking lists
+- [ ] Create list of clients with prior bookings:
+  - Export names and phone numbers
+  - Discuss WhatsApp Business group creation
+  - Ideas for direct WhatsApp communication with existing clients
+- [ ] WhatsApp Business integration for bulk messaging
+
+---
+
+### Fuel Module Enhancements and Fixes
+
+---
+
+### Uber Module Enhancements and Fixes
+
+---
+
+### Driver Module Enhancements and Fixes
+
+---
+
+### Financials: 
+#### Uber Additional Costs Integration
 - [ ] Update `financials/helper.php` to include `additional_cost` in expense calculations
 - [ ] Modify `getWeeklyMetrics()` function
 - [ ] Modify `getMonthlyMetrics()` function
@@ -97,34 +122,6 @@ See you tomorrow! 🚗
 - `modules/Bookings/view.php` - Add button and modal
 - `modules/Clients/index.php` - Add button to each client row
 - `assets/css/styles.css` - Modal styles (reuse existing modal styles)
-
----
-
-### Bookings Module Enhancements
-- [ ] WhatsApp message history tracking (see detailed spec below)
-- [ ] Some clients wants to make a booking on a date, but do not have the time or details. I need ideas how to handle this vie calendar
-
----
-
-### Clients Module Enhancements
-- [ ] Show payment method in booking lists
-- [ ] Create list of clients with prior bookings:
-  - Export names and phone numbers
-  - Discuss WhatsApp Business group creation
-  - Ideas for direct WhatsApp communication with existing clients
-- [ ] WhatsApp Business integration for bulk messaging
-
----
-
-### Fuel Module
-
----
-
-### Uber Module
-
----
-
-### Driver Module
 
 ---
 
