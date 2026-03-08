@@ -256,7 +256,7 @@ function handleWeekly()
                 SUM(trip_km)                                                AS total_km,
                 SUM(total_cost)                                             AS total_cost
             FROM fuel_logs
-            WHERE FROM_UNIXTIME(log_timestamp) >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 MONTH), '%Y-%m-01')
+            WHERE FROM_UNIXTIME(log_timestamp) >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 3 MONTH), '%Y-%m-01')
               AND FROM_UNIXTIME(log_timestamp) <  DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-01')
             GROUP BY year, week_number
             ORDER BY year ASC, week_number ASC
@@ -298,7 +298,7 @@ function handleMonthly()
                 SUM(trip_km)                            AS total_km,
                 SUM(total_cost)                         AS total_cost
             FROM fuel_logs
-            WHERE FROM_UNIXTIME(log_timestamp) >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 MONTH), '%Y-%m-01')
+            WHERE FROM_UNIXTIME(log_timestamp) >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 3 MONTH), '%Y-%m-01')
               AND FROM_UNIXTIME(log_timestamp) <  DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-01')
             GROUP BY year, month_number, month_name
             ORDER BY year ASC, month_number ASC
