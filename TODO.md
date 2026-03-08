@@ -7,8 +7,9 @@
 
 ### Bookings Module Enhancements and Fixes
 - [ ] WhatsApp message history tracking (see detailed spec below)
-- [ ] Some clients wants to make a booking on a date, but do not have the time or details. I need ideas how to handle this vie calendar
-
+- [ ] Some clients wants to make a booking on a date, but do not have the time or details. I need ideas how to handle this viea calendar
+  - idea prebooking and reminders
+- [ ] Start thinkng of how to deal with additional drivers, mark bookings as such and commission taken
 ---
 
 ### Clients Module Enhancements and Fixes
