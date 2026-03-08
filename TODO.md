@@ -131,7 +131,7 @@ See you tomorrow! 🚗
 ---
 
 ### Fuel Module
-- [ ] Show payment method in lists
+- [x] Show payment method in lists
 - [ ] Consider showing weekly and monthly as with booking reports
 - [ ] Add total cost and kms for weekly and monthly
 - [ ] Keep existing report as is
