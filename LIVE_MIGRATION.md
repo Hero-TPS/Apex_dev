@@ -55,12 +55,24 @@ ALTER TABLE uber_income
 
 ---
 
-### 2. Save gate code
+### 3. Bookings — Add gate_code Column
 - [ ] Run on live DB
 
 ```sql
--- Add gate_code
 ALTER TABLE bookings ADD COLUMN gate_code VARCHAR(255) NULL DEFAULT NULL;
+```
+
+---
+
+### 4. Bookings — Mark Past Overdue as Completed
+- [ ] Run on live DB
+
+```sql
+UPDATE bookings
+SET status = 'completed', updated_at = NOW()
+WHERE trip_date < CURDATE() AND status != 'completed';
+```
+
 ---
 
 ## ✅ Completed
