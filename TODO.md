@@ -102,6 +102,7 @@ See you tomorrow! 🚗
 
 ### Bookings Module Enhancements
 - [ ] WhatsApp message history tracking (see detailed spec below)
+- [ ] Some clients wants to make a booking on a date, but do not have the time or details. I need ideas how to handle this vie calendar
 
 ---
 
@@ -120,6 +121,10 @@ See you tomorrow! 🚗
 ---
 
 ### Uber Module
+
+---
+
+### Driver Module
 
 ---
 
@@ -147,7 +152,7 @@ See you tomorrow! 🚗
 - [x] **Maintenance cleanup:**
   - Mark past overdue bookings as done
   - Add manual cleanup tool in Maintenance section
-- [ ] **Code cleanup:**
+- [x] **Code cleanup:**
   - Identify and remove unused functions
   - Document remaining functions
   - Consider creating functions.md reference

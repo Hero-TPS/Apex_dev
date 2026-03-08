@@ -213,3 +213,18 @@ function e(?string $string): string
 {
     return htmlspecialchars($string ?? '', ENT_QUOTES, 'UTF-8');
 }
+
+/**
+ * Send a JSON response and exit.
+ * Used by: all API files site-wide.
+ *
+ * @param mixed $data        Array to encode as JSON
+ * @param int   $statusCode  HTTP status code (default 200)
+ */
+function jsonResponse($data, int $statusCode = 200): void
+{
+    http_response_code($statusCode);
+    header('Content-Type: application/json');
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    exit;
+}
