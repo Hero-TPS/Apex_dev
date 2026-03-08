@@ -165,6 +165,7 @@ try {
                 $messages[] = "Uber Cost Reasons: added {$addedCount}, removed {$deletedCount}";
             }
         }
+
         $response['success'] = true;
         $response['message'] = empty($messages)
             ? 'No changes made'
@@ -183,14 +184,13 @@ try {
 
         $updatedCount = 0;
         foreach ($variables as $name => $value) {
-            // Only allow variables defined in code
             if (!array_key_exists($name, SYSTEM_VARIABLES))
                 continue;
 
             $stmt = $pdo->prepare("
-                    INSERT INTO system_variables (name, value) VALUES (?, ?)
-                    ON DUPLICATE KEY UPDATE value = VALUES(value)
-                ");
+                INSERT INTO system_variables (name, value) VALUES (?, ?)
+                ON DUPLICATE KEY UPDATE value = VALUES(value)
+            ");
             $stmt->execute([$name, $value]);
             $updatedCount++;
         }
@@ -201,13 +201,35 @@ try {
         logInfo('MAINTENANCE', 'System variables updated', [
             'variables' => array_keys($variables)
         ]);
+
+    } elseif ($action === 'mark_overdue_complete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        // ✅ NEW: Mark all past non-completed bookings as completed
+        $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
+
+        $stmt = $pdo->prepare("
+            UPDATE bookings
+            SET status = 'completed', updated_at = NOW()
+            WHERE trip_date < ? AND status != 'completed'
+        ");
+        $stmt->execute([$today]);
+        $count = $stmt->rowCount();
+
+        $response['success'] = true;
+        $response['message'] = $count > 0
+            ? "✅ Marked {$count} overdue booking" . ($count !== 1 ? 's' : '') . " as completed."
+            : "ℹ️ No overdue bookings found.";
+
+        logInfo('MAINTENANCE', 'Overdue bookings marked as completed', [
+            'count' => $count
+        ]);
+
     } else {
         $response['message'] = 'Unsupported action or method';
     }
 
 } catch (Exception $e) {
     logError('MAINTENANCE', 'Maintenance operation failed', [
-        'error' => $e->getMessage(),
+        'error'  => $e->getMessage(),
         'action' => $action
     ]);
     $response = ['success' => false, 'message' => $e->getMessage()];

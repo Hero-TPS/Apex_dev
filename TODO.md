@@ -1,6 +1,6 @@
 # HPTS-XAMPP Development TODO
 
-**Last Updated:** 2026-03-06
+**Last Updated:** 2026-03-08
 **Timezone:** Africa/Johannesburg (UTC+2 / SAST)
 
 ---
@@ -8,11 +8,6 @@
 ## 📋 Backlog (Future Sessions)
 
 ### High Priority
-
-#### Fix Missing `getSystemVariable()` Function
-- [x] Currently hardcoded values in financials
-- [x] Check Maintenance module for proper implementation
-- [x] Update `financials/helper.php` to use system variables properly
 
 #### Financials: Uber Additional Costs Integration
 - [ ] Update `financials/helper.php` to include `additional_cost` in expense calculations
@@ -106,22 +101,12 @@ See you tomorrow! 🚗
 ---
 
 ### Bookings Module Enhancements
-- [x] Reduce logging verbosity (tone down on logging every action)
 - [ ] WhatsApp message history tracking (see detailed spec below)
-- [x] Add link to booking view in Calendar event
-- [x] When updating a client name in booking edit, update the pickup address as well
-  - If the current pickup is other, overwrite (reset) it to the new address
-- [x] Swop destination does not work in add
-- [x] Save Gate code in booking view. only have a button called update. No add or edit. Add field to table
 
 ---
 
 ### Clients Module Enhancements
 - [ ] Show payment method in booking lists
-- [x] Improve client search functionality:
-  - Change to "includes" search (not exact match)
-  - Expand search to include phone and address fields
-  - Consider fuzzy matching
 - [ ] Create list of clients with prior bookings:
   - Export names and phone numbers
   - Discuss WhatsApp Business group creation
@@ -131,16 +116,10 @@ See you tomorrow! 🚗
 ---
 
 ### Fuel Module
-- [x] Show payment method in lists
-- [x] Consider showing weekly and monthly as with booking reports
-- [x] Add total cost and kms for weekly and monthly
-- [x] Keep existing report as is
 
 ---
 
 ### Uber Module
-- [x] Additional costs should be multiple, such as add another cost
-  - Mobile data to be moved from a separate field to additional cost
 
 ---
 
@@ -165,7 +144,7 @@ See you tomorrow! 🚗
 - [ ] **Breadcrumbs:** Check consistency across all pages
   - Consider creating helper function for breadcrumb generation
   - OR implement proper main menu navigation
-- [ ] **Maintenance cleanup:**
+- [x] **Maintenance cleanup:**
   - Mark past overdue bookings as done
   - Add manual cleanup tool in Maintenance section
 - [ ] **Code cleanup:**
@@ -176,7 +155,51 @@ See you tomorrow! 🚗
 ---
 
 
-## ✅ Recently Completed (2026-03-05)
+## ✅ Recently Completed (2026-03-08)
+
+### High Priority
+
+#### Fix Missing `getSystemVariable()` Function
+- [x] Currently hardcoded values in financials
+- [x] Check Maintenance module for proper implementation
+- [x] Update `financials/helper.php` to use system variables properly
+
+---
+
+### Bookings Module Enhancements
+- [x] Reduce logging verbosity (tone down on logging every action)
+- [x] Add link to booking view in Calendar event
+- [x] When updating a client name in booking edit, update the pickup address as well
+  - If the current pickup is other, overwrite (reset) it to the new address
+- [x] Swop destination does not work in add
+- [x] Save Gate code in booking view. only have a button called update. No add or edit. Add field to table
+
+---
+
+### Clients Module Enhancements
+- [x] Improve client search functionality:
+  - Change to "includes" search (not exact match)
+  - Expand search to include phone and address fields
+  - Consider fuzzy matching
+
+---
+
+### Fuel Module
+- [x] Show payment method in lists
+- [x] Consider showing weekly and monthly as with booking reports
+- [x] Add total cost and kms for weekly and monthly
+- [x] Keep existing report as is
+- [x] Show last 10 logs with "Show All" button
+
+---
+
+### Uber Module
+- [x] Additional costs should be multiple, such as add another cost
+  - Mobile data to be moved from a separate field to additional cost
+
+---
+
+## ✅ Previously Completed (2026-03-05)
 
 ### Timezone Audit — Resolved
 **Standard adopted:** SAST (UTC+2) throughout — DB stores SAST, PHP displays SAST, no UTC conversion.

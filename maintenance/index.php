@@ -20,6 +20,15 @@ $destinations_text = implode("\n", $current_destinations);
 $costs_text = implode("\n", $current_costs);
 $durations_text = implode("\n", $current_durations);
 $uber_reasons_text = implode("\n", $uber_reasons);
+
+// Count overdue bookings for the cleanup preview
+$today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
+$overdueStmt = $pdo->prepare("
+    SELECT COUNT(*) FROM bookings
+    WHERE trip_date < ? AND status != 'completed'
+");
+$overdueStmt->execute([$today]);
+$overdueCount = (int) $overdueStmt->fetchColumn();
 ?>
 
 <!-- Maintenance Form -->
@@ -89,6 +98,28 @@ $uber_reasons_text = implode("\n", $uber_reasons);
         </button>
     </form>
     <div id="variablesResult"></div>
+</div>
+
+<!-- Cleanup Tools -->
+<div class="form-container">
+    <h2>🧹 Cleanup Tools</h2>
+
+    <div class="form-group">
+        <label>Mark Past Overdue Bookings as Completed</label>
+        <p style="margin: 0.25rem 0 0.75rem;">
+            <?php if ($overdueCount > 0): ?>
+                <strong><?= $overdueCount ?></strong> past booking<?= $overdueCount !== 1 ? 's are' : ' is' ?> still marked as <em>confirmed</em> but the trip date has passed.
+            <?php else: ?>
+                ✅ No overdue bookings found. Everything is up to date.
+            <?php endif; ?>
+        </p>
+        <?php if ($overdueCount > 0): ?>
+            <button id="markOverdueBtn" class="page-action-btn toggle">
+                ✅ Mark <?= $overdueCount ?> Overdue Booking<?= $overdueCount !== 1 ? 's' : '' ?> as Done
+            </button>
+        <?php endif; ?>
+    </div>
+    <div id="cleanupResult"></div>
 </div>
 
 <script>
@@ -184,7 +215,6 @@ $uber_reasons_text = implode("\n", $uber_reasons);
                     if (response.success) {
                         result.html('<div class="success-message">' + response.message + '</div>');
                         $('#addVariableForm')[0].reset();
-                        // Reload page after short delay so new var appears in the edit list
                         setTimeout(function () { location.reload(); }, 1500);
                     } else {
                         result.html('<div class="error-message">' + response.message + '</div>');
@@ -194,6 +224,36 @@ $uber_reasons_text = implode("\n", $uber_reasons);
                     btn.prop('disabled', false).text('➕ Add Variable');
                     result.html('<div class="error-message">❌ Failed to add variable.</div>');
                     console.error('Error:', error, xhr.responseText);
+                }
+            });
+        });
+
+        // Handle mark overdue as done
+        $('#markOverdueBtn').on('click', function () {
+            if (!confirm('Mark all past unconfirmed bookings as completed? This cannot be undone.')) return;
+
+            var btn = $(this);
+            var result = $('#cleanupResult');
+
+            btn.prop('disabled', true).text('Working...');
+            result.html('');
+
+            $.ajax({
+                type: 'POST',
+                url: '<?= BASE_URL ?>/maintenance/api/index.php?action=mark_overdue_complete',
+                dataType: 'json',
+                success: function (response) {
+                    if (response.success) {
+                        result.html('<div class="success-message">' + response.message + '</div>');
+                        btn.fadeOut(); // Button no longer needed
+                    } else {
+                        btn.prop('disabled', false).text('✅ Mark Overdue Bookings as Done');
+                        result.html('<div class="error-message">' + response.message + '</div>');
+                    }
+                },
+                error: function () {
+                    btn.prop('disabled', false).text('✅ Mark Overdue Bookings as Done');
+                    result.html('<div class="error-message">❌ Request failed.</div>');
                 }
             });
         });
