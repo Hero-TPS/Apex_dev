@@ -19,8 +19,7 @@ include ROOT_DIR . '/includes/header.php';
                 <th>Total Trips</th>
                 <th>Time Online</th>
                 <th>Card Income (R)</th>
-                <th>Mobile Data (R)</th>
-                <th>Additional Costs (R)</th> <!-- ✅ NEW -->
+                <th>Additional Costs (R)</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -46,8 +45,15 @@ include ROOT_DIR . '/includes/header.php';
                         body.empty();
                         response.data.forEach(log => {
                             const cardIncome = (parseFloat(log.total_income) - parseFloat(log.cash_received)).toFixed(2);
-                            const additionalCost = parseFloat(log.additional_cost || 0).toFixed(2); // ✅ NEW
-                            const costReasonText = log.cost_reason ? ` (${log.cost_reason})` : ''; // ✅ NEW
+
+                            // Build additional costs display from the array
+                            let additionalCostsHtml = '—';
+                            if (log.additional_costs && log.additional_costs.length > 0) {
+                                const parts = log.additional_costs.map(c =>
+                                    `${c.reason}: R ${parseFloat(c.amount).toFixed(2)}`
+                                );
+                                additionalCostsHtml = parts.join('<br>');
+                            }
 
                             body.append(`
                                 <tr data-log-id="${log.id}">
@@ -57,8 +63,7 @@ include ROOT_DIR . '/includes/header.php';
                                     <td data-label="Trips">${log.total_trips}</td>
                                     <td data-label="Time Online">${parseFloat(log.total_time_online).toFixed(1)} hrs</td>
                                     <td data-label="Card Income">R ${cardIncome}</td>
-                                    <td data-label="Mobile Data">R ${parseFloat(log.mobile_data_cost).toFixed(2)}</td>
-                                    <td data-label="Additional Costs">R ${additionalCost}${costReasonText}</td>
+                                    <td data-label="Additional Costs">${additionalCostsHtml}</td>
                                     <td data-label="Actions">
                                         <div class="actions-container">
                                             <a href="<?= BASE_URL ?>/modules/Uber/edit.php?id=${log.id}" class="action-btn edit-btn">✏️ Edit</a>
@@ -69,11 +74,11 @@ include ROOT_DIR . '/includes/header.php';
                             `);
                         });
                     } else {
-                        body.html('<tr><td colspan="9" class="error-message">No Uber income records found.</td></tr>');
+                        body.html('<tr><td colspan="8" class="error-message">No Uber income records found.</td></tr>');
                     }
                 },
                 error: function () {
-                    $('#uber-report-body').html('<tr><td colspan="9" class="error-message">Failed to load Uber income reports.</td></tr>');
+                    $('#uber-report-body').html('<tr><td colspan="8" class="error-message">Failed to load Uber income reports.</td></tr>');
                 }
             });
         }
