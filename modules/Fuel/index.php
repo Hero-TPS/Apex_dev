@@ -9,7 +9,41 @@ include ROOT_DIR . '/includes/header.php';
 ?>
 
 <div class="content">
-    <h2>⛽ Fuel Log Report</h2>
+
+    <!-- ===== WEEKLY SUMMARY ===== -->
+    <h2>📅 Weekly Fuel Summary</h2>
+    <table class="bookings-table">
+        <thead>
+            <tr>
+                <th>Week</th>
+                <th>Fill-ups</th>
+                <th>Total km</th>
+                <th>Total Cost (R)</th>
+            </tr>
+        </thead>
+        <tbody id="fuel-weekly-body">
+            <tr><td colspan="4" style="text-align:center;">Loading...</td></tr>
+        </tbody>
+    </table>
+
+    <!-- ===== MONTHLY SUMMARY ===== -->
+    <h2 style="margin-top: 2rem;">🗓️ Monthly Fuel Summary</h2>
+    <table class="bookings-table">
+        <thead>
+            <tr>
+                <th>Month</th>
+                <th>Fill-ups</th>
+                <th>Total km</th>
+                <th>Total Cost (R)</th>
+            </tr>
+        </thead>
+        <tbody id="fuel-monthly-body">
+            <tr><td colspan="4" style="text-align:center;">Loading...</td></tr>
+        </tbody>
+    </table>
+
+    <!-- ===== FULL LOG (existing, unchanged) ===== -->
+    <h2 style="margin-top: 2rem;">⛽ Fuel Log Report</h2>
     <table class="bookings-table">
         <thead>
             <tr>
@@ -26,17 +60,74 @@ include ROOT_DIR . '/includes/header.php';
             <tr><td colspan="7" style="text-align:center;">Loading...</td></tr>
         </tbody>
     </table>
+
 </div>
 
 <script>
-$(document).ready(function() {
+$(document).ready(function () {
+
+    // ===== Weekly =====
+    $.ajax({
+        url: '<?= BASE_URL ?>/modules/Fuel/api/index.php?action=weekly',
+        dataType: 'json',
+        success: function (response) {
+            const body = $('#fuel-weekly-body');
+            if (response.success && response.data.length > 0) {
+                body.empty();
+                response.data.forEach(row => {
+                    body.append(`
+                        <tr>
+                            <td data-label="Week">${row.week_label}</td>
+                            <td data-label="Fill-ups">${row.fill_count}</td>
+                            <td data-label="Total km">${parseFloat(row.total_km).toFixed(1)}</td>
+                            <td data-label="Total Cost">R ${parseFloat(row.total_cost).toFixed(2)}</td>
+                        </tr>
+                    `);
+                });
+            } else {
+                body.html('<tr><td colspan="4" class="error-message">No data found.</td></tr>');
+            }
+        },
+        error: function () {
+            $('#fuel-weekly-body').html('<tr><td colspan="4" class="error-message">Failed to load weekly summary.</td></tr>');
+        }
+    });
+
+    // ===== Monthly =====
+    $.ajax({
+        url: '<?= BASE_URL ?>/modules/Fuel/api/index.php?action=monthly',
+        dataType: 'json',
+        success: function (response) {
+            const body = $('#fuel-monthly-body');
+            if (response.success && response.data.length > 0) {
+                body.empty();
+                response.data.forEach(row => {
+                    body.append(`
+                        <tr>
+                            <td data-label="Month">${row.month_label}</td>
+                            <td data-label="Fill-ups">${row.fill_count}</td>
+                            <td data-label="Total km">${parseFloat(row.total_km).toFixed(1)}</td>
+                            <td data-label="Total Cost">R ${parseFloat(row.total_cost).toFixed(2)}</td>
+                        </tr>
+                    `);
+                });
+            } else {
+                body.html('<tr><td colspan="4" class="error-message">No data found.</td></tr>');
+            }
+        },
+        error: function () {
+            $('#fuel-monthly-body').html('<tr><td colspan="4" class="error-message">Failed to load monthly summary.</td></tr>');
+        }
+    });
+
+    // ===== Full log (existing, unchanged) =====
     loadFuelLogs();
 
     function loadFuelLogs() {
         $.ajax({
             url: '<?= BASE_URL ?>/modules/Fuel/api/index.php?action=get_all',
             dataType: 'json',
-            success: function(response) {
+            success: function (response) {
                 const body = $('#fuel-report-body');
                 if (response.success && response.data.length > 0) {
                     body.empty();
@@ -63,25 +154,25 @@ $(document).ready(function() {
                     body.html('<tr><td colspan="7" class="error-message">No fuel logs found.</td></tr>');
                 }
             },
-            error: function() {
+            error: function () {
                 $('#fuel-report-body').html('<tr><td colspan="7" class="error-message">Failed to load fuel logs.</td></tr>');
             }
         });
     }
 
     // Delete handler
-    $(document).on('click', '.delete-btn', function() {
+    $(document).on('click', '.delete-btn', function () {
         if (!confirm('Delete this fuel log?')) return;
         const id = $(this).data('id');
-        
+
         $.ajax({
             url: '<?= BASE_URL ?>/modules/Fuel/api/index.php',
             type: 'POST',
             data: { action: 'delete', id: id },
             dataType: 'json',
-            success: function(res) {
+            success: function (res) {
                 if (res.success) {
-                    $('tr[data-log-id="' + id + '"]').fadeOut(function() {
+                    $('tr[data-log-id="' + id + '"]').fadeOut(function () {
                         $(this).remove();
                         if ($('#fuel-report-body tr').length === 0) {
                             loadFuelLogs();
@@ -92,7 +183,7 @@ $(document).ready(function() {
                     showNotification('✗ ' + res.message, 'error');
                 }
             },
-            error: function() {
+            error: function () {
                 showNotification('❌ Failed to delete fuel log', 'error');
             }
         });
@@ -102,10 +193,8 @@ $(document).ready(function() {
         const className = type === 'success' ? 'success-message' : 'error-message';
         const notification = $('<div class="' + className + '">' + message + '</div>');
         $('.content').prepend(notification);
-        setTimeout(function() {
-            notification.fadeOut(function() {
-                $(this).remove();
-            });
+        setTimeout(function () {
+            notification.fadeOut(function () { $(this).remove(); });
         }, 5000);
     }
 });
