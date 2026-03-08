@@ -35,6 +35,7 @@
 
 ### Financials: 
 #### Uber Additional Costs Integration
+- [ ] core/Time.php is used in exactly one place: financials/helper.php, which includes it and calls. Deleted. Note for when we work on financials
 - [ ] Update `financials/helper.php` to include `additional_cost` in expense calculations
 - [ ] Modify `getWeeklyMetrics()` function
 - [ ] Modify `getMonthlyMetrics()` function
