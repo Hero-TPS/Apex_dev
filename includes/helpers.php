@@ -124,6 +124,29 @@ function buildWhatsAppUrl(string $phone, string $message): string
 }
 
 /**
+ * Build the WhatsApp evening confirmation message for tomorrow's booking.
+ * Used by: modules/Bookings/api/index.php (tomorrows_bookings, mark_confirmed)
+ *
+ * @param array $bookingDetails  Must contain: client_name, trip_date, start_time,
+ *                               pickup_location, destination
+ */
+function createEveningConfirmationMessage(array $bookingDetails): string
+{
+    $timezone = new DateTimeZone(TIME_ZONE);
+    $start    = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time'], $timezone);
+    $forDate  = $start->format('d/m/y');
+    $forTime  = $start->format('H:i');
+
+    return "Good evening " . $bookingDetails['client_name'] . "! 👋\n\n" .
+           "Just confirming your booking for tomorrow:\n\n" .
+           "📅 Date: " . $forDate . "\n" .
+           "🕐 Pickup Time: " . $forTime . "\n" .
+           "📍 From: " . $bookingDetails['pickup_location'] . "\n" .
+           "🎯 To: " . $bookingDetails['destination'] . "\n\n" .
+           "See you tomorrow! 🚗";
+}
+
+/**
  * Build the WhatsApp booking confirmation message body.
  * Detects new vs. updated booking from the presence of updated_at.
  * Used by: modules/Bookings/view.php

@@ -1200,3 +1200,20 @@ body:not(.home-page) .floating-menu-toggle {
   margin-top: 15px;
   flex-wrap: wrap;
 }
+/* ========================
+   Custom WhatsApp Modal
+======================== */
+.modal-content.whatsapp-modal {
+  max-width: 480px;
+  text-align: left;
+}
+
+.whatsapp-btn {
+  background-color: #25d366;
+  color: white;
+}
+
+.whatsapp-btn:hover {
+  background-color: #128c7e;
+  color: white;
+}
