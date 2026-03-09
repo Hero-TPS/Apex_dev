@@ -158,7 +158,9 @@ if (isset($_GET['id'])) {
         </button>
     <?php endif; ?>
     <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
-        target="_blank" class="page-action-btn whatsapp">💬 Send Confirmation</a>
+        target="_blank" class="page-action-btn whatsapp"
+        onclick="logWhatsAppSend(<?= (int)$booking['id'] ?>, <?= (int)$booking['contact_id'] ?>, <?= json_encode(createWhatsAppMessage($booking)) ?>)">💬 Send Confirmation</a>
+    <button class="page-action-btn whatsapp" onclick="openCustomWhatsApp(<?= json_encode($booking['client_name']) ?>, <?= json_encode($booking['client_phone']) ?>, 'Hi ' + <?= json_encode($booking['client_name']) ?> + ',\n')">💬 Send Message</button>
     <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
         Edit Booking</a>
     <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
@@ -183,6 +185,32 @@ if (isset($_GET['id'])) {
     </div>
 
     <div id="notification-area"></div>
+
+    <!-- Custom WhatsApp Modal -->
+    <div id="customWhatsAppModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content" style="max-width:480px; text-align:left;">
+            <h3>💬 Send Message to <span id="waModalClientName"></span></h3>
+            <p style="color:#666; font-size:0.9em;">📱 <span id="waModalPhone"></span></p>
+            <div class="form-group" style="margin-top:15px;">
+                <label for="waModalMessage">Message:</label>
+                <textarea id="waModalMessage" rows="6" placeholder="Type your message here..." style="width:100%; box-sizing:border-box;"></textarea>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:15px;">
+                <button id="waModalCancelBtn" class="page-action-btn delete" style="min-width:80px;">Cancel</button>
+                <a id="waModalSendBtn" href="#" target="_blank" class="page-action-btn whatsapp" style="min-width:180px;" onclick="return onWaModalSend()">Send via WhatsApp 💬</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message History -->
+    <div class="menu-section" style="margin-top:20px;">
+        <h3 class="menu-toggle" data-target="msg-history-section" style="cursor:pointer;">📨 Message History</h3>
+        <div id="msg-history-section" style="display:none; padding:10px 0;">
+            <div id="msg-history-loading" style="color:#666;">Loading...</div>
+            <div id="msg-history-list"></div>
+            <button id="logCurrentSendBtn" class="page-action-btn whatsapp" style="margin-top:10px;">📋 Log Current Send</button>
+        </div>
+    </div>
 
     <script>
         $(document).ready(function () {
@@ -286,7 +314,132 @@ if (isset($_GET['id'])) {
                     }
                 });
             });
+
+            // Message history section toggle
+            $('.menu-toggle[data-target="msg-history-section"]').on('click', function () {
+                var section = $('#msg-history-section');
+                if (section.is(':hidden')) {
+                    section.slideDown(200);
+                    loadMessageHistory();
+                } else {
+                    section.slideUp(200);
+                }
+            });
+
+            function loadMessageHistory() {
+                $('#msg-history-loading').show().text('Loading...');
+                $('#msg-history-list').empty();
+                $.ajax({
+                    type: 'GET',
+                    url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                    data: { action: 'get_whatsapp_log', booking_id: bookingId },
+                    dataType: 'json',
+                    success: function (res) {
+                        $('#msg-history-loading').hide();
+                        if (!res.success || res.logs.length === 0) {
+                            $('#msg-history-list').html('<p style="color:#999; font-style:italic;">No messages logged yet.</p>');
+                            return;
+                        }
+                        var html = '';
+                        $.each(res.logs, function (i, log) {
+                            var preview = log.message_content.substring(0, 80) + (log.message_content.length > 80 ? '…' : '');
+                            html += '<div style="border-bottom:1px solid #eee; padding:8px 0;">' +
+                                    '<span style="color:#888; font-size:0.85em;">' + log.sent_at + '</span> ' +
+                                    '<span class="badge-type" style="background:#3498db; color:#fff; border-radius:3px; padding:1px 6px; font-size:0.8em;">' + escapeHtml(log.message_type) + '</span>' +
+                                    '<div style="margin-top:4px; font-size:0.9em;">' + escapeHtml(preview) + '</div>' +
+                                    (log.message_content.length > 80
+                                        ? '<a href="#" class="view-full-msg" style="font-size:0.8em;" data-full="' + escapeHtmlAttr(log.message_content) + '">View Full ▼</a>'
+                                        : '') +
+                                    '</div>';
+                        });
+                        $('#msg-history-list').html(html);
+                    },
+                    error: function () {
+                        $('#msg-history-loading').hide();
+                        $('#msg-history-list').html('<p style="color:#e74c3c;">Failed to load message history.</p>');
+                    }
+                });
+            }
+
+            // View full message toggle
+            $('#msg-history-list').on('click', '.view-full-msg', function (e) {
+                e.preventDefault();
+                var fullText = $(this).data('full');
+                if ($(this).text().indexOf('▼') > -1) {
+                    $(this).closest('div').find('div').text(fullText);
+                    $(this).text('Show Less ▲');
+                } else {
+                    var preview = fullText.substring(0, 80) + (fullText.length > 80 ? '…' : '');
+                    $(this).closest('div').find('div').text(preview);
+                    $(this).text('View Full ▼');
+                }
+            });
+
+            // Log current send button
+            $('#logCurrentSendBtn').on('click', function () {
+                logWhatsAppSend(<?= (int)$booking['id'] ?>, <?= (int)$booking['contact_id'] ?>, <?= json_encode(createWhatsAppMessage($booking)) ?>);
+                setTimeout(loadMessageHistory, 500);
+            });
+
+            // Custom WhatsApp modal – cancel button
+            $('#waModalCancelBtn').on('click', function () {
+                $('#customWhatsAppModal').hide();
+            });
+
+            // Escape key closes modal
+            $(document).on('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    $('#customWhatsAppModal').hide();
+                }
+            });
         });
+
+        function openCustomWhatsApp(name, phone, prefill) {
+            $('#waModalClientName').text(name);
+            $('#waModalPhone').text(phone);
+            $('#waModalMessage').val(prefill);
+            var cleanPhone = phone.replace(/\D/g, '');
+            if (cleanPhone.charAt(0) === '0') { cleanPhone = '27' + cleanPhone.substring(1); }
+            $('#waModalSendBtn').attr('href', 'https://wa.me/' + cleanPhone + '?text=');
+            $('#customWhatsAppModal').css('display', 'flex');
+            $('#waModalMessage').focus();
+        }
+
+        function onWaModalSend() {
+            var msg = $('#waModalMessage').val();
+            var currentHref = $('#waModalSendBtn').attr('href');
+            // Strip any previous text param and rebuild
+            var base = currentHref.split('?text=')[0];
+            $('#waModalSendBtn').attr('href', base + '?text=' + encodeURIComponent(msg));
+            return true;
+        }
+
+        function logWhatsAppSend(bookingId, contactId, messageContent) {
+            $.ajax({
+                type: 'POST',
+                url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                data: {
+                    action: 'log_whatsapp',
+                    booking_id: bookingId,
+                    contact_id: contactId,
+                    message_type: 'confirmation',
+                    message_content: messageContent,
+                    sent_by: 'user'
+                },
+                dataType: 'json'
+                // fire-and-forget; no callbacks needed
+            });
+        }
+
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        function escapeHtmlAttr(text) {
+            return (text || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
     </script>
 
 <?php else: ?>

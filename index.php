@@ -10,6 +10,15 @@ include ROOT_DIR . '/includes/header.php';
 <div class="dashboard-container">
     <h2 class="dashboard-title">Main Menu</h2>
 
+    <!-- Tomorrow's Confirmations -->
+    <div class="menu-section">
+        <h3 class="menu-toggle" data-target="confirmations-section">📲 Tomorrow's Confirmations <span id="confirmations-badge"></span></h3>
+        <div id="confirmations-section" class="menu-content" style="display:none;">
+            <div id="confirmations-loading" style="text-align:center; padding:10px; color:#666;">Loading...</div>
+            <div id="confirmations-list"></div>
+        </div>
+    </div>
+
     <!-- Bookings -->
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="bookings-section">📅 Bookings</h3>
@@ -97,7 +106,94 @@ include ROOT_DIR . '/includes/header.php';
             // Toggle current section
             $(this).next().slideToggle(200);
         });
+
+        // ========== Tomorrow's Confirmations Widget ==========
+        function loadTomorrowsConfirmations() {
+            $.ajax({
+                type: 'GET',
+                url: '<?= BASE_URL ?>/modules/Bookings/api/index.php?action=tomorrows_bookings',
+                dataType: 'json',
+                success: function (res) {
+                    $('#confirmations-loading').hide();
+                    if (!res.success) {
+                        $('#confirmations-list').html('<p style="color:#e74c3c;">Failed to load confirmations.</p>');
+                        return;
+                    }
+
+                    var pending = res.bookings.filter(function (b) { return !b.already_confirmed; });
+                    var badge   = pending.length > 0 ? ' (' + pending.length + ')' : '';
+                    $('#confirmations-badge').text(badge);
+
+                    if (res.bookings.length === 0 || pending.length === 0) {
+                        $('#confirmations-list').html('<p style="color:#27ae60; padding:8px 0;">✅ All confirmed for tomorrow!</p>');
+                        return;
+                    }
+
+                    var html = '';
+                    $.each(pending, function (i, b) {
+                        var time    = b.start_time ? b.start_time.substr(0, 5) : '';
+                        var cost    = 'R' + parseFloat(b.cost).toFixed(2);
+                        html += '<div class="confirmation-row" id="conf-row-' + b.id + '" style="' +
+                                'background:#fff; border:1px solid #e0e0e0; border-radius:6px; ' +
+                                'padding:10px 12px; margin-bottom:8px;">' +
+                                '<strong>' + escapeHtml(b.client_name) + '</strong>' +
+                                ' &mdash; ' + time +
+                                ' &mdash; ' + escapeHtml(b.pickup_location) + ' → ' + escapeHtml(b.destination) +
+                                ' &mdash; ' + cost +
+                                '<br>' +
+                                '<a href="' + b.whatsapp_url + '" target="_blank" ' +
+                                '   class="page-action-btn whatsapp" style="margin-top:6px; display:inline-block;" ' +
+                                '   onclick="markConfirmed(' + b.id + ', ' + JSON.stringify(b.message_content) + ')">💬 Confirm &amp; Send</a>' +
+                                '</div>';
+                    });
+                    $('#confirmations-list').html(html);
+                },
+                error: function () {
+                    $('#confirmations-loading').hide();
+                    $('#confirmations-list').html('<p style="color:#e74c3c;">Could not load tomorrow\'s bookings.</p>');
+                }
+            });
+        }
+
+        loadTomorrowsConfirmations();
+
+        // Open the confirmations section by default if there are pending items
+        $('#confirmations-section').slideDown(200);
     });
+
+    function markConfirmed(bookingId, messageContent) {
+        $.ajax({
+            type: 'POST',
+            url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+            data: { action: 'mark_confirmed', id: bookingId, message_content: messageContent },
+            dataType: 'json',
+            success: function (res) {
+                if (res.success) {
+                    $('#conf-row-' + bookingId).fadeOut(400, function () {
+                        $(this).remove();
+                        var remaining = $('.confirmation-row').length;
+                        if (remaining === 0) {
+                            $('#confirmations-list').html('<p style="color:#27ae60; padding:8px 0;">✅ All confirmed for tomorrow!</p>');
+                            $('#confirmations-badge').text('');
+                        } else {
+                            var current = parseInt($('#confirmations-badge').text().replace(/\D/g, '')) || 0;
+                            if (current > 1) {
+                                $('#confirmations-badge').text(' (' + (current - 1) + ')');
+                            } else {
+                                $('#confirmations-badge').text('');
+                            }
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
 </script>
 
 <?php include 'includes/footer.php'; ?>

@@ -149,4 +149,90 @@ try {
     </table>
 <?php endif; ?>
 
+<!-- Message History -->
+<div class="menu-section" style="margin-top:20px;">
+    <h3 class="menu-toggle" data-target="client-msg-history-section" style="cursor:pointer;">📨 Message History</h3>
+    <div id="client-msg-history-section" style="display:none; padding:10px 0;">
+        <div id="client-msg-history-loading" style="color:#666;">Loading...</div>
+        <div id="client-msg-history-list"></div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        var clientId = <?= (int) $client_id ?>;
+
+        // Message history section toggle
+        $('.menu-toggle[data-target="client-msg-history-section"]').on('click', function () {
+            var section = $('#client-msg-history-section');
+            if (section.is(':hidden')) {
+                section.slideDown(200);
+                loadClientMessageHistory();
+            } else {
+                section.slideUp(200);
+            }
+        });
+
+        function loadClientMessageHistory() {
+            $('#client-msg-history-loading').show().text('Loading...');
+            $('#client-msg-history-list').empty();
+            $.ajax({
+                type: 'GET',
+                url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                data: { action: 'get_whatsapp_log', contact_id: clientId },
+                dataType: 'json',
+                success: function (res) {
+                    $('#client-msg-history-loading').hide();
+                    if (!res.success || res.logs.length === 0) {
+                        $('#client-msg-history-list').html('<p style="color:#999; font-style:italic;">No messages logged yet.</p>');
+                        return;
+                    }
+                    var html = '';
+                    $.each(res.logs, function (i, log) {
+                        var preview = log.message_content.substring(0, 80) + (log.message_content.length > 80 ? '…' : '');
+                        html += '<div style="border-bottom:1px solid #eee; padding:8px 0;">' +
+                                '<span style="color:#888; font-size:0.85em;">' + escapeHtml(log.sent_at) + '</span> ' +
+                                '<span style="background:#3498db; color:#fff; border-radius:3px; padding:1px 6px; font-size:0.8em;">' + escapeHtml(log.message_type) + '</span>' +
+                                (log.booking_id ? ' <span style="font-size:0.8em; color:#666;">Booking #' + log.booking_id + '</span>' : '') +
+                                '<div style="margin-top:4px; font-size:0.9em;">' + escapeHtml(preview) + '</div>' +
+                                (log.message_content.length > 80
+                                    ? '<a href="#" class="view-full-msg" style="font-size:0.8em;" data-full="' + escapeHtmlAttr(log.message_content) + '">View Full ▼</a>'
+                                    : '') +
+                                '</div>';
+                    });
+                    $('#client-msg-history-list').html(html);
+                },
+                error: function () {
+                    $('#client-msg-history-loading').hide();
+                    $('#client-msg-history-list').html('<p style="color:#e74c3c;">Failed to load message history.</p>');
+                }
+            });
+        }
+
+        // View full message toggle
+        $('#client-msg-history-list').on('click', '.view-full-msg', function (e) {
+            e.preventDefault();
+            var fullText = $(this).data('full');
+            if ($(this).text().indexOf('▼') > -1) {
+                $(this).closest('div').find('div').text(fullText);
+                $(this).text('Show Less ▲');
+            } else {
+                var preview = fullText.substring(0, 80) + (fullText.length > 80 ? '…' : '');
+                $(this).closest('div').find('div').text(preview);
+                $(this).text('View Full ▼');
+            }
+        });
+
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        function escapeHtmlAttr(text) {
+            return (text || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+    });
+</script>
+
 <?php include ROOT_DIR . '/includes/footer.php'; ?>

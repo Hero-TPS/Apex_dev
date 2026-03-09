@@ -43,6 +43,18 @@ try {
         case 'update_gate_code':         // ✅ NEW
             handleUpdateGateCode();
             break;
+        case 'tomorrows_bookings':
+            handleTomorrowsBookings();
+            break;
+        case 'mark_confirmed':
+            handleMarkConfirmed();
+            break;
+        case 'log_whatsapp':
+            handleLogWhatsApp();
+            break;
+        case 'get_whatsapp_log':
+            handleGetWhatsAppLog();
+            break;
         case 'weekly_bookings':
             handleWeeklyBookings();
             break;
@@ -639,6 +651,217 @@ function handleMonthlyBookings()
         logError('BOOKING_REPORT', 'Monthly report generation failed', [
             'error' => $e->getMessage()
         ]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+// ========== FEATURE 1: TOMORROW'S BOOKINGS ==========
+
+function handleTomorrowsBookings()
+{
+    global $pdo;
+
+    // Ensure last_confirmed_at column exists (safe to run repeatedly)
+    try {
+        $pdo->exec("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS last_confirmed_at DATETIME NULL DEFAULT NULL");
+    } catch (PDOException $e) {
+        // Column may already exist; ignore
+    }
+
+    try {
+        $sql = "
+            SELECT b.id, b.trip_date, b.start_time, b.original_pickup, b.original_destination,
+                   b.was_swapped, b.cost, b.last_confirmed_at,
+                   c.name AS client_name, c.phone AS client_phone
+            FROM bookings b
+            JOIN contacts c ON b.contact_id = c.id
+            WHERE b.trip_date = DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+              AND b.status != 'completed'
+            ORDER BY b.start_time ASC
+        ";
+        $stmt = $pdo->query($sql);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $tomorrow = (new DateTime('tomorrow', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
+
+        $bookings = [];
+        foreach ($rows as $row) {
+            $row['pickup_location'] = $row['was_swapped'] ? $row['original_destination'] : $row['original_pickup'];
+            $row['destination']     = $row['was_swapped'] ? $row['original_pickup']       : $row['original_destination'];
+
+            $message = createEveningConfirmationMessage($row);
+            $row['whatsapp_url']      = buildWhatsAppUrl($row['client_phone'], $message);
+            $row['message_content']   = $message;
+            $row['already_confirmed'] = (
+                !empty($row['last_confirmed_at']) &&
+                substr($row['last_confirmed_at'], 0, 10) === $tomorrow
+            );
+            $bookings[] = $row;
+        }
+
+        jsonResponse(['success' => true, 'bookings' => $bookings]);
+
+    } catch (PDOException $e) {
+        logError('BOOKING_API', 'Failed to fetch tomorrow\'s bookings', ['error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
+function handleMarkConfirmed()
+{
+    global $pdo;
+
+    $id      = intval($_POST['id'] ?? 0);
+    $message = trim($_POST['message_content'] ?? '');
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid booking ID.'], 400);
+    }
+
+    try {
+        $stmt = $pdo->prepare("UPDATE bookings SET last_confirmed_at = NOW() WHERE id = ?");
+        $stmt->execute([$id]);
+
+        // Fetch contact_id for the log entry
+        $contactStmt = $pdo->prepare("SELECT contact_id FROM bookings WHERE id = ?");
+        $contactStmt->execute([$id]);
+        $contactId = $contactStmt->fetchColumn() ?: null;
+
+        // Log the confirmation
+        if ($message !== '') {
+            $logStmt = $pdo->prepare("
+                INSERT INTO whatsapp_log (booking_id, contact_id, message_type, message_content, sent_by)
+                VALUES (?, ?, 'evening_confirmation', ?, 'user')
+            ");
+            $logStmt->execute([$id, $contactId, $message]);
+        }
+
+        logInfo('BOOKING_API', 'Booking marked as confirmed', ['booking_id' => $id]);
+        jsonResponse(['success' => true]);
+
+    } catch (PDOException $e) {
+        logError('BOOKING_API', 'Failed to mark booking confirmed', [
+            'error'      => $e->getMessage(),
+            'booking_id' => $id
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
+// ========== FEATURE 3: WHATSAPP LOG ==========
+
+function handleLogWhatsApp()
+{
+    global $pdo;
+
+    $bookingId   = !empty($_POST['booking_id'])  ? intval($_POST['booking_id'])  : null;
+    $contactId   = !empty($_POST['contact_id'])  ? intval($_POST['contact_id'])  : null;
+    $messageType = trim($_POST['message_type']   ?? 'custom');
+    $messageContent = trim($_POST['message_content'] ?? '');
+    $sentBy      = trim($_POST['sent_by']        ?? 'user');
+
+    if ($messageContent === '') {
+        jsonResponse(['success' => false, 'message' => 'Message content is required.'], 400);
+    }
+
+    // Ensure the table exists
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS whatsapp_log (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                booking_id INT NULL,
+                contact_id INT NULL,
+                message_type VARCHAR(50) NOT NULL DEFAULT 'custom',
+                message_content TEXT NOT NULL,
+                sent_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                sent_by VARCHAR(100) NOT NULL DEFAULT 'system',
+                FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL,
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL,
+                INDEX idx_booking_id (booking_id),
+                INDEX idx_contact_id (contact_id),
+                INDEX idx_sent_at (sent_at)
+            )
+        ");
+    } catch (PDOException $e) {
+        // Table may already exist; ignore
+    }
+
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO whatsapp_log (booking_id, contact_id, message_type, message_content, sent_by)
+            VALUES (?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([$bookingId, $contactId, $messageType, $messageContent, $sentBy]);
+
+        logInfo('BOOKING_API', 'WhatsApp message logged', [
+            'booking_id'   => $bookingId,
+            'contact_id'   => $contactId,
+            'message_type' => $messageType
+        ]);
+        jsonResponse(['success' => true]);
+
+    } catch (PDOException $e) {
+        logError('BOOKING_API', 'Failed to log WhatsApp message', ['error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
+function handleGetWhatsAppLog()
+{
+    global $pdo;
+
+    $bookingId = !empty($_GET['booking_id']) ? intval($_GET['booking_id']) : null;
+    $contactId = !empty($_GET['contact_id']) ? intval($_GET['contact_id']) : null;
+
+    if (!$bookingId && !$contactId) {
+        jsonResponse(['success' => false, 'message' => 'booking_id or contact_id required.'], 400);
+    }
+
+    // Ensure table exists before querying
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS whatsapp_log (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                booking_id INT NULL,
+                contact_id INT NULL,
+                message_type VARCHAR(50) NOT NULL DEFAULT 'custom',
+                message_content TEXT NOT NULL,
+                sent_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                sent_by VARCHAR(100) NOT NULL DEFAULT 'system',
+                FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL,
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL,
+                INDEX idx_booking_id (booking_id),
+                INDEX idx_contact_id (contact_id),
+                INDEX idx_sent_at (sent_at)
+            )
+        ");
+    } catch (PDOException $e) {
+        // Table may already exist; ignore
+    }
+
+    try {
+        if ($bookingId) {
+            $stmt = $pdo->prepare("
+                SELECT * FROM whatsapp_log
+                WHERE booking_id = ?
+                ORDER BY sent_at DESC
+                LIMIT 50
+            ");
+            $stmt->execute([$bookingId]);
+        } else {
+            $stmt = $pdo->prepare("
+                SELECT * FROM whatsapp_log
+                WHERE contact_id = ?
+                ORDER BY sent_at DESC
+                LIMIT 50
+            ");
+            $stmt->execute([$contactId]);
+        }
+
+        $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        jsonResponse(['success' => true, 'logs' => $logs]);
+
+    } catch (PDOException $e) {
+        logError('BOOKING_API', 'Failed to fetch WhatsApp log', ['error' => $e->getMessage()]);
         jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
     }
 }
