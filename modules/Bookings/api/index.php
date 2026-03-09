@@ -656,16 +656,44 @@ function handleMonthlyBookings()
 }
 // ========== FEATURE 1: TOMORROW'S BOOKINGS ==========
 
+/**
+ * Ensure the whatsapp-related schema additions exist.
+ * Safe to call on every request; uses IF NOT EXISTS guards.
+ */
+function ensureWhatsAppSchema(PDO $pdo): void
+{
+    try {
+        $pdo->exec("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS last_confirmed_at DATETIME NULL DEFAULT NULL");
+    } catch (PDOException $e) {
+        // Column already exists or DB does not support IF NOT EXISTS — ignore
+    }
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS whatsapp_log (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                booking_id INT NULL,
+                contact_id INT NULL,
+                message_type VARCHAR(50) NOT NULL DEFAULT 'custom',
+                message_content TEXT NOT NULL,
+                sent_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                sent_by VARCHAR(100) NOT NULL DEFAULT 'system',
+                FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL,
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL,
+                INDEX idx_booking_id (booking_id),
+                INDEX idx_contact_id (contact_id),
+                INDEX idx_sent_at (sent_at)
+            )
+        ");
+    } catch (PDOException $e) {
+        // Table already exists — ignore
+    }
+}
+
 function handleTomorrowsBookings()
 {
     global $pdo;
 
-    // Ensure last_confirmed_at column exists (safe to run repeatedly)
-    try {
-        $pdo->exec("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS last_confirmed_at DATETIME NULL DEFAULT NULL");
-    } catch (PDOException $e) {
-        // Column may already exist; ignore
-    }
+    ensureWhatsAppSchema($pdo);
 
     try {
         $sql = "
@@ -763,27 +791,7 @@ function handleLogWhatsApp()
         jsonResponse(['success' => false, 'message' => 'Message content is required.'], 400);
     }
 
-    // Ensure the table exists
-    try {
-        $pdo->exec("
-            CREATE TABLE IF NOT EXISTS whatsapp_log (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                booking_id INT NULL,
-                contact_id INT NULL,
-                message_type VARCHAR(50) NOT NULL DEFAULT 'custom',
-                message_content TEXT NOT NULL,
-                sent_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                sent_by VARCHAR(100) NOT NULL DEFAULT 'system',
-                FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL,
-                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL,
-                INDEX idx_booking_id (booking_id),
-                INDEX idx_contact_id (contact_id),
-                INDEX idx_sent_at (sent_at)
-            )
-        ");
-    } catch (PDOException $e) {
-        // Table may already exist; ignore
-    }
+    ensureWhatsAppSchema($pdo);
 
     try {
         $stmt = $pdo->prepare("
@@ -816,27 +824,7 @@ function handleGetWhatsAppLog()
         jsonResponse(['success' => false, 'message' => 'booking_id or contact_id required.'], 400);
     }
 
-    // Ensure table exists before querying
-    try {
-        $pdo->exec("
-            CREATE TABLE IF NOT EXISTS whatsapp_log (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                booking_id INT NULL,
-                contact_id INT NULL,
-                message_type VARCHAR(50) NOT NULL DEFAULT 'custom',
-                message_content TEXT NOT NULL,
-                sent_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                sent_by VARCHAR(100) NOT NULL DEFAULT 'system',
-                FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL,
-                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL,
-                INDEX idx_booking_id (booking_id),
-                INDEX idx_contact_id (contact_id),
-                INDEX idx_sent_at (sent_at)
-            )
-        ");
-    } catch (PDOException $e) {
-        // Table may already exist; ignore
-    }
+    ensureWhatsAppSchema($pdo);
 
     try {
         if ($bookingId) {

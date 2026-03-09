@@ -160,7 +160,7 @@ if (isset($_GET['id'])) {
     <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
         target="_blank" class="page-action-btn whatsapp"
         onclick="logWhatsAppSend(<?= (int)$booking['id'] ?>, <?= (int)$booking['contact_id'] ?>, <?= json_encode(createWhatsAppMessage($booking)) ?>)">💬 Send Confirmation</a>
-    <button class="page-action-btn whatsapp" onclick="openCustomWhatsApp(<?= json_encode($booking['client_name']) ?>, <?= json_encode($booking['client_phone']) ?>, 'Hi ' + <?= json_encode($booking['client_name']) ?> + ',\n')">💬 Send Message</button>
+    <button class="page-action-btn whatsapp" onclick="openCustomWhatsApp(<?= json_encode($booking['client_name']) ?>, <?= json_encode($booking['client_phone']) ?>, <?= json_encode('Hi ' . $booking['client_name'] . ",\n") ?>)">💬 Send Message</button>
     <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
         Edit Booking</a>
     <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
@@ -344,9 +344,9 @@ if (isset($_GET['id'])) {
                         $.each(res.logs, function (i, log) {
                             var preview = log.message_content.substring(0, 80) + (log.message_content.length > 80 ? '…' : '');
                             html += '<div style="border-bottom:1px solid #eee; padding:8px 0;">' +
-                                    '<span style="color:#888; font-size:0.85em;">' + log.sent_at + '</span> ' +
+                                    '<span style="color:#888; font-size:0.85em;">' + escapeHtml(log.sent_at) + '</span> ' +
                                     '<span class="badge-type" style="background:#3498db; color:#fff; border-radius:3px; padding:1px 6px; font-size:0.8em;">' + escapeHtml(log.message_type) + '</span>' +
-                                    '<div style="margin-top:4px; font-size:0.9em;">' + escapeHtml(preview) + '</div>' +
+                                    '<div class="msg-preview" style="margin-top:4px; font-size:0.9em;">' + escapeHtml(preview) + '</div>' +
                                     (log.message_content.length > 80
                                         ? '<a href="#" class="view-full-msg" style="font-size:0.8em;" data-full="' + escapeHtmlAttr(log.message_content) + '">View Full ▼</a>'
                                         : '') +
@@ -365,12 +365,13 @@ if (isset($_GET['id'])) {
             $('#msg-history-list').on('click', '.view-full-msg', function (e) {
                 e.preventDefault();
                 var fullText = $(this).data('full');
+                var previewEl = $(this).prev('.msg-preview');
                 if ($(this).text().indexOf('▼') > -1) {
-                    $(this).closest('div').find('div').text(fullText);
+                    previewEl.text(fullText);
                     $(this).text('Show Less ▲');
                 } else {
                     var preview = fullText.substring(0, 80) + (fullText.length > 80 ? '…' : '');
-                    $(this).closest('div').find('div').text(preview);
+                    previewEl.text(preview);
                     $(this).text('View Full ▼');
                 }
             });

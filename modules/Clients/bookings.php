@@ -193,8 +193,8 @@ try {
                         html += '<div style="border-bottom:1px solid #eee; padding:8px 0;">' +
                                 '<span style="color:#888; font-size:0.85em;">' + escapeHtml(log.sent_at) + '</span> ' +
                                 '<span style="background:#3498db; color:#fff; border-radius:3px; padding:1px 6px; font-size:0.8em;">' + escapeHtml(log.message_type) + '</span>' +
-                                (log.booking_id ? ' <span style="font-size:0.8em; color:#666;">Booking #' + log.booking_id + '</span>' : '') +
-                                '<div style="margin-top:4px; font-size:0.9em;">' + escapeHtml(preview) + '</div>' +
+                                (log.booking_id ? ' <span style="font-size:0.8em; color:#666;">Booking #' + parseInt(log.booking_id) + '</span>' : '') +
+                                '<div class="msg-preview" style="margin-top:4px; font-size:0.9em;">' + escapeHtml(preview) + '</div>' +
                                 (log.message_content.length > 80
                                     ? '<a href="#" class="view-full-msg" style="font-size:0.8em;" data-full="' + escapeHtmlAttr(log.message_content) + '">View Full ▼</a>'
                                     : '') +
@@ -213,12 +213,13 @@ try {
         $('#client-msg-history-list').on('click', '.view-full-msg', function (e) {
             e.preventDefault();
             var fullText = $(this).data('full');
+            var previewEl = $(this).prev('.msg-preview');
             if ($(this).text().indexOf('▼') > -1) {
-                $(this).closest('div').find('div').text(fullText);
+                previewEl.text(fullText);
                 $(this).text('Show Less ▲');
             } else {
                 var preview = fullText.substring(0, 80) + (fullText.length > 80 ? '…' : '');
-                $(this).closest('div').find('div').text(preview);
+                previewEl.text(preview);
                 $(this).text('View Full ▼');
             }
         });

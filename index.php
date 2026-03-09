@@ -135,15 +135,18 @@ include ROOT_DIR . '/includes/header.php';
                         var cost    = 'R' + parseFloat(b.cost).toFixed(2);
                         html += '<div class="confirmation-row" id="conf-row-' + b.id + '" style="' +
                                 'background:#fff; border:1px solid #e0e0e0; border-radius:6px; ' +
-                                'padding:10px 12px; margin-bottom:8px;">' +
+                                'padding:10px 12px; margin-bottom:8px;" ' +
+                                'data-booking-id="' + b.id + '" ' +
+                                'data-wa-url="' + escapeHtmlAttr(b.whatsapp_url) + '" ' +
+                                'data-message="' + escapeHtmlAttr(b.message_content) + '">' +
                                 '<strong>' + escapeHtml(b.client_name) + '</strong>' +
-                                ' &mdash; ' + time +
+                                ' &mdash; ' + escapeHtml(time) +
                                 ' &mdash; ' + escapeHtml(b.pickup_location) + ' → ' + escapeHtml(b.destination) +
-                                ' &mdash; ' + cost +
+                                ' &mdash; ' + escapeHtml(cost) +
                                 '<br>' +
-                                '<a href="' + b.whatsapp_url + '" target="_blank" ' +
-                                '   class="page-action-btn whatsapp" style="margin-top:6px; display:inline-block;" ' +
-                                '   onclick="markConfirmed(' + b.id + ', ' + JSON.stringify(b.message_content) + ')">💬 Confirm &amp; Send</a>' +
+                                '<a href="#" target="_blank" ' +
+                                '   class="page-action-btn whatsapp confirm-send-btn" style="margin-top:6px; display:inline-block;">' +
+                                '💬 Confirm &amp; Send</a>' +
                                 '</div>';
                     });
                     $('#confirmations-list').html(html);
@@ -159,6 +162,17 @@ include ROOT_DIR . '/includes/header.php';
 
         // Open the confirmations section by default if there are pending items
         $('#confirmations-section').slideDown(200);
+
+        // Delegated click for Confirm & Send buttons (avoids inline onclick with message content)
+        $('#confirmations-list').on('click', '.confirm-send-btn', function (e) {
+            e.preventDefault();
+            var row     = $(this).closest('.confirmation-row');
+            var id      = row.data('booking-id');
+            var waUrl   = row.data('wa-url');
+            var message = row.data('message');
+            window.open(waUrl, '_blank');
+            markConfirmed(id, message);
+        });
     });
 
     function markConfirmed(bookingId, messageContent) {
@@ -193,6 +207,10 @@ include ROOT_DIR . '/includes/header.php';
         var div = document.createElement('div');
         div.textContent = text || '';
         return div.innerHTML;
+    }
+
+    function escapeHtmlAttr(text) {
+        return (text || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 </script>
 
