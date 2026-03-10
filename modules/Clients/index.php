@@ -133,7 +133,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 '<div class="actions-container">' +
                                 '<a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=' + contact.id + '" class="action-btn view-details-btn">View Bookings</a>' +
                                 '<a href="<?= BASE_URL ?>/modules/Clients/edit.php?id=' + contact.id + '" class="action-btn edit-btn">Edit</a>' +
-                                '<button class="action-btn whatsapp-btn" onclick="openCustomWhatsApp(\'' + escapeJs(contact.name) + '\', \'' + escapeJs(contact.phone || \'\') + '\', \'Hi \' + \'' + escapeJs(contact.name) + '\' + \',\\n\')">Send Msg</button>' +
+                                '<button class="action-btn whatsapp-btn" onclick="openCustomWhatsApp(\'' + escapeJs(contact.name) + '\', \'' + escapeJs(contact.phone || '') + '\', \'' + escapeJs('Hi ' + contact.name + ',\n') + '\')">Send Msg</button>' +
                                 '<button class="action-btn delete-btn" data-id="' + contact.id + '">Delete</button>' +
                                 '</div>' +
                                 '</td>' +

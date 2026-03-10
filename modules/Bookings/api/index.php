@@ -749,6 +749,11 @@ function handleMarkConfirmed()
         $stmt = $pdo->prepare("UPDATE bookings SET last_confirmed_at = NOW() WHERE id = ?");
         $stmt->execute([$id]);
 
+        if ($stmt->rowCount() === 0) {
+            jsonResponse(['success' => false, 'message' => 'Booking not found or could not be updated.'], 404);
+            return;
+        }
+
         // Fetch contact_id for the log entry
         $contactStmt = $pdo->prepare("SELECT contact_id FROM bookings WHERE id = ?");
         $contactStmt->execute([$id]);
