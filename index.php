@@ -198,7 +198,14 @@ include ROOT_DIR . '/includes/header.php';
                             }
                         }
                     });
+                } else {
+                    $('#conf-row-' + bookingId).find('.confirm-send-btn')
+                        .after('<span style="color:#e74c3c; font-size:0.85em; margin-left:8px;">⚠️ Could not save. Run the DB migration.</span>');
                 }
+            },
+            error: function () {
+                $('#conf-row-' + bookingId).find('.confirm-send-btn')
+                    .after('<span style="color:#e74c3c; font-size:0.85em; margin-left:8px;">⚠️ Request failed.</span>');
             }
         });
     }
