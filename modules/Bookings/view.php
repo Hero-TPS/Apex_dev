@@ -149,28 +149,31 @@ if (isset($_GET['id'])) {
         </div>
     </div>
 
-<!-- Action Buttons -->
-<div class="invoice-actions">
-    <?php if ($showStatusButton): ?>
-        <button id="toggleStatusBtn" class="page-action-btn <?= $booking['status'] === 'completed' ? 'save' : 'toggle' ?>"
-            data-status="<?= htmlspecialchars($booking['status']) ?>">
-            <?= $booking['status'] === 'completed' ? 'Undo Done' : 'Mark Done' ?>
-        </button>
-    <?php endif; ?>
-    <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
-        target="_blank" class="page-action-btn whatsapp"
-        onclick="logWhatsAppSend(<?= (int)$booking['id'] ?>, <?= (int)$booking['contact_id'] ?>, <?= json_encode(createWhatsAppMessage($booking)) ?>)">💬 Send Confirmation</a>
-    <button class="page-action-btn whatsapp" onclick="openCustomWhatsApp(<?= json_encode($booking['client_name']) ?>, <?= json_encode($booking['client_phone']) ?>, <?= json_encode('Hi ' . $booking['client_name'] . ',') ?>)">💬 Send Message</button>
-    <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
-        Edit Booking</a>
-    <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
-    <a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=<?= (int) $booking['contact_id'] ?>"
-        class="page-action-btn view-details-btn">📅 View All Client Bookings</a>
-    <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= (int) $booking['contact_id'] ?>&contact_name=<?= urlencode($booking['client_name']) ?>"
-        class="page-action-btn rebook"> ➕ Book again</a>
-    <a href="<?= BASE_URL ?>/modules/Bookings/invoice.php?id=<?= (int) $booking['id'] ?>" target="_blank"
-        class="page-action-btn invoice">📄 View Invoice</a>
-</div>
+    <!-- Action Buttons -->
+    <div class="invoice-actions">
+        <?php if ($showStatusButton): ?>
+            <button id="toggleStatusBtn" class="page-action-btn <?= $booking['status'] === 'completed' ? 'save' : 'toggle' ?>"
+                data-status="<?= htmlspecialchars($booking['status']) ?>">
+                <?= $booking['status'] === 'completed' ? 'Undo Done' : 'Mark Done' ?>
+            </button>
+        <?php endif; ?>
+        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
+            target="_blank" class="page-action-btn whatsapp"
+            onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= json_encode(createWhatsAppMessage($booking)) ?>)">💬
+            Send Confirmation</a>
+        <button class="page-action-btn whatsapp" id="sendMessageBtn"
+            data-name="<?= htmlspecialchars($booking['client_name'], ENT_QUOTES) ?>"
+            data-phone="<?= htmlspecialchars($booking['client_phone'], ENT_QUOTES) ?>">💬 Send Message</button> <a
+            href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
+            Edit Booking</a>
+        <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
+        <a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=<?= (int) $booking['contact_id'] ?>"
+            class="page-action-btn view-details-btn">📅 View All Client Bookings</a>
+        <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= (int) $booking['contact_id'] ?>&contact_name=<?= urlencode($booking['client_name']) ?>"
+            class="page-action-btn rebook"> ➕ Book again</a>
+        <a href="<?= BASE_URL ?>/modules/Bookings/invoice.php?id=<?= (int) $booking['id'] ?>" target="_blank"
+            class="page-action-btn invoice">📄 View Invoice</a>
+    </div>
 
     <!-- Delete Confirmation Modal -->
     <div id="deleteConfirmationModal" class="modal-overlay" style="display: none;">
@@ -193,11 +196,13 @@ if (isset($_GET['id'])) {
             <p style="color:#666; font-size:0.9em;">📱 <span id="waModalPhone"></span></p>
             <div class="form-group" style="margin-top:15px;">
                 <label for="waModalMessage">Message:</label>
-                <textarea id="waModalMessage" rows="6" placeholder="Type your message here..." style="width:100%; box-sizing:border-box;"></textarea>
+                <textarea id="waModalMessage" rows="6" placeholder="Type your message here..."
+                    style="width:100%; box-sizing:border-box;"></textarea>
             </div>
             <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:15px;">
                 <button id="waModalCancelBtn" class="page-action-btn delete" style="min-width:80px;">Cancel</button>
-                <a id="waModalSendBtn" href="#" target="_blank" class="page-action-btn whatsapp" style="min-width:180px;" onclick="return onWaModalSend()">Send via WhatsApp 💬</a>
+                <a id="waModalSendBtn" href="#" target="_blank" class="page-action-btn whatsapp" style="min-width:180px;"
+                    onclick="return onWaModalSend()">Send via WhatsApp 💬</a>
             </div>
         </div>
     </div>
@@ -208,7 +213,8 @@ if (isset($_GET['id'])) {
         <div id="msg-history-section" style="display:none; padding:10px 0;">
             <div id="msg-history-loading" style="color:#666;">Loading...</div>
             <div id="msg-history-list"></div>
-            <button id="logCurrentSendBtn" class="page-action-btn whatsapp" style="margin-top:10px;">📋 Log Current Send</button>
+            <button id="logCurrentSendBtn" class="page-action-btn whatsapp" style="margin-top:10px;">📋 Log Current
+                Send</button>
         </div>
     </div>
 
@@ -344,13 +350,13 @@ if (isset($_GET['id'])) {
                         $.each(res.logs, function (i, log) {
                             var preview = log.message_content.substring(0, 80) + (log.message_content.length > 80 ? '…' : '');
                             html += '<div style="border-bottom:1px solid #eee; padding:8px 0;">' +
-                                    '<span style="color:#888; font-size:0.85em;">' + escapeHtml(log.sent_at) + '</span> ' +
-                                    '<span class="badge-type" style="background:#3498db; color:#fff; border-radius:3px; padding:1px 6px; font-size:0.8em;">' + escapeHtml(log.message_type) + '</span>' +
-                                    '<div class="msg-preview" style="margin-top:4px; font-size:0.9em;">' + escapeHtml(preview) + '</div>' +
-                                    (log.message_content.length > 80
-                                        ? '<a href="#" class="view-full-msg" style="font-size:0.8em;" data-full="' + escapeHtmlAttr(log.message_content) + '">View Full ▼</a>'
-                                        : '') +
-                                    '</div>';
+                                '<span style="color:#888; font-size:0.85em;">' + escapeHtml(log.sent_at) + '</span> ' +
+                                '<span class="badge-type" style="background:#3498db; color:#fff; border-radius:3px; padding:1px 6px; font-size:0.8em;">' + escapeHtml(log.message_type) + '</span>' +
+                                '<div class="msg-preview" style="margin-top:4px; font-size:0.9em;">' + escapeHtml(preview) + '</div>' +
+                                (log.message_content.length > 80
+                                    ? '<a href="#" class="view-full-msg" style="font-size:0.8em;" data-full="' + escapeHtmlAttr(log.message_content) + '">View Full ▼</a>'
+                                    : '') +
+                                '</div>';
                         });
                         $('#msg-history-list').html(html);
                     },
@@ -378,7 +384,7 @@ if (isset($_GET['id'])) {
 
             // Log current send button
             $('#logCurrentSendBtn').on('click', function () {
-                logWhatsAppSend(<?= (int)$booking['id'] ?>, <?= (int)$booking['contact_id'] ?>, <?= json_encode(createWhatsAppMessage($booking)) ?>);
+                logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= json_encode(createWhatsAppMessage($booking)) ?>);
                 setTimeout(loadMessageHistory, 500);
             });
 
@@ -392,6 +398,13 @@ if (isset($_GET['id'])) {
                 if (e.key === 'Escape') {
                     $('#customWhatsAppModal').hide();
                 }
+            });
+
+            // Send Message button
+            $('#sendMessageBtn').on('click', function () {
+                var name  = $(this).data('name');
+                var phone = $(this).data('phone');
+                openCustomWhatsApp(name, phone, 'Hi ' + name + ',\n');
             });
         });
 
@@ -441,7 +454,7 @@ if (isset($_GET['id'])) {
         }
 
         function escapeHtmlAttr(text) {
-            return (text || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            return (text || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
     </script>
 
