@@ -159,8 +159,8 @@ if (isset($_GET['id'])) {
     <?php endif; ?>
     <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
         target="_blank" class="page-action-btn whatsapp"
-        onclick="logWhatsAppSend(<?= (int)$booking['id'] ?>, <?= (int)$booking['contact_id'] ?>, <?= json_encode(createWhatsAppMessage($booking)) ?>)">💬 Send Confirmation</a>
-    <button class="page-action-btn whatsapp" onclick="openCustomWhatsApp(<?= json_encode($booking['client_name']) ?>, <?= json_encode($booking['client_phone']) ?>, <?= json_encode('Hi ' . $booking['client_name'] . ",\n") ?>)">💬 Send Message</button>
+        onclick="logWhatsAppSend(<?= (int)$booking['id'] ?>, <?= (int)$booking['contact_id'] ?>, <?= htmlspecialchars(json_encode(createWhatsAppMessage($booking)), ENT_QUOTES) ?>)">💬 Send Confirmation</a>
+    <button class="page-action-btn whatsapp" onclick="openCustomWhatsApp(<?= htmlspecialchars(json_encode($booking['client_name']), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($booking['client_phone']), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode('Hi ' . $booking['client_name'] . ",\n"), ENT_QUOTES) ?>)">💬 Send Message</button>
     <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
         Edit Booking</a>
     <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
@@ -402,32 +402,12 @@ if (isset($_GET['id'])) {
         function onWaModalSend() {
             var msg = $('#waModalMessage').val();
             var currentHref = $('#waModalSendBtn').attr('href');
-            // Strip any previous text param and rebuild
             var base = currentHref.split('?text=')[0];
             $('#waModalSendBtn').attr('href', base + '?text=' + encodeURIComponent(msg));
-
-            // Log the custom message (fire-and-forget)
-            logWhatsAppSend(<?= (int)$booking['id'] ?>, <?= (int)$booking['contact_id'] ?>, msg, 'custom');
-
-            // Close modal and refresh history after WhatsApp tab has opened
-            setTimeout(function () {
-                $('#customWhatsAppModal').hide();
-                // Refresh history only if the section is currently open
-                if ($('#msg-history-section').is(':visible')) {
-                    $('#msg-history-loading').show().text('Loading...');
-                    $('#msg-history-list').empty();
-                    setTimeout(function () {
-                        $('.menu-toggle[data-target="msg-history-section"]').trigger('click');
-                        $('.menu-toggle[data-target="msg-history-section"]').trigger('click');
-                    }, 100);
-                }
-            }, 300);
-
-            return true; // allow the <a target="_blank"> to open WhatsApp
+            return true;
         }
 
-        // messageType is optional — defaults to 'confirmation' for the Send Confirmation button
-        function logWhatsAppSend(bookingId, contactId, messageContent, messageType) {
+        function logWhatsAppSend(bookingId, contactId, messageContent) {
             $.ajax({
                 type: 'POST',
                 url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
@@ -435,7 +415,7 @@ if (isset($_GET['id'])) {
                     action: 'log_whatsapp',
                     booking_id: bookingId,
                     contact_id: contactId,
-                    message_type: messageType || 'confirmation',
+                    message_type: 'confirmation',
                     message_content: messageContent,
                     sent_by: 'user'
                 },
