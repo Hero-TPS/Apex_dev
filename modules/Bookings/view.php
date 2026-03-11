@@ -400,7 +400,7 @@ if (isset($_GET['id'])) {
         function openCustomWhatsApp(name, phone, prefill) {
             $('#waModalClientName').text(name);
             $('#waModalPhone').text(phone);
-            $('#waModalMessage').val(prefill);
+            $('#waModalMessage').val(prefill + '\n');
             var cleanPhone = phone.replace(/\D/g, '');
             if (cleanPhone.charAt(0) === '0') { cleanPhone = '27' + cleanPhone.substring(1); }
             $('#waModalSendBtn').attr('href', 'https://wa.me/' + cleanPhone + '?text=');
