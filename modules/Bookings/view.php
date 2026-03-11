@@ -395,6 +395,8 @@ if (isset($_GET['id'])) {
             });
         });
 
+        // ── Global functions (called from inline onclick attributes) ──────────
+
         function openCustomWhatsApp(name, phone, prefill) {
             $('#waModalClientName').text(name);
             $('#waModalPhone').text(phone);

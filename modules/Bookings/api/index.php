@@ -183,15 +183,15 @@ function handleAddBooking()
         }
 
         // Get values
-        $contact_id          = $_POST['contact_id'] ?? '';
-        $trip_date           = $_POST['trip_date'] ?? '';
-        $start_time          = $_POST['start_time'] ?? '';
-        $duration            = $_POST['duration'] ?? '';
-        $original_pickup     = $_POST['original_pickup'] ?? '';
+        $contact_id = $_POST['contact_id'] ?? '';
+        $trip_date = $_POST['trip_date'] ?? '';
+        $start_time = $_POST['start_time'] ?? '';
+        $duration = $_POST['duration'] ?? '';
+        $original_pickup = $_POST['original_pickup'] ?? '';
         $original_destination = $_POST['original_destination'] ?? '';
-        $cost                = $_POST['cost'] ?? '';
-        $payment_method      = $_POST['payment_method'] ?? 'cash';
-        $was_swapped         = isset($_POST['swap_locations']) ? 1 : 0; // ✅ FIX
+        $cost = $_POST['cost'] ?? '';
+        $payment_method = $_POST['payment_method'] ?? 'cash';
+        $was_swapped = isset($_POST['swap_locations']) ? 1 : 0; // ✅ FIX
 
         // Handle "Other" fields
         if ($original_pickup === 'other') {
@@ -205,7 +205,7 @@ function handleAddBooking()
         }
 
         $flight_number = $_POST['flight_number'] ?? '';
-        $description   = $_POST['description'] ?? '';
+        $description = $_POST['description'] ?? '';
 
         // Validate
         if (empty($contact_id))
@@ -281,7 +281,7 @@ function handleAddBooking()
         if ($bookingData) {
             // Apply swap for calendar event location
             $bookingData['pickup_location'] = $was_swapped ? $original_destination : $original_pickup;
-            $bookingData['destination']     = $was_swapped ? $original_pickup : $original_destination;
+            $bookingData['destination'] = $was_swapped ? $original_pickup : $original_destination;
 
             $googleEventId = createBookingInGoogleCalendar($bookingData, $start, $end);
 
@@ -360,21 +360,21 @@ function handleUpdateBooking()
 
         // Full booking update
         if (isset($_REQUEST['booking_id'])) {
-            $booking_id           = intval($_REQUEST['booking_id'] ?? 0);
-            $contact_id           = intval($_REQUEST['contact_id'] ?? 0);
-            $trip_date            = trim($_REQUEST['trip_date'] ?? '');
-            $start_time           = trim($_REQUEST['start_time'] ?? '');
-            $duration             = floatval($_REQUEST['duration'] ?? 1);
-            $pickup_location      = trim($_REQUEST['original_pickup'] ?? '');
+            $booking_id = intval($_REQUEST['booking_id'] ?? 0);
+            $contact_id = intval($_REQUEST['contact_id'] ?? 0);
+            $trip_date = trim($_REQUEST['trip_date'] ?? '');
+            $start_time = trim($_REQUEST['start_time'] ?? '');
+            $duration = floatval($_REQUEST['duration'] ?? 1);
+            $pickup_location = trim($_REQUEST['original_pickup'] ?? '');
             $other_pickup_location = trim($_REQUEST['other_pickup_location'] ?? '');
-            $destination          = trim($_REQUEST['original_destination'] ?? '');
-            $other_destination    = trim($_REQUEST['other_destination'] ?? '');
-            $cost                 = trim($_REQUEST['cost'] ?? '');
-            $other_cost           = trim($_REQUEST['other_cost'] ?? '');
-            $flight_number        = trim($_REQUEST['flight_number'] ?? '');
-            $description_input    = trim($_REQUEST['description'] ?? '');
-            $payment_method       = trim($_REQUEST['payment_method'] ?? 'cash');
-            $swap_locations       = isset($_REQUEST['swap_locations']);
+            $destination = trim($_REQUEST['original_destination'] ?? '');
+            $other_destination = trim($_REQUEST['other_destination'] ?? '');
+            $cost = trim($_REQUEST['cost'] ?? '');
+            $other_cost = trim($_REQUEST['other_cost'] ?? '');
+            $flight_number = trim($_REQUEST['flight_number'] ?? '');
+            $description_input = trim($_REQUEST['description'] ?? '');
+            $payment_method = trim($_REQUEST['payment_method'] ?? 'cash');
+            $swap_locations = isset($_REQUEST['swap_locations']);
 
             // Handle "Other" fields
             if ($pickup_location === 'other') {
@@ -421,11 +421,12 @@ function handleUpdateBooking()
             $description_to_save = $description_input;
 
             $sql = "UPDATE bookings SET 
-                        contact_id = ?, trip_date = ?, start_time = ?, end_time = ?,
-                        original_pickup = ?, original_destination = ?, was_swapped = ?,
-                        cost = ?, flight_number = ?, description = ?, payment_method = ?,
-                        updated_at = NOW()
-                    WHERE id = ?";
+                contact_id = ?, trip_date = ?, start_time = ?, end_time = ?,
+                original_pickup = ?, original_destination = ?, was_swapped = ?,
+                cost = ?, flight_number = ?, description = ?, payment_method = ?,
+                last_confirmed_at = NULL,
+                updated_at = NOW()
+            WHERE id = ?";
 
             $stmt = $pdo->prepare($sql);
             $stmt->execute([
@@ -548,7 +549,7 @@ function handleUpdateGateCode()  // ✅ NEW
 {
     global $pdo;
 
-    $id        = intval($_POST['id'] ?? 0);
+    $id = intval($_POST['id'] ?? 0);
     $gate_code = trim($_POST['gate_code'] ?? '');
 
     if ($id <= 0) {
@@ -709,19 +710,19 @@ function handleTomorrowsBookings()
         $stmt = $pdo->query($sql);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $tomorrow = (new DateTime('tomorrow', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
+        $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d'); // ✅ FIX
 
         $bookings = [];
         foreach ($rows as $row) {
             $row['pickup_location'] = $row['was_swapped'] ? $row['original_destination'] : $row['original_pickup'];
-            $row['destination']     = $row['was_swapped'] ? $row['original_pickup']       : $row['original_destination'];
+            $row['destination'] = $row['was_swapped'] ? $row['original_pickup'] : $row['original_destination'];
 
             $message = createEveningConfirmationMessage($row);
-            $row['whatsapp_url']      = buildWhatsAppUrl($row['client_phone'], $message);
-            $row['message_content']   = $message;
+            $row['whatsapp_url'] = buildWhatsAppUrl($row['client_phone'], $message);
+            $row['message_content'] = $message;
             $row['already_confirmed'] = (
                 !empty($row['last_confirmed_at']) &&
-                substr($row['last_confirmed_at'], 0, 10) === $tomorrow
+                substr($row['last_confirmed_at'], 0, 10) === $today // ✅ FIX: was $tomorrow
             );
             $bookings[] = $row;
         }
@@ -738,7 +739,7 @@ function handleMarkConfirmed()
 {
     global $pdo;
 
-    $id      = intval($_POST['id'] ?? 0);
+    $id = intval($_POST['id'] ?? 0);
     $message = trim($_POST['message_content'] ?? '');
 
     if ($id <= 0) {
@@ -773,7 +774,7 @@ function handleMarkConfirmed()
 
     } catch (PDOException $e) {
         logError('BOOKING_API', 'Failed to mark booking confirmed', [
-            'error'      => $e->getMessage(),
+            'error' => $e->getMessage(),
             'booking_id' => $id
         ]);
         jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
@@ -786,11 +787,11 @@ function handleLogWhatsApp()
 {
     global $pdo;
 
-    $bookingId   = !empty($_POST['booking_id'])  ? intval($_POST['booking_id'])  : null;
-    $contactId   = !empty($_POST['contact_id'])  ? intval($_POST['contact_id'])  : null;
-    $messageType = trim($_POST['message_type']   ?? 'custom');
+    $bookingId = !empty($_POST['booking_id']) ? intval($_POST['booking_id']) : null;
+    $contactId = !empty($_POST['contact_id']) ? intval($_POST['contact_id']) : null;
+    $messageType = trim($_POST['message_type'] ?? 'custom');
     $messageContent = trim($_POST['message_content'] ?? '');
-    $sentBy      = trim($_POST['sent_by']        ?? 'user');
+    $sentBy = trim($_POST['sent_by'] ?? 'user');
 
     if ($messageContent === '') {
         jsonResponse(['success' => false, 'message' => 'Message content is required.'], 400);
@@ -806,8 +807,8 @@ function handleLogWhatsApp()
         $stmt->execute([$bookingId, $contactId, $messageType, $messageContent, $sentBy]);
 
         logInfo('BOOKING_API', 'WhatsApp message logged', [
-            'booking_id'   => $bookingId,
-            'contact_id'   => $contactId,
+            'booking_id' => $bookingId,
+            'contact_id' => $contactId,
             'message_type' => $messageType
         ]);
         jsonResponse(['success' => true]);

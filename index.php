@@ -12,7 +12,8 @@ include ROOT_DIR . '/includes/header.php';
 
     <!-- Tomorrow's Confirmations -->
     <div class="menu-section">
-        <h3 class="menu-toggle" data-target="confirmations-section">📲 Tomorrow's Confirmations <span id="confirmations-badge"></span></h3>
+        <h3 class="menu-toggle" data-target="confirmations-section">📲 Tomorrow's Confirmations <span
+                id="confirmations-badge"></span></h3>
         <div id="confirmations-section" class="menu-content" style="display:none;">
             <div id="confirmations-loading" style="text-align:center; padding:10px; color:#666;">Loading...</div>
             <div id="confirmations-list"></div>
@@ -57,7 +58,7 @@ include ROOT_DIR . '/includes/header.php';
         </div>
     </div>
 
-   <!-- Financials Menu -->
+    <!-- Financials Menu -->
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="financials-section">💰 Financials</h3>
         <div id="financials-section" class="menu-content">
@@ -74,21 +75,21 @@ include ROOT_DIR . '/includes/header.php';
     </div>
 
     <!-- Maintenance -->
-<div class="menu-section">
-    <h3 class="menu-toggle" data-target="maintenance-section">⚙️ Maintenance</h3>
-    <div id="maintenance-section" class="menu-content">
-        <a href="maintenance/" class="dashboard-button db-maintenance">Manage Lists</a>
-        <a href="maintenance/logs.php" class="dashboard-button db-maintenance">System Logs</a>
+    <div class="menu-section">
+        <h3 class="menu-toggle" data-target="maintenance-section">⚙️ Maintenance</h3>
+        <div id="maintenance-section" class="menu-content">
+            <a href="maintenance/" class="dashboard-button db-maintenance">Manage Lists</a>
+            <a href="maintenance/logs.php" class="dashboard-button db-maintenance">System Logs</a>
+        </div>
     </div>
-</div>
 
     <!-- Calendar -->
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="calendar-section">🗓️ Calendar</h3>
         <div id="calendar-section" class="menu-content">
-            <a href="https://calendar.google.com/calendar/u/0?cid=<?= urlencode(CUSTOM_CALENDAR_ID) ?>" 
-               onclick="event.preventDefault(); openCalendarApp('<?= urlencode(CUSTOM_CALENDAR_ID) ?>');"
-               class="dashboard-button db-calendar">
+            <a href="https://calendar.google.com/calendar/u/0?cid=<?= urlencode(CUSTOM_CALENDAR_ID) ?>"
+                onclick="event.preventDefault(); openCalendarApp('<?= urlencode(CUSTOM_CALENDAR_ID) ?>');"
+                class="dashboard-button db-calendar">
                 <span class="dashboard-icon">📅</span>
                 <span class="dashboard-text">Open Calendar</span>
             </a>
@@ -121,33 +122,33 @@ include ROOT_DIR . '/includes/header.php';
                     }
 
                     var pending = res.bookings.filter(function (b) { return !b.already_confirmed; });
-                    var badge   = pending.length > 0 ? ' (' + pending.length + ')' : '';
+                    var badge = pending.length > 0 ? ' (' + pending.length + ')' : '';
                     $('#confirmations-badge').text(badge);
 
                     if (res.bookings.length === 0 || pending.length === 0) {
-                        $('#confirmations-list').html('<p style="color:#27ae60; padding:8px 0;">✅ All confirmed for tomorrow!</p>');
+                        $('#confirmations-section').slideUp(200);
                         return;
                     }
 
                     var html = '';
                     $.each(pending, function (i, b) {
-                        var time    = b.start_time ? b.start_time.substr(0, 5) : '';
-                        var cost    = 'R' + parseFloat(b.cost).toFixed(2);
+                        var time = b.start_time ? b.start_time.substr(0, 5) : '';
+                        var cost = 'R' + parseFloat(b.cost).toFixed(2);
                         html += '<div class="confirmation-row" id="conf-row-' + b.id + '" style="' +
-                                'background:#fff; border:1px solid #e0e0e0; border-radius:6px; ' +
-                                'padding:10px 12px; margin-bottom:8px;" ' +
-                                'data-booking-id="' + b.id + '" ' +
-                                'data-wa-url="' + escapeHtmlAttr(b.whatsapp_url) + '" ' +
-                                'data-message="' + escapeHtmlAttr(b.message_content) + '">' +
-                                '<strong>' + escapeHtml(b.client_name) + '</strong>' +
-                                ' &mdash; ' + escapeHtml(time) +
-                                ' &mdash; ' + escapeHtml(b.pickup_location) + ' → ' + escapeHtml(b.destination) +
-                                ' &mdash; ' + escapeHtml(cost) +
-                                '<br>' +
-                                '<a href="#" target="_blank" ' +
-                                '   class="page-action-btn whatsapp confirm-send-btn" style="margin-top:6px; display:inline-block;">' +
-                                '💬 Confirm &amp; Send</a>' +
-                                '</div>';
+                            'background:#fff; border:1px solid #e0e0e0; border-radius:6px; ' +
+                            'padding:10px 12px; margin-bottom:8px;" ' +
+                            'data-booking-id="' + b.id + '" ' +
+                            'data-wa-url="' + escapeHtmlAttr(b.whatsapp_url) + '" ' +
+                            'data-message="' + escapeHtmlAttr(b.message_content) + '">' +
+                            '<strong>' + escapeHtml(b.client_name) + '</strong>' +
+                            ' &mdash; ' + escapeHtml(time) +
+                            ' &mdash; ' + escapeHtml(b.pickup_location) + ' → ' + escapeHtml(b.destination) +
+                            ' &mdash; ' + escapeHtml(cost) +
+                            '<br>' +
+                            '<a href="#" target="_blank" ' +
+                            '   class="page-action-btn whatsapp confirm-send-btn" style="margin-top:6px; display:inline-block;">' +
+                            '💬 Confirm &amp; Send</a>' +
+                            '</div>';
                     });
                     $('#confirmations-list').html(html);
                 },
@@ -166,9 +167,9 @@ include ROOT_DIR . '/includes/header.php';
         // Delegated click for Confirm & Send buttons (avoids inline onclick with message content)
         $('#confirmations-list').on('click', '.confirm-send-btn', function (e) {
             e.preventDefault();
-            var row     = $(this).closest('.confirmation-row');
-            var id      = row.data('booking-id');
-            var waUrl   = row.data('wa-url');
+            var row = $(this).closest('.confirmation-row');
+            var id = row.data('booking-id');
+            var waUrl = row.data('wa-url');
             var message = row.data('message');
             window.open(waUrl, '_blank');
             markConfirmed(id, message);
@@ -187,7 +188,7 @@ include ROOT_DIR . '/includes/header.php';
                         $(this).remove();
                         var remaining = $('.confirmation-row').length;
                         if (remaining === 0) {
-                            $('#confirmations-list').html('<p style="color:#27ae60; padding:8px 0;">✅ All confirmed for tomorrow!</p>');
+                            $('#confirmations-section').slideUp(200);
                             $('#confirmations-badge').text('');
                         } else {
                             var current = parseInt($('#confirmations-badge').text().replace(/\D/g, '')) || 0;
