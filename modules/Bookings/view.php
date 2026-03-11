@@ -19,9 +19,9 @@ if (isset($_GET['id'])) {
     $bookingId = intval($_GET['id']);
     if ($bookingId > 0) {
         try {
-            $sql = "SELECT b.*, c.name AS client_name, c.phone AS client_phone 
-                    FROM bookings b 
-                    JOIN contacts c ON b.contact_id = c.id 
+            $sql = "SELECT b.*, c.name AS client_name, c.phone AS client_phone \
+                    FROM bookings b \
+                    JOIN contacts c ON b.contact_id = c.id \
                     WHERE b.id = ?";
 
             $stmt = $pdo->prepare($sql);
@@ -159,8 +159,9 @@ if (isset($_GET['id'])) {
     <?php endif; ?>
     <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
         target="_blank" class="page-action-btn whatsapp"
-        onclick="logWhatsAppSend(<?= (int)$booking['id'] ?>, <?= (int)$booking['contact_id'] ?>, <?= htmlspecialchars(json_encode(createWhatsAppMessage($booking)), ENT_QUOTES) ?>)">💬 Send Confirmation</a>
-    <button class="page-action-btn whatsapp" onclick="openCustomWhatsApp(<?= htmlspecialchars(json_encode($booking['client_name']), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode($booking['client_phone']), ENT_QUOTES) ?>, <?= htmlspecialchars(json_encode('Hi ' . $booking['client_name'] . ",\n"), ENT_QUOTES) ?>)">💬 Send Message</button>
+        onclick="logWhatsAppSend(<?= (int)$booking['id'] ?>, <?= (int)$booking['contact_id'] ?>, <?= json_encode(createWhatsAppMessage($booking)) ?>)">💬 Send Confirmation</a>
+    <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode('Hi ' . $booking['client_name']) ?>"
+        target="_blank" class="page-action-btn whatsapp">💬 Send Message</a>
     <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
         Edit Booking</a>
     <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
@@ -185,22 +186,6 @@ if (isset($_GET['id'])) {
     </div>
 
     <div id="notification-area"></div>
-
-    <!-- Custom WhatsApp Modal -->
-    <div id="customWhatsAppModal" class="modal-overlay" style="display:none;">
-        <div class="modal-content" style="max-width:480px; text-align:left;">
-            <h3>💬 Send Message to <span id="waModalClientName"></span></h3>
-            <p style="color:#666; font-size:0.9em;">📱 <span id="waModalPhone"></span></p>
-            <div class="form-group" style="margin-top:15px;">
-                <label for="waModalMessage">Message:</label>
-                <textarea id="waModalMessage" rows="6" placeholder="Type your message here..." style="width:100%; box-sizing:border-box;"></textarea>
-            </div>
-            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:15px;">
-                <button id="waModalCancelBtn" class="page-action-btn delete" style="min-width:80px;">Cancel</button>
-                <a id="waModalSendBtn" href="#" target="_blank" class="page-action-btn whatsapp" style="min-width:180px;" onclick="return onWaModalSend()">Send via WhatsApp 💬</a>
-            </div>
-        </div>
-    </div>
 
     <!-- Message History -->
     <div class="menu-section" style="margin-top:20px;">
@@ -374,38 +359,7 @@ if (isset($_GET['id'])) {
                     $(this).text('View Full ▼');
                 }
             });
-
-            // Custom WhatsApp modal – cancel button
-            $('#waModalCancelBtn').on('click', function () {
-                $('#customWhatsAppModal').hide();
-            });
-
-            // Escape key closes modal
-            $(document).on('keydown', function (e) {
-                if (e.key === 'Escape') {
-                    $('#customWhatsAppModal').hide();
-                }
-            });
         });
-
-        function openCustomWhatsApp(name, phone, prefill) {
-            $('#waModalClientName').text(name);
-            $('#waModalPhone').text(phone);
-            $('#waModalMessage').val(prefill);
-            var cleanPhone = phone.replace(/\D/g, '');
-            if (cleanPhone.charAt(0) === '0') { cleanPhone = '27' + cleanPhone.substring(1); }
-            $('#waModalSendBtn').attr('href', 'https://wa.me/' + cleanPhone + '?text=');
-            $('#customWhatsAppModal').css('display', 'flex');
-            $('#waModalMessage').focus();
-        }
-
-        function onWaModalSend() {
-            var msg = $('#waModalMessage').val();
-            var currentHref = $('#waModalSendBtn').attr('href');
-            var base = currentHref.split('?text=')[0];
-            $('#waModalSendBtn').attr('href', base + '?text=' + encodeURIComponent(msg));
-            return true;
-        }
 
         function logWhatsAppSend(bookingId, contactId, messageContent) {
             $.ajax({
