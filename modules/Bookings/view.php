@@ -160,7 +160,7 @@ if (isset($_GET['id'])) {
     <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
         target="_blank" class="page-action-btn whatsapp"
         onclick="logWhatsAppSend(<?= (int)$booking['id'] ?>, <?= (int)$booking['contact_id'] ?>, <?= json_encode(createWhatsAppMessage($booking)) ?>)">💬 Send Confirmation</a>
-    <button class="page-action-btn whatsapp" onclick="openCustomWhatsApp(<?= json_encode($booking['client_name']) ?>, <?= json_encode($booking['client_phone']) ?>, <?= json_encode('Hi ' . $booking['client_name'] . ",") ?>)">💬 Send Message</button>
+    <button class="page-action-btn whatsapp" onclick="openCustomWhatsApp(<?= json_encode($booking['client_name']) ?>, <?= json_encode($booking['client_phone']) ?>, <?= json_encode('Hi ' . $booking['client_name'] . ',') ?>)">💬 Send Message</button>
     <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
         Edit Booking</a>
     <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
