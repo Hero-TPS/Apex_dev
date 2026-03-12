@@ -11,11 +11,11 @@
   - idea prebooking and reminders
   - use another calendar
   -turn reminders into bookings
-- [ ] Start thinkng of how to deal with additional drivers, mark bookings as such and commission taken
+- [ ] Start thinkng of how to deal with additional car drivers, mark bookings as such and commission taken
 ---
 
 ### Clients Module Enhancements and Fixes
-- [ ] Show payment method in booking lists
+- [x] Show payment method in booking lists
 - [ ] Create list of clients with prior bookings:
   - Export names and phone numbers
   - Discuss WhatsApp Business group creation
@@ -63,20 +63,6 @@ Net Profit = Total Income - Total Expenses
 - [x] Mark booking as confirmed when button clicked
 - [x] Remove from widget once confirmed
 - [x] Add `last_confirmed_at DATETIME` column to `bookings` table
-
-**WhatsApp Message Template:**
-```
-Good evening [Client Name]! 👋
-
-Just confirming your booking for tomorrow:
-
-📅 Date: [Date]
-🕐 Pickup Time: [Time]
-📍 From: [Pickup Location]
-🎯 To: [Destination]
-
-See you tomorrow! 🚗
-```
 
 **Workflow:**
 - Manual evening routine (no automation)
