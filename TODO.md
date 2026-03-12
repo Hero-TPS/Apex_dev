@@ -64,15 +64,6 @@ Net Profit = Total Income - Total Expenses
 - [x] Remove from widget once confirmed
 - [x] Add `last_confirmed_at DATETIME` column to `bookings` table
 
-**Workflow:**
-- Manual evening routine (no automation)
-- Open dashboard → see list → click confirm → send WhatsApp → done
-- Simple and effective
-
-**Files to Update:**
-- `dashboard.php` (add widget)
-- Database migration for `last_confirmed_at` column
-- Create helper function for message template
 
 ---
 
