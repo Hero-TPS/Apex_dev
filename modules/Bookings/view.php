@@ -142,29 +142,32 @@ if (isset($_GET['id'])) {
         </div>
     </div>
 
-<!-- Action Buttons -->
-<div class="invoice-actions">
-    <?php if ($showStatusButton): ?>
-        <button id="toggleStatusBtn" class="page-action-btn <?= $booking['status'] === 'completed' ? 'save' : 'toggle' ?>"
-            data-status="<?= htmlspecialchars($booking['status']) ?>">
-            <?= $booking['status'] === 'completed' ? 'Undo Done' : 'Mark Done' ?>
-        </button>
-    <?php endif; ?>
-    <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
-        target="_blank" class="page-action-btn whatsapp"
-        onclick="logWhatsAppSend(<?= (int)$booking['id'] ?>, <?= (int)$booking['contact_id'] ?>, <?= json_encode(createWhatsAppMessage($booking)) ?>)">💬 Send Confirmation</a>
-    <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode('Hi ' . $booking['client_name']) ?>"
-        target="_blank" class="page-action-btn whatsapp">💬 Send Message</a>
-    <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
-        Edit Booking</a>
-    <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
-    <a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=<?= (int) $booking['contact_id'] ?>"
-        class="page-action-btn view-details-btn">📅 View All Client Bookings</a>
-    <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= (int) $booking['contact_id'] ?>&contact_name=<?= urlencode($booking['client_name']) ?>"
-        class="page-action-btn rebook"> ➕ Book again</a>
-    <a href="<?= BASE_URL ?>/modules/Bookings/invoice.php?id=<?= (int) $booking['id'] ?>" target="_blank"
-        class="page-action-btn invoice">📄 View Invoice</a>
-</div>
+    <!-- Action Buttons -->
+    <div class="invoice-actions">
+        <?php if ($showStatusButton): ?>
+            <button id="toggleStatusBtn" class="page-action-btn <?= $booking['status'] === 'completed' ? 'save' : 'toggle' ?>"
+                data-status="<?= htmlspecialchars($booking['status']) ?>">
+                <?= $booking['status'] === 'completed' ? 'Undo Done' : 'Mark Done' ?>
+            </button>
+        <?php endif; ?>
+        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
+            target="_blank" class="page-action-btn whatsapp"
+            onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= json_encode(createWhatsAppMessage($booking)) ?>, 'confirmation')">💬
+            Send Confirmation</a>
+        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode('Hi ' . $booking['client_name']) ?>"
+            target="_blank" class="page-action-btn whatsapp"
+            onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= json_encode('Hi ' . $booking['client_name']) ?>, 'message')">💬
+            Send Message</a>
+        <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
+            Edit Booking</a>
+        <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
+        <a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=<?= (int) $booking['contact_id'] ?>"
+            class="page-action-btn view-details-btn">📅 View All Client Bookings</a>
+        <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= (int) $booking['contact_id'] ?>&contact_name=<?= urlencode($booking['client_name']) ?>"
+            class="page-action-btn rebook"> ➕ Book again</a>
+        <a href="<?= BASE_URL ?>/modules/Bookings/invoice.php?id=<?= (int) $booking['id'] ?>" target="_blank"
+            class="page-action-btn invoice">📄 View Invoice</a>
+    </div>
 
     <!-- Delete Confirmation Modal -->
     <div id="deleteConfirmationModal" class="modal-overlay" style="display: none;">
@@ -321,13 +324,13 @@ if (isset($_GET['id'])) {
                         $.each(res.logs, function (i, log) {
                             var preview = log.message_content.substring(0, 80) + (log.message_content.length > 80 ? '…' : '');
                             html += '<div style="border-bottom:1px solid #eee; padding:8px 0;">' +
-                                    '<span style="color:#888; font-size:0.85em;">' + escapeHtml(log.sent_at) + '</span> ' +
-                                    '<span class="badge-type" style="background:#3498db; color:#fff; border-radius:3px; padding:1px 6px; font-size:0.8em;">' + escapeHtml(log.message_type) + '</span>' +
-                                    '<div class="msg-preview" style="margin-top:4px; font-size:0.9em;">' + escapeHtml(preview) + '</div>' +
-                                    (log.message_content.length > 80
-                                        ? '<a href="#" class="view-full-msg" style="font-size:0.8em;" data-full="' + escapeHtmlAttr(log.message_content) + '">View Full ▼</a>'
-                                        : '') +
-                                    '</div>';
+                                '<span style="color:#888; font-size:0.85em;">' + escapeHtml(log.sent_at) + '</span> ' +
+                                '<span class="badge-type" style="background:#3498db; color:#fff; border-radius:3px; padding:1px 6px; font-size:0.8em;">' + escapeHtml(log.message_type) + '</span>' +
+                                '<div class="msg-preview" style="margin-top:4px; font-size:0.9em;">' + escapeHtml(preview) + '</div>' +
+                                (log.message_content.length > 80
+                                    ? '<a href="#" class="view-full-msg" style="font-size:0.8em;" data-full="' + escapeHtmlAttr(log.message_content) + '">View Full ▼</a>'
+                                    : '') +
+                                '</div>';
                         });
                         $('#msg-history-list').html(html);
                     },
@@ -378,7 +381,7 @@ if (isset($_GET['id'])) {
         }
 
         function escapeHtmlAttr(text) {
-            return (text || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            return (text || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
     </script>
 
