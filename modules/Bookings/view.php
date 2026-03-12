@@ -19,14 +19,7 @@ if (isset($_GET['id'])) {
     $bookingId = intval($_GET['id']);
     if ($bookingId > 0) {
         try {
-            $sql = "SELECT b.*, c.name AS client_name, c.phone AS client_phone \
-                    FROM bookings b \
-                    JOIN contacts c ON b.contact_id = c.id \
-                    WHERE b.id = ?";
-
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$bookingId]);
-            $booking = $stmt->fetch();
+            $booking = getBookingById($pdo, $bookingId);
 
             if ($booking) {
                 $booking['pickup_location'] = $booking['was_swapped'] ? $booking['original_destination'] : $booking['original_pickup'];

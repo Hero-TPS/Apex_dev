@@ -18,10 +18,7 @@ if (isset($_GET['id'])) {
     $bookingId = intval($_GET['id']);
     if ($bookingId > 0) {
         try {
-            // Fetch booking
-            $stmt = $pdo->prepare("SELECT * FROM bookings WHERE id = ?");
-            $stmt->execute([$bookingId]);
-            $booking = $stmt->fetch();
+            $booking = getBookingById($pdo, $bookingId);
 
             if ($booking) {
                 $start_t = new DateTime($booking['start_time']);

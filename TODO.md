@@ -9,6 +9,8 @@
 - [ ] WhatsApp message history tracking (see detailed spec below)
 - [ ] Some clients wants to make a booking on a date, but do not have the time or details. I need ideas how to handle this viea calendar
   - idea prebooking and reminders
+  - use another calendar
+  -turn reminders into bookings
 - [ ] Start thinkng of how to deal with additional drivers, mark bookings as such and commission taken
 ---
 
@@ -35,6 +37,9 @@
 ---
 
 ### Financials: 
+
+#### Bockport finance overview structure
+- [ ] Use the same structure in Bookings, fuel and Uber report have having a month view and weeks are a toggle.
 #### Uber Additional Costs Integration
 - [ ] core/Time.php is used in exactly one place: financials/helper.php, which includes it and calls. Deleted. Note for when we work on financials
 - [ ] Update `financials/helper.php` to include `additional_cost` in expense calculations
@@ -52,12 +57,12 @@ Net Profit = Total Income - Total Expenses
 ---
 
 ### Dashboard: Tomorrow's Booking Confirmations Widget
-- [ ] Create dashboard widget showing tomorrow's bookings
-- [ ] Display bookings where `trip_date = tomorrow` AND not confirmed today
-- [ ] "Send Confirmation" button → opens WhatsApp with pre-filled message
-- [ ] Mark booking as confirmed when button clicked
-- [ ] Remove from widget once confirmed
-- [ ] Add `last_confirmed_at DATETIME` column to `bookings` table
+- [x] Create dashboard widget showing tomorrow's bookings
+- [x] Display bookings where `trip_date = tomorrow` AND not confirmed today
+- [x] "Send Confirmation" button → opens WhatsApp with pre-filled message
+- [x] Mark booking as confirmed when button clicked
+- [x] Remove from widget once confirmed
+- [x] Add `last_confirmed_at DATETIME` column to `bookings` table
 
 **WhatsApp Message Template:**
 ```
@@ -88,42 +93,7 @@ See you tomorrow! 🚗
 ### Send Custom WhatsApp Message to Client
 - [ ] Add "Send Message" button to booking view page (`modules/Bookings/view.php`)
 - [ ] Add "Send Message" button to client list (`modules/Clients/index.php`)
-- [ ] Create modal with textarea for custom message
-- [ ] Pre-fill client name and phone number
-- [ ] Open WhatsApp with custom typed message
-- [ ] Store client context (name, phone) in modal
-
-**Modal Design:**
-```
-┌─────────────────────────────────────┐
-│  💬 Send Message to [Client Name]  │
-├─────────────────────────────────────┤
-│  📱 Phone: [Phone Number]          │
-│                                     │
-│  Message:                           │
-│  ┌─────────────────────────────┐   │
-│  │                             │   │
-│  │  [Type your message here]   │   │
-│  │                             │   │
-│  │                             │   │
-│  └─────────────────────────────┘   │
-│                                     │
-│  [Cancel]  [Send via WhatsApp 💬]  │
-└─────────────────────────────────────┘
-```
-
-**Features:**
-- Modal overlay (similar to delete confirmation)
-- Textarea for free-form message typing
-- Pre-fill with "Hi [Client Name],"
-- Button opens WhatsApp Web with typed message
-- Works from both booking view and client list
-- Escape key to close modal
-
-**Files to Update:**
-- `modules/Bookings/view.php` - Add button and modal
-- `modules/Clients/index.php` - Add button to each client row
-- `assets/css/styles.css` - Modal styles (reuse existing modal styles)
+- [ ] Open a WA msg with Pre-fill client name 
 
 ---
 
