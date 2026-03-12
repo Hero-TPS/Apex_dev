@@ -152,11 +152,11 @@ if (isset($_GET['id'])) {
         <?php endif; ?>
         <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
             target="_blank" class="page-action-btn whatsapp"
-            onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= json_encode(createWhatsAppMessage($booking)) ?>, 'confirmation')">💬
+            onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= htmlspecialchars(json_encode(createWhatsAppMessage($booking)), ENT_QUOTES) ?>, 'confirmation')">💬
             Send Confirmation</a>
         <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode('Hi ' . $booking['client_name']) ?>"
             target="_blank" class="page-action-btn whatsapp"
-            onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= json_encode('Hi ' . $booking['client_name']) ?>, 'message')">💬
+            onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= htmlspecialchars(json_encode('Hi ' . $booking['client_name']), ENT_QUOTES) ?>, 'message')">💬
             Send Message</a>
         <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
             Edit Booking</a>
@@ -357,7 +357,7 @@ if (isset($_GET['id'])) {
             });
         });
 
-        function logWhatsAppSend(bookingId, contactId, messageContent) {
+        function logWhatsAppSend(bookingId, contactId, messageContent, messageType) {
             $.ajax({
                 type: 'POST',
                 url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
@@ -365,12 +365,11 @@ if (isset($_GET['id'])) {
                     action: 'log_whatsapp',
                     booking_id: bookingId,
                     contact_id: contactId,
-                    message_type: 'confirmation',
+                    message_type: messageType || 'confirmation',
                     message_content: messageContent,
                     sent_by: 'user'
                 },
                 dataType: 'json'
-                // fire-and-forget; no callbacks needed
             });
         }
 
