@@ -98,7 +98,6 @@ $highlightClientId = $_GET['highlight'] ?? null;
                     if (response.success && response.contacts.length > 0) {
                         allClients = response.contacts;
 
-                        // ✅ ADD: Display summary stats
                         var totalClients = response.contacts.length;
                         var clientsWithBookings = response.contacts.filter(c => c.booking_count > 0).length;
                         var totalBookings = response.contacts.reduce((sum, c) => sum + (c.booking_count || 0), 0);
@@ -121,6 +120,10 @@ $highlightClientId = $_GET['highlight'] ?? null;
         `);
 
                         response.contacts.forEach(function (contact) {
+                            var cleanPhone = (contact.phone || '').replace(/\D/g, '');
+                            if (cleanPhone.charAt(0) === '0') { cleanPhone = '27' + cleanPhone.substring(1); }
+                            var waHref = 'https://wa.me/' + cleanPhone + '?text=' + encodeURIComponent('Hi ' + contact.name);
+
                             var rowClass = (highlightId && contact.id == highlightId) ? 'highlight-row' : '';
                             var row = '<tr class="' + rowClass + '" data-client-id="' + contact.id + '">' +
                                 '<td data-label="Name">' + escapeHtml(contact.name) + '</td>' +
@@ -133,7 +136,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 '<div class="actions-container">' +
                                 '<a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=' + contact.id + '" class="action-btn view-details-btn">View Bookings</a>' +
                                 '<a href="<?= BASE_URL ?>/modules/Clients/edit.php?id=' + contact.id + '" class="action-btn edit-btn">Edit</a>' +
-                                '<button class="action-btn whatsapp-btn" onclick="openCustomWhatsApp(\'' + escapeJs(contact.name) + '\', \'' + escapeJs(contact.phone || '') + '\', \'' + escapeJs('Hi ' + contact.name + ',\n') + '\')">Send Msg</button>' +
+                                '<a href="' + waHref + '" target="_blank" class="action-btn whatsapp-btn">Send Msg</a>' +
                                 '<button class="action-btn delete-btn" data-id="' + contact.id + '">Delete</button>' +
                                 '</div>' +
                                 '</td>' +
@@ -211,7 +214,6 @@ $highlightClientId = $_GET['highlight'] ?? null;
                 return;
             }
 
-            // Split into words for fuzzy "all words must match" search
             var words = searchText.split(/\s+/).filter(w => w.length > 0);
 
             tableBody.find('tr').each(function () {
@@ -220,7 +222,6 @@ $highlightClientId = $_GET['highlight'] ?? null;
                 var client = allClients.find(c => c.id === clientId);
                 if (!client) { row.hide(); return; }
 
-                // Build searchable string from relevant fields only
                 var haystack = [
                     client.name || '',
                     client.phone || '',
@@ -229,7 +230,6 @@ $highlightClientId = $_GET['highlight'] ?? null;
                     client.additional_info || ''
                 ].join(' ').toLowerCase();
 
-                // All words must be found somewhere in the haystack
                 var match = words.every(function (word) {
                     return haystack.indexOf(word) > -1;
                 });
@@ -254,61 +254,11 @@ $highlightClientId = $_GET['highlight'] ?? null;
             div.textContent = text;
             return div.innerHTML;
         }
-
-        function escapeJs(text) {
-            return (text || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '');
-        }
     });
-
-    function openCustomWhatsApp(name, phone, prefill) {
-        $('#waModalClientName').text(name);
-        $('#waModalPhone').text(phone);
-        $('#waModalMessage').val(prefill);
-        var cleanPhone = (phone || '').replace(/\D/g, '');
-        if (cleanPhone.charAt(0) === '0') { cleanPhone = '27' + cleanPhone.substring(1); }
-        $('#waModalSendBtn').attr('href', 'https://wa.me/' + cleanPhone + '?text=');
-        $('#customWhatsAppModal').css('display', 'flex');
-        $('#waModalMessage').focus();
-    }
-
-    function onWaModalSend() {
-        var msg = $('#waModalMessage').val();
-        var currentHref = $('#waModalSendBtn').attr('href');
-        var base = currentHref.split('?text=')[0];
-        $('#waModalSendBtn').attr('href', base + '?text=' + encodeURIComponent(msg));
-        return true;
-    }
 
     function logWhatsAppSend() {
         // fire-and-forget log (no booking_id context on this page)
     }
-</script>
-
-<!-- Custom WhatsApp Modal -->
-<div id="customWhatsAppModal" class="modal-overlay" style="display:none;">
-    <div class="modal-content" style="max-width:480px; text-align:left;">
-        <h3>💬 Send Message to <span id="waModalClientName"></span></h3>
-        <p style="color:#666; font-size:0.9em;">📱 <span id="waModalPhone"></span></p>
-        <div class="form-group" style="margin-top:15px;">
-            <label for="waModalMessage">Message:</label>
-            <textarea id="waModalMessage" rows="6" placeholder="Type your message here..." style="width:100%; box-sizing:border-box;"></textarea>
-        </div>
-        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:15px;">
-            <button id="waModalCancelBtn" class="page-action-btn delete" style="min-width:80px;">Cancel</button>
-            <a id="waModalSendBtn" href="#" target="_blank" class="page-action-btn whatsapp" style="min-width:180px;" onclick="return onWaModalSend()">Send via WhatsApp 💬</a>
-        </div>
-    </div>
-</div>
-
-<script>
-    $(document).ready(function () {
-        $('#waModalCancelBtn').on('click', function () {
-            $('#customWhatsAppModal').hide();
-        });
-        $(document).on('keydown', function (e) {
-            if (e.key === 'Escape') { $('#customWhatsAppModal').hide(); }
-        });
-    });
 </script>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>
