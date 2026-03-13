@@ -59,17 +59,16 @@ function getWeeklyMetrics(PDO $pdo, int $startUnix, int $endUnix): array
 
     // === UBER income ===
     $stmt = $pdo->prepare(
-        "SELECT id, total_income, cash_received, total_trips, mobile_data_cost
+        "SELECT id, total_income, cash_received, total_trips
          FROM uber_income WHERE week_start = ?"
     );
     $stmt->execute([$startUnix]);
     $uber = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    $uberIncome      = (float) ($uber['total_income']      ?? 0);
-    $uberCash        = (float) ($uber['cash_received']      ?? 0);
-    $uberTrips       = (int)   ($uber['total_trips']        ?? 0);
-    $mobileDataCost  = (float) ($uber['mobile_data_cost']   ?? 0);
-    $uberIncomeId    = $uber['id'] ?? null;
+    $uberIncome   = (float) ($uber['total_income']  ?? 0);
+    $uberCash     = (float) ($uber['cash_received'] ?? 0);
+    $uberTrips    = (int)   ($uber['total_trips']   ?? 0);
+    $uberIncomeId = $uber['id'] ?? null;
 
     // === UBER additional costs (car wash, tolls, etc.) ===
     $uberAdditionalCosts = 0.0;
@@ -103,7 +102,7 @@ function getWeeklyMetrics(PDO $pdo, int $startUnix, int $endUnix): array
     // === CALCULATIONS ===
     $totalIncome    = $bookingIncome + $uberIncome;
     $totalTrips     = $bookingTrips + $uberTrips;
-    $totalExpenses  = $fuelCost + $mobileDataCost + $carRental + $uberAdditionalCosts;
+    $totalExpenses  = $fuelCost + $carRental + $uberAdditionalCosts;
     $netProfit      = $totalIncome - $totalExpenses;
     $uberPayout     = $uberIncome - $uberCash - $carRental;
     $incomePerTrip  = ($totalTrips  > 0) ? ($totalIncome   / $totalTrips)  : 0.0;
@@ -120,7 +119,6 @@ function getWeeklyMetrics(PDO $pdo, int $startUnix, int $endUnix): array
         'uber_additional_costs' => $uberAdditionalCosts,
         'fuel_cost'             => $fuelCost,
         'car_rental'            => $carRental,
-        'mobile_data_cost'      => $mobileDataCost,
         'total_expenses'        => $totalExpenses,
         'booking_trips'         => $bookingTrips,
         'total_trips'           => $totalTrips,
@@ -163,18 +161,16 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
     $stmt = $pdo->prepare(
         "SELECT COALESCE(SUM(total_income), 0) AS income,
                 COALESCE(SUM(cash_received), 0)  AS cash,
-                COALESCE(SUM(total_trips),   0)  AS trips,
-                COALESCE(SUM(mobile_data_cost), 0) AS data
+                COALESCE(SUM(total_trips),   0)  AS trips
          FROM uber_income WHERE week_start BETWEEN ? AND ?"
     );
     $stmt->execute([$startUnix, $endUnix]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    $uberIncome     = (float) $row['income'];
-    $uberCash       = (float) $row['cash'];
-    $uberTrips      = (int)   $row['trips'];
-    $mobileDataCost = (float) $row['data'];
+    $uberIncome = (float) $row['income'];
+    $uberCash   = (float) $row['cash'];
+    $uberTrips  = (int)   $row['trips'];
 
-    // === UBER additional costs for the same week range ===
+    // === UBER additional costs (car wash, tolls, etc.) ===
     $stmt = $pdo->prepare(
         "SELECT COALESCE(SUM(uac.amount), 0) AS total
          FROM uber_additional_costs uac
@@ -205,7 +201,7 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
     // === CALCULATIONS ===
     $totalIncome    = $bookingIncome + $uberIncome;
     $totalTrips     = $bookingTrips + $uberTrips;
-    $totalExpenses  = $fuelCost + $mobileDataCost + $carRental + $uberAdditionalCosts;
+    $totalExpenses  = $fuelCost + $carRental + $uberAdditionalCosts;
     $netProfit      = $totalIncome - $totalExpenses;
     $uberPayout     = $uberIncome - $uberCash - $carRental;
     $incomePerTrip  = ($totalTrips  > 0) ? ($totalIncome   / $totalTrips)  : 0.0;
@@ -222,7 +218,6 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
         'uber_additional_costs' => $uberAdditionalCosts,
         'fuel_cost'             => $fuelCost,
         'car_rental'            => $carRental,
-        'mobile_data_cost'      => $mobileDataCost,
         'total_expenses'        => $totalExpenses,
         'booking_trips'         => $bookingTrips,
         'total_trips'           => $totalTrips,
