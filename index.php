@@ -65,12 +65,6 @@ include ROOT_DIR . '/includes/header.php';
             <a href="financials/index.php" class="dashboard-button db-reports">
                 <span class="dashboard-text">Financial Summary</span>
             </a>
-            <a href="financials/weekly.php" class="dashboard-button db-reports">
-                <span class="dashboard-text">Weekly Report</span>
-            </a>
-            <a href="financials/monthly.php" class="dashboard-button db-reports">
-                <span class="dashboard-text">Monthly Report</span>
-            </a>
         </div>
     </div>
 
