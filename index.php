@@ -62,15 +62,7 @@ include ROOT_DIR . '/includes/header.php';
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="financials-section">💰 Financials</h3>
         <div id="financials-section" class="menu-content">
-            <a href="financials/index.php" class="dashboard-button db-reports">
-                <span class="dashboard-text">Financial Summary</span>
-            </a>
-            <a href="financials/weekly.php" class="dashboard-button db-reports">
-                <span class="dashboard-text">Weekly Report</span>
-            </a>
-            <a href="financials/monthly.php" class="dashboard-button db-reports">
-                <span class="dashboard-text">Monthly Report</span>
-            </a>
+            <a href="modules/Financials/" class="dashboard-button db-reports">Financial Summary</a>
         </div>
     </div>
 
