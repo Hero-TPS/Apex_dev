@@ -87,13 +87,13 @@ try {
     <?php endif; ?>
     
     <div class="action-buttons">
-        <a href="<?= BASE_URL ?>/modules/Clients/" class="btn" style="width: auto; background: #95a5a6;">
+        <a href="<?= BASE_URL ?>/modules/Clients/" class="page-action-btn back">
             ← Back to Clients
         </a>
-        <a href="<?= BASE_URL ?>/modules/Clients/edit.php?id=<?= $client_id ?>" class="btn" style="width: auto; background: #2ecc71;">
+        <a href="<?= BASE_URL ?>/modules/Clients/edit.php?id=<?= $client_id ?>" class="page-action-btn save">
             ✏️ Edit Client
         </a>
-        <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= $client_id ?>&contact_name=<?= urlencode($client['name']) ?>" class="btn" style="width: auto;">
+        <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= $client_id ?>&contact_name=<?= urlencode($client['name']) ?>" class="page-action-btn primary">
             + New Booking
         </a>
     </div>
@@ -105,7 +105,7 @@ try {
     <div class="no-bookings">
         <h3>📋 No bookings found</h3>
         <p>This client doesn't have any bookings yet.</p>
-        <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= $client_id ?>&contact_name=<?= urlencode($client['name']) ?>" class="btn" style="width: auto; padding: 10px 20px;">
+        <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= $client_id ?>&contact_name=<?= urlencode($client['name']) ?>" class="page-action-btn primary">
             + Create First Booking
         </a>
     </div>

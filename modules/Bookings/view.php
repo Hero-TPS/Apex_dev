@@ -134,7 +134,7 @@ if (isset($_GET['id'])) {
             <div style="display: flex; gap: 8px; align-items: flex-start; margin-top: 4px;">
                 <textarea id="gate_code" name="gate_code" rows="2"
                     style="flex: 1; resize: vertical;"><?= htmlspecialchars($booking['gate_code'] ?? '') ?></textarea>
-                <button id="saveGateCodeBtn" class="page-action-btn save" style="width: auto; white-space: nowrap;">
+                <button id="saveGateCodeBtn" class="page-action-btn save">
                     💾 Save
                 </button>
             </div>

@@ -32,7 +32,7 @@ include ROOT_DIR . '/includes/header.php';
     <button type="submit" class="btn" id="submitBtn">
         👤 Add Client
     </button>
-    <button type="submit" name="save_and_book" value="1" class="btn" style="background: #27ae60; width: auto; margin-top: 10px;">
+    <button type="submit" name="save_and_book" value="1" class="page-action-btn save">
         💾 Save & Create Booking
     </button>
 </form>
