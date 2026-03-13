@@ -158,4 +158,48 @@ Net Profit = Total Income - Total Expenses
 
 ### Timezone Audit — Resolved
 **Standard adopted:** SAST (UTC+2) throughout — DB stores SAST, PHP displays SAST, no UTC conversion.
-`uber_income` and all booking/fuel timestamps now consistent.
+`uber_income` and `fuel_logs` TIMESTAMP columns left as-is (not a functional bug, not worth the migration risk).
+
+- [x] Diagnosed root cause: live server MySQL running on SYSTEM (UTC-10), local XAMPP on SYSTEM (SAST) — worked by accident locally
+- [x] Fixed: added `$pdo->exec("SET time_zone = '+02:00'");` to `config.php` — forces SAST on all connections, both environments
+- [x] Fixed: removed incorrect UTC→SAST double-conversion in `includes/helpers.php` and `modules/Bookings/view.php`
+  - Was: `new DateTime($value, new DateTimeZone('UTC'))` then `->setTimezone($timezone)` — added 2 extra hours
+  - Fix: `new DateTime($value, new DateTimeZone(TIME_ZONE))` — value from MySQL is already SAST
+
+---
+
+## ✅ Previously Completed (2026-02-28)
+
+### Clients Page: Summary Statistics
+- [x] Added stats widget to `modules/Clients/index.php`
+- [x] Displays at top of page (below title, before table)
+- [x] Shows three metrics: Total Clients, Clients with Bookings, Total Bookings
+- [x] Updates via AJAX when filtering ("Show Only With Bookings")
+- [x] Styles added to `assets/css/styles.css`
+
+**Implementation Details:**
+- Stats container on line 14
+- JavaScript calculation lines 102-121
+- Real-time updates when toggling filter
+- Clean card-based design with stats-grid layout
+
+---
+
+### Uber Income: Additional Costs Tracking
+- [x] Added `additional_cost` DECIMAL(10,2) column to `uber_income` table
+- [x] Added `cost_reason` VARCHAR(255) column to `uber_income` table
+- [x] Created `uber_cost_reasons` table for maintenance
+- [x] Updated `modules/Uber/add.php` with additional cost fields
+- [x] Updated `modules/Uber/edit.php` with additional cost fields
+- [x] Updated `modules/Uber/api/index.php` INSERT and UPDATE handlers
+- [x] Updated `modules/Uber/index.php` to display additional costs
+- [x] Added cost reasons management to `maintenance/index.php`
+- [x] Added cost reasons sync to `maintenance/api/index.php`
+
+**Default Cost Reasons:**
+- Car Wash
+- Parking
+- Tolls
+- Car Maintenance
+- Other
+
