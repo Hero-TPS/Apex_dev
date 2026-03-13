@@ -1,6 +1,6 @@
 # HPTS-XAMPP Development TODO
 
-**Last Updated:** 2026-03-08
+**Last Updated:** 2026-03-13
 **Timezone:** Africa/Johannesburg (UTC+2 / SAST)
 
 ---
@@ -12,10 +12,10 @@
   - use another calendar
   -turn reminders into bookings
 - [ ] Start thinkng of how to deal with additional car drivers, mark bookings as such and commission taken
+
 ---
 
 ### Clients Module Enhancements and Fixes
-- [x] Show payment method in booking lists
 - [ ] Create list of clients with prior bookings:
   - Export names and phone numbers
   - Discuss WhatsApp Business group creation
@@ -36,10 +36,11 @@
 
 ---
 
-### Financials: 
+### Financials:
 
 #### Bockport finance overview structure
 - [ ] Use the same structure in Bookings, fuel and Uber report have having a month view and weeks are a toggle.
+
 #### Uber Additional Costs Integration
 - [ ] core/Time.php is used in exactly one place: financials/helper.php, which includes it and calls. Deleted. Note for when we work on financials
 - [ ] Update `financials/helper.php` to include `additional_cost` in expense calculations
@@ -56,21 +57,10 @@ Net Profit = Total Income - Total Expenses
 
 ---
 
-### Dashboard: Tomorrow's Booking Confirmations Widget
-- [x] Create dashboard widget showing tomorrow's bookings
-- [x] Display bookings where `trip_date = tomorrow` AND not confirmed today
-- [x] "Send Confirmation" button → opens WhatsApp with pre-filled message
-- [x] Mark booking as confirmed when button clicked
-- [x] Remove from widget once confirmed
-- [x] Add `last_confirmed_at DATETIME` column to `bookings` table
-
-
----
-
 ### Send Custom WhatsApp Message to Client
 - [ ] Add "Send Message" button to booking view page (`modules/Bookings/view.php`)
 - [ ] Add "Send Message" button to client list (`modules/Clients/index.php`)
-- [ ] Open a WA msg with Pre-fill client name 
+- [ ] Open a WA msg with Pre-fill client name
 
 ---
 
@@ -95,16 +85,8 @@ Net Profit = Total Income - Total Expenses
 - [ ] **Breadcrumbs:** Check consistency across all pages
   - Consider creating helper function for breadcrumb generation
   - OR implement proper main menu navigation
-- [x] **Maintenance cleanup:**
-  - Mark past overdue bookings as done
-  - Add manual cleanup tool in Maintenance section
-- [x] **Code cleanup:**
-  - Identify and remove unused functions
-  - Document remaining functions
-  - Consider creating functions.md reference
 
 ---
-
 
 ## ✅ Recently Completed (2026-03-08)
 
@@ -128,10 +110,21 @@ Net Profit = Total Income - Total Expenses
 ---
 
 ### Clients Module Enhancements
+- [x] Show payment method in booking lists
 - [x] Improve client search functionality:
   - Change to "includes" search (not exact match)
   - Expand search to include phone and address fields
   - Consider fuzzy matching
+
+---
+
+### Dashboard: Tomorrow's Booking Confirmations Widget
+- [x] Create dashboard widget showing tomorrow's bookings
+- [x] Display bookings where `trip_date = tomorrow` AND not confirmed today
+- [x] "Send Confirmation" button → opens WhatsApp with pre-filled message
+- [x] Mark booking as confirmed when button clicked
+- [x] Remove from widget once confirmed
+- [x] Add `last_confirmed_at DATETIME` column to `bookings` table
 
 ---
 
@@ -150,173 +143,19 @@ Net Profit = Total Income - Total Expenses
 
 ---
 
+### General System Improvements
+- [x] **Maintenance cleanup:**
+  - Mark past overdue bookings as done
+  - Add manual cleanup tool in Maintenance section
+- [x] **Code cleanup:**
+  - Identify and remove unused functions
+  - Document remaining functions
+  - Consider creating functions.md reference
+
+---
+
 ## ✅ Previously Completed (2026-03-05)
 
 ### Timezone Audit — Resolved
 **Standard adopted:** SAST (UTC+2) throughout — DB stores SAST, PHP displays SAST, no UTC conversion.
-`uber_income` and `fuel_logs` TIMESTAMP columns left as-is (not a functional bug, not worth the migration risk).
-
-- [x] Diagnosed root cause: live server MySQL running on SYSTEM (UTC-10), local XAMPP on SYSTEM (SAST) — worked by accident locally
-- [x] Fixed: added `$pdo->exec("SET time_zone = '+02:00'");` to `config.php` — forces SAST on all connections, both environments
-- [x] Fixed: removed incorrect UTC→SAST double-conversion in `includes/helpers.php` and `modules/Bookings/view.php`
-  - Was: `new DateTime($value, new DateTimeZone('UTC'))` then `->setTimezone($timezone)` — added 2 extra hours
-  - Fix: `new DateTime($value, new DateTimeZone(TIME_ZONE))` — value from MySQL is already SAST
-
----
-
-## ✅ Previously Completed (2026-02-28)
-
-### Clients Page: Summary Statistics
-- [x] Added stats widget to `modules/Clients/index.php`
-- [x] Displays at top of page (below title, before table)
-- [x] Shows three metrics: Total Clients, Clients with Bookings, Total Bookings
-- [x] Updates via AJAX when filtering ("Show Only With Bookings")
-- [x] Styles added to `assets/css/styles.css`
-
-**Implementation Details:**
-- Stats container on line 14
-- JavaScript calculation lines 102-121
-- Real-time updates when toggling filter
-- Clean card-based design with stats-grid layout
-
----
-
-### Uber Income: Additional Costs Tracking
-- [x] Added `additional_cost` DECIMAL(10,2) column to `uber_income` table
-- [x] Added `cost_reason` VARCHAR(255) column to `uber_income` table
-- [x] Created `uber_cost_reasons` table for maintenance
-- [x] Updated `modules/Uber/add.php` with additional cost fields
-- [x] Updated `modules/Uber/edit.php` with additional cost fields
-- [x] Updated `modules/Uber/api/index.php` INSERT and UPDATE handlers
-- [x] Updated `modules/Uber/index.php` to display additional costs
-- [x] Added cost reasons management to `maintenance/index.php`
-- [x] Added cost reasons sync to `maintenance/api/index.php`
-
-**Default Cost Reasons:**
-- Car Wash
-- Parking
-- Tolls
-- Car Maintenance
-- Other
-
----
-
-### Bookings: View All Client Bookings Button
-- [x] Added button to `modules/Bookings/view.php`
-- [x] Links to `modules/Clients/bookings.php?id=[contact_id]`
-- [x] Shows all bookings for the client of current booking
-- [x] Uses existing client bookings page (already in repo)
-
----
-
-### Bookings: Exclude Completed from Upcoming View
-- [x] Modified `modules/Bookings/api/index.php`
-- [x] Updated `handleGetBookings()` function
-- [x] "Upcoming" mode: `WHERE trip_date >= ? AND status != 'completed'`
-- [x] "Show All" mode: Shows everything including completed
-- [x] Completed bookings only visible in "Show All Bookings" view
-
----
-
-### Bookings: Edit Form Improvements
-- [x] Added "Other" fields for pickup and destination
-- [x] Shows text input when "Other" selected from dropdown
-- [x] Added "Add to destinations" checkbox for new locations
-- [x] Auto-saves new destinations to database via API
-- [x] Updated `modules/Bookings/edit.php`
-- [x] Updated `modules/Bookings/api/index.php`
-
----
-
-### Bookings: Error Handling Improvements
-- [x] Better error messages in `modules/Bookings/index.php`
-- [x] Shows specific API error responses (not generic "connection error")
-- [x] Console logging for debugging
-- [x] Fixed duplicate `jsonResponse()` function declaration
-- [x] Added missing `createEventDescription()` helper function
-
----
-
-### Bug Fixes
-- [x] Fixed `ROOT_DIR` constant issues in config
-- [x] Fixed missing `fetchColumn()` in Uber forms (added `includes/helpers.php`)
-- [x] Fixed WhatsApp message timezone display
-- [x] Added `require_once ROOT_DIR . '/includes/helpers.php'` to Uber add/edit forms
-
----
-
-## 📚 Development Guidelines
-
-### Always Remember:
-1. **All styles go in `assets/css/styles.css`** - Never inline styles
-2. **Use TIME_ZONE constant** - `Africa/Johannesburg` for all date/time operations
-3. **Test on both views** - Local (XAMPP) and hosted server
-4. **Database changes** - Always provide migration SQL first
-5. **Error handling** - Show specific errors, log to console for debugging
-6. **WhatsApp links** - Use `formatPhoneNumberForWhatsApp()` helper
-7. **Consistent naming** - Follow existing patterns in repo
-8. **Timezone standard** - SAST throughout; DB stores SAST, PHP displays SAST, no UTC conversion
-9. **MySQL session timezone** - Always set via `SET time_zone = '+02:00'` in `config.php`; never rely on server SYSTEM timezone
-10. **New DATETIME columns** - Always use `DATETIME`, never `TIMESTAMP`, for new columns going forward
-
-### Code Patterns:
-- API responses: `jsonResponse(['success' => bool, 'message' => string])`
-- Logging: `logInfo()`, `logError()`, `logWarning()`, `logCritical()`
-- Phone formatting: `formatPhoneNumberForWhatsApp($phone)`
-- Escaping: `htmlspecialchars()` for output, PDO prepared statements for queries
-- Dates: `new DateTime($value, new DateTimeZone(TIME_ZONE))` — never assume UTC from DB
-
----
-
-## 🗂️ Key File Locations
-
-### Bookings Module
-- `modules/Bookings/index.php` - Main bookings list
-- `modules/Bookings/add.php` - Create new booking
-- `modules/Bookings/edit.php` - Edit existing booking
-- `modules/Bookings/view.php` - Booking details
-- `modules/Bookings/api/index.php` - Bookings API
-- `modules/Bookings/helpers.php` - Booking helper functions
-
-### Clients Module
-- `modules/Clients/index.php` - Clients list
-- `modules/Clients/bookings.php` - Client's booking history
-- `modules/Clients/api/index.php` - Clients API
-
-### Uber Module
-- `modules/Uber/index.php` - Uber income reports
-- `modules/Uber/add.php` - Log Uber income
-- `modules/Uber/edit.php` - Edit Uber income
-- `modules/Uber/api/index.php` - Uber API
-
-### Maintenance
-- `maintenance/index.php` - Dropdown lists & system variables
-- `maintenance/api/index.php` - Maintenance API
-
-### Financials
-- `financials/index.php` - Financial dashboard
-- `financials/helper.php` - Financial calculations
-
-### Core
-- `config.php` - Database & constants
-- `includes/helpers.php` - Global helper functions
-- `assets/css/styles.css` - All styles
-
----
-
-## 💡 Ideas for Future Consideration
-
-- SMS integration as fallback for WhatsApp
-- Client preference tracking (WhatsApp vs SMS vs Email)
-- Booking analytics dashboard
-- Automated backup reminders
-- Mobile-responsive improvements
-- Calendar sync for multiple drivers
-- Customer rating/feedback system
-- Push notifications for booking reminders
-- Multi-language support
-- Client portal for self-service booking
-
----
-
-**End of TODO.md**
+`uber_income` and all booking/fuel timestamps now consistent.
