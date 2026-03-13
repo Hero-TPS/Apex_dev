@@ -60,7 +60,6 @@ usort($months, function ($a, $b) {
             <!-- EXPENSES -->
             <div class="metric-row"><span>Fuel Cost:</span>            <span>R<?= number_format($metrics['fuel_cost'],             2) ?></span></div>
             <div class="metric-row"><span>Car Rental:</span>           <span>R<?= number_format($metrics['car_rental'],            2) ?></span></div>
-            <div class="metric-row"><span>Mobile Data:</span>          <span>R<?= number_format($metrics['mobile_data_cost'],      2) ?></span></div>
             <div class="metric-row"><span>Uber Costs:</span>           <span>R<?= number_format($metrics['uber_additional_costs'], 2) ?></span></div>
             <div class="metric-row"><span>Total Expenses:</span>       <strong>R<?= number_format($metrics['total_expenses'],       2) ?></strong></div>
 
@@ -115,7 +114,6 @@ usort($months, function ($a, $b) {
 
                 <div class="metric-row"><span>Fuel Cost:</span>            <span>${fmtR(week.fuel_cost)}</span></div>
                 <div class="metric-row"><span>Car Rental:</span>           <span>${fmtR(week.car_rental)}</span></div>
-                <div class="metric-row"><span>Mobile Data:</span>          <span>${fmtR(week.mobile_data_cost)}</span></div>
                 <div class="metric-row"><span>Uber Costs:</span>           <span>${fmtR(week.uber_additional_costs)}</span></div>
                 <div class="metric-row"><span>Total Expenses:</span>       <strong>${fmtR(week.total_expenses)}</strong></div>
 
