@@ -321,10 +321,7 @@ Net Profit = Total Income - Total Expenses
 - Automated backup reminders
 - Mobile-responsive improvements
 - Calendar sync for multiple drivers
-- Customer rating/feedback system
-- Push notifications for booking reminders
-- Multi-language support
-- Client portal for self-service booking
+
 
 ---
 
