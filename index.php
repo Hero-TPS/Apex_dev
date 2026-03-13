@@ -125,10 +125,10 @@ include ROOT_DIR . '/includes/header.php';
                     var badge = pending.length > 0 ? ' (' + pending.length + ')' : '';
                     $('#confirmations-badge').text(badge);
 
-                    if (res.bookings.length === 0 || pending.length === 0) {
+                  //  if (res.bookings.length === 0 || pending.length === 0) {
                         $('#confirmations-section').slideUp(200);
-                        return;
-                    }
+                    //    return;
+                  //  }
 
                     var html = '';
                     $.each(pending, function (i, b) {
