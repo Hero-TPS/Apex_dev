@@ -20,6 +20,7 @@
   - Discuss WhatsApp Business group creation
   - Ideas for direct WhatsApp communication with existing clients
 - [ ] WhatsApp Business integration for bulk messaging
+- [ ] Group management still to be discussed.
 
 ---
 
