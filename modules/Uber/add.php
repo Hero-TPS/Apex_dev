@@ -8,12 +8,19 @@ require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 include ROOT_DIR . '/includes/header.php';
 
-// Generate last 8 Mondays (2 months back)
+// Generate last 8 Mondays (2 months back), starting from the current week's Monday.
+// This allows logging the current week on any day including Sunday.
 $mondays = [];
 $today = new DateTime('now', new DateTimeZone(TIME_ZONE));
+$dayOfWeek = (int) $today->format('N'); // 1 = Monday, 7 = Sunday
+$currentMonday = clone $today;
+$currentMonday->modify('-' . ($dayOfWeek - 1) . ' days');
+$currentMonday->setTime(0, 0, 0);
 for ($i = 0; $i < 8; $i++) {
-    $monday = clone $today;
-    $monday->modify("monday last week -{$i} weeks");
+    $monday = clone $currentMonday;
+    if ($i > 0) {
+        $monday->modify("-{$i} weeks");
+    }
     $mondays[] = $monday->format('Y-m-d');
 }
 $default_monday = $mondays[0];
