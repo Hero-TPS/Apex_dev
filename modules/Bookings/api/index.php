@@ -61,6 +61,9 @@ try {
         case 'monthly_bookings':
             handleMonthlyBookings();
             break;
+        case 'weekly_bookings_by_month':
+            handleWeeklyBookingsByMonth();
+            break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action: ' . ($action ?? 'none')], 400);
     }
@@ -655,6 +658,63 @@ function handleMonthlyBookings()
         jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
     }
 }
+
+function handleWeeklyBookingsByMonth()
+{
+    global $pdo;
+
+    $year  = $_GET['year']  ?? null;
+    $month = $_GET['month'] ?? null;
+
+    if (!$year || !$month || !checkdate((int) $month, 1, (int) $year)) {
+        jsonResponse(['success' => false, 'message' => 'Invalid date'], 400);
+        return;
+    }
+
+    try {
+        $tz       = new DateTimeZone(TIME_ZONE);
+        $firstDay = new DateTime(sprintf('%04d-%02d-01', (int) $year, (int) $month), $tz);
+        if ($firstDay->format('N') !== '1') {
+            $firstDay->modify('next monday');
+        }
+        $lastDay = new DateTime(sprintf('%04d-%02d-01', (int) $year, (int) $month), $tz);
+        $lastDay->modify('last day of this month');
+
+        $data    = [];
+        $current = clone $firstDay;
+        while ($current <= $lastDay) {
+            $monday = clone $current;
+            $monday->setTime(0, 0, 0);
+            $sunday = clone $monday;
+            $sunday->modify('+6 days');
+
+            $startStr = $monday->format('Y-m-d');
+            $endStr   = $sunday->format('Y-m-d');
+
+            $stmt = $pdo->prepare(
+                "SELECT COALESCE(SUM(cost), 0) AS total_income, COUNT(*) AS booking_count
+                 FROM bookings WHERE trip_date BETWEEN ? AND ?"
+            );
+            $stmt->execute([$startStr, $endStr]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $data[] = [
+                'week_label'    => $monday->format('d M') . ' – ' . $sunday->format('d M Y'),
+                'booking_count' => (int)   $row['booking_count'],
+                'total_income'  => (float) $row['total_income'],
+            ];
+
+            $current->modify('+1 week');
+        }
+
+        jsonResponse(['success' => true, 'data' => $data]);
+
+    } catch (PDOException $e) {
+        logError('BOOKING_REPORT', 'Weekly-by-month report failed', ['error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
 // ========== FEATURE 1: TOMORROW'S BOOKINGS ==========
 
 /**

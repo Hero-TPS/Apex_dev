@@ -31,6 +31,9 @@ try {
         case 'monthly':
             handleMonthly();
             break;
+        case 'weekly_fuel_by_month':
+            handleWeeklyFuelByMonth();
+            break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
     }
@@ -313,6 +316,65 @@ function handleMonthly()
 
     } catch (PDOException $e) {
         logError('FUEL', 'Monthly report failed', ['error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Database error'], 500);
+    }
+}
+function handleWeeklyFuelByMonth()
+{
+    global $pdo;
+
+    $year  = $_GET['year']  ?? null;
+    $month = $_GET['month'] ?? null;
+
+    if (!$year || !$month || !checkdate((int) $month, 1, (int) $year)) {
+        jsonResponse(['success' => false, 'message' => 'Invalid date'], 400);
+        return;
+    }
+
+    try {
+        $tz       = new DateTimeZone(TIME_ZONE);
+        $firstDay = new DateTime(sprintf('%04d-%02d-01', (int) $year, (int) $month), $tz);
+        if ($firstDay->format('N') !== '1') {
+            $firstDay->modify('next monday');
+        }
+        $lastDay = new DateTime(sprintf('%04d-%02d-01', (int) $year, (int) $month), $tz);
+        $lastDay->modify('last day of this month');
+
+        $data    = [];
+        $current = clone $firstDay;
+        while ($current <= $lastDay) {
+            $monday = clone $current;
+            $monday->setTime(0, 0, 0);
+            $sunday = clone $monday;
+            $sunday->modify('+6 days');
+            $sunday->setTime(23, 59, 59);
+
+            $startUnix = $monday->getTimestamp();
+            $endUnix   = $sunday->getTimestamp();
+
+            $stmt = $pdo->prepare(
+                "SELECT COALESCE(COUNT(*), 0) AS fill_count,
+                        COALESCE(SUM(trip_km), 0) AS total_km,
+                        COALESCE(SUM(total_cost), 0) AS total_cost
+                 FROM fuel_logs WHERE log_timestamp BETWEEN ? AND ?"
+            );
+            $stmt->execute([$startUnix, $endUnix]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $data[] = [
+                'week_label' => $monday->format('d M') . ' – ' . $sunday->format('d M Y'),
+                'fill_count' => (int)   $row['fill_count'],
+                'total_km'   => (float) $row['total_km'],
+                'total_cost' => (float) $row['total_cost'],
+            ];
+
+            $current->modify('+1 week');
+        }
+
+        jsonResponse(['success' => true, 'data' => $data]);
+
+    } catch (PDOException $e) {
+        logError('FUEL', 'Weekly-by-month report failed', ['error' => $e->getMessage()]);
         jsonResponse(['success' => false, 'message' => 'Database error'], 500);
     }
 }

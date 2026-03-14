@@ -28,6 +28,9 @@ try {
         case 'delete':
             handleDelete();
             break;
+        case 'get_by_month':
+            handleGetByMonth();
+            break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
     }
@@ -267,5 +270,58 @@ function saveAdditionalCosts(PDO $pdo, int $uberIncomeId, array $reasons, array 
         if ($reason !== '' && $amount > 0) {
             $stmt->execute([$uberIncomeId, $reason, $amount]);
         }
+    }
+}
+function handleGetByMonth()
+{
+    global $pdo;
+
+    $year  = $_GET['year']  ?? null;
+    $month = $_GET['month'] ?? null;
+
+    if (!$year || !$month || !checkdate((int) $month, 1, (int) $year)) {
+        jsonResponse(['success' => false, 'message' => 'Invalid date'], 400);
+        return;
+    }
+
+    try {
+        $tz        = new DateTimeZone(TIME_ZONE);
+        $startDate = new DateTime(sprintf('%04d-%02d-01', (int) $year, (int) $month), $tz);
+        $endDate   = clone $startDate;
+        $endDate->modify('last day of this month');
+
+        $startUnix = $startDate->getTimestamp();
+        $endUnix   = $endDate->getTimestamp();
+
+        $stmt = $pdo->prepare(
+            "SELECT * FROM uber_income WHERE week_start BETWEEN ? AND ? ORDER BY week_start ASC"
+        );
+        $stmt->execute([$startUnix, $endUnix]);
+        $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($records as &$record) {
+            if (isset($record['week_start']) && $record['week_start'] > 0) {
+                $start = new DateTime();
+                $start->setTimestamp((int) $record['week_start']);
+                $start->setTimezone($tz);
+                $end = clone $start;
+                $end->modify('+6 days');
+                $record['week_display'] = $start->format('d M Y') . ' – ' . $end->format('d M Y');
+            } else {
+                $record['week_display'] = 'Invalid Date';
+            }
+
+            $costStmt = $pdo->prepare(
+                "SELECT id, reason, amount FROM uber_additional_costs WHERE uber_income_id = ? ORDER BY id ASC"
+            );
+            $costStmt->execute([$record['id']]);
+            $record['additional_costs'] = $costStmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        jsonResponse(['success' => true, 'data' => $records]);
+
+    } catch (PDOException $e) {
+        logError('UBER', 'Failed to fetch Uber records by month', ['error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Database error'], 500);
     }
 }
