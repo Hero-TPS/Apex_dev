@@ -29,6 +29,9 @@
 ---
 
 ### Uber Module Enhancements and Fixes
+- [ ] Currently, I can only add the current week's uber log after end of day on Sunday . Want to be able to add an uber log on Sunday as well, even if the day is not done (End of work week for me).
+ - Keep in mind Uber period does not change, it is still from start of day on Monday till end of day on Sunday.
+ - The way it is done now is old code.
 
 ---
 
