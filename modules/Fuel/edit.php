@@ -51,9 +51,9 @@ if ($log_id <= 0) {
             </p>
         </div>
 
-        <div style="display: flex; gap: 10px;">
+        <div class="action-buttons">
             <button type="submit" class="btn" id="submitBtn">💾 Update Log</button>
-            <a href="<?= BASE_URL ?>/modules/Fuel/" class="btn" style="background: #95a5a6; width: auto;">
+            <a href="<?= BASE_URL ?>/modules/Fuel/" class="page-action-btn back">
                 ← Back to Fuel Logs
             </a>
         </div>

@@ -62,6 +62,9 @@ include ROOT_DIR . '/includes/header.php';
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="financials-section">💰 Financials</h3>
         <div id="financials-section" class="menu-content">
+            <a href="financials/index.php" class="dashboard-button db-reports">
+                <span class="dashboard-text">Financial Summary</span>
+            </a>
             <a href="modules/Financials/" class="dashboard-button db-reports">Financial Summary</a>
         </div>
     </div>
@@ -117,10 +120,10 @@ include ROOT_DIR . '/includes/header.php';
                     var badge = pending.length > 0 ? ' (' + pending.length + ')' : '';
                     $('#confirmations-badge').text(badge);
 
-                    if (res.bookings.length === 0 || pending.length === 0) {
+                  //  if (res.bookings.length === 0 || pending.length === 0) {
                         $('#confirmations-section').slideUp(200);
-                        return;
-                    }
+                    //    return;
+                  //  }
 
                     var html = '';
                     $.each(pending, function (i, b) {

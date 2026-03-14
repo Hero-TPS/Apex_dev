@@ -42,14 +42,14 @@ if ($client_id <= 0) {
         <textarea id="additionalInfo" name="additionalInfo" placeholder="Any special notes, preferences, or instructions"></textarea>
     </div>
     
-    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+    <div class="action-buttons">
         <button type="submit" class="btn" id="submitBtn">
             💾 Update Client
         </button>
-        <a href="<?= BASE_URL ?>/modules/Clients/" class="btn" style="background: #95a5a6; width: auto;">
+        <a href="<?= BASE_URL ?>/modules/Clients/" class="page-action-btn back">
             ← Back to Clients
         </a>
-        <a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=<?= $client_id ?>" class="btn" style="background: #3498db; width: auto;">
+        <a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=<?= $client_id ?>" class="page-action-btn edit">
             📅 View Bookings
         </a>
     </div>

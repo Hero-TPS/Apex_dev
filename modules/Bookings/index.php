@@ -40,8 +40,7 @@ include ROOT_DIR . '/includes/header.php';
 <div id="no-bookings-message" class="no-bookings" style="display: none;">
     <h3>📋 No bookings found</h3>
     <p>
-        <a href="<?= BASE_URL ?>/modules/Bookings/add.php" class="btn"
-            style="width: auto; padding: 10px 20px; text-decoration: none;">+ Create a Booking</a>
+        <a href="<?= BASE_URL ?>/modules/Bookings/add.php" class="page-action-btn primary">+ Create a Booking</a>
     </p>
 </div>
 
