@@ -1,6 +1,6 @@
 # HPTS-XAMPP Development TODO
 
-**Last Updated:** 2026-03-08
+**Last Updated:** 2026-03-13
 **Timezone:** Africa/Johannesburg (UTC+2 / SAST)
 
 ---
@@ -12,10 +12,10 @@
   - use another calendar
   - turn reminders into bookings
 - [ ] Start thinkng of how to deal with additional car drivers, mark bookings as such and commission taken
+
 ---
 
 ### Clients Module Enhancements and Fixes
-- [x] Show payment method in booking lists
 - [ ] Create list of clients with prior bookings:
   - Export names and phone numbers
   - Discuss WhatsApp Business group creation
@@ -36,6 +36,7 @@
 
 ---
 
+
 ### Maintanance Enhancements and Fixes
 
 #### Logs
@@ -45,8 +46,12 @@
 
 ### Financials: 
 
+### Financials:
+
+
 #### Backport finance overview structure
 - [ ] Use the same structure in Bookings, fuel and Uber report have having a month view and weeks are a toggle.
+
 
 ---
 
@@ -66,21 +71,15 @@ Net Profit = Total Income - Total Expenses
 
 ---
 
-### Dashboard: Tomorrow's Booking Confirmations Widget
-- [x] Create dashboard widget showing tomorrow's bookings
-- [x] Display bookings where `trip_date = tomorrow` AND not confirmed today
-- [x] "Send Confirmation" button → opens WhatsApp with pre-filled message
-- [x] Mark booking as confirmed when button clicked
-- [x] Remove from widget once confirmed
-- [x] Add `last_confirmed_at DATETIME` column to `bookings` table
-
-
----
-
 ### Send Custom WhatsApp Message to Client
+
 - [x] Add "Send Message" button to booking view page (`modules/Bookings/view.php`)
 - [x] Add "Send Message" button to client list (`modules/Clients/index.php`)
 - [x] Open a WA msg with Pre-fill client name 
+- [ ] Add "Send Message" button to booking view page (`modules/Bookings/view.php`)
+- [ ] Add "Send Message" button to client list (`modules/Clients/index.php`)
+- [ ] Open a WA msg with Pre-fill client name
+
 
 ---
 
@@ -104,16 +103,8 @@ Net Profit = Total Income - Total Expenses
 - [ ] **Breadcrumbs:** Check consistency across all pages
   - Consider creating helper function for breadcrumb generation
   - OR implement proper main menu navigation
-- [x] **Maintenance cleanup:**
-  - Mark past overdue bookings as done
-  - Add manual cleanup tool in Maintenance section
-- [x] **Code cleanup:**
-  - Identify and remove unused functions
-  - Document remaining functions
-  - Consider creating functions.md reference
 
 ---
-
 
 ## ✅ Recently Completed (2026-03-08)
 
@@ -137,10 +128,21 @@ Net Profit = Total Income - Total Expenses
 ---
 
 ### Clients Module Enhancements
+- [x] Show payment method in booking lists
 - [x] Improve client search functionality:
   - Change to "includes" search (not exact match)
   - Expand search to include phone and address fields
   - Consider fuzzy matching
+
+---
+
+### Dashboard: Tomorrow's Booking Confirmations Widget
+- [x] Create dashboard widget showing tomorrow's bookings
+- [x] Display bookings where `trip_date = tomorrow` AND not confirmed today
+- [x] "Send Confirmation" button → opens WhatsApp with pre-filled message
+- [x] Mark booking as confirmed when button clicked
+- [x] Remove from widget once confirmed
+- [x] Add `last_confirmed_at DATETIME` column to `bookings` table
 
 ---
 
@@ -156,6 +158,17 @@ Net Profit = Total Income - Total Expenses
 ### Uber Module
 - [x] Additional costs should be multiple, such as add another cost
   - Mobile data to be moved from a separate field to additional cost
+
+---
+
+### General System Improvements
+- [x] **Maintenance cleanup:**
+  - Mark past overdue bookings as done
+  - Add manual cleanup tool in Maintenance section
+- [x] **Code cleanup:**
+  - Identify and remove unused functions
+  - Document remaining functions
+  - Consider creating functions.md reference
 
 ---
 
@@ -207,6 +220,7 @@ Net Profit = Total Income - Total Expenses
 - Tolls
 - Car Maintenance
 - Other
+
 
 ---
 
@@ -326,3 +340,4 @@ Net Profit = Total Income - Total Expenses
 ---
 
 **End of TODO.md**
+
