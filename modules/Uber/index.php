@@ -1,89 +1,169 @@
 <?php
 $page_title = 'Uber Reports';
-$page_subtitle = 'Weekly Income Summary';
+$page_subtitle = 'Monthly Summary';
 $show_breadcrumb = true;
 $breadcrumb = ' > Uber';
 
 require_once __DIR__ . '/../../config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
+
+$monthsBack = (int) getSystemVariable($pdo, 'financial_months_back');
+if ($monthsBack < 1) {
+    $monthsBack = 3;
+}
+
+$months = [];
+$today  = new DateTime();
+for ($i = 0; $i < $monthsBack; $i++) {
+    $date  = clone $today;
+    $date->modify("-$i months");
+    $months[] = [
+        'year'  => (int) $date->format('Y'),
+        'month' => (int) $date->format('n'),
+    ];
+}
+usort($months, function ($a, $b) {
+    if ($a['year'] !== $b['year']) {
+        return $b['year'] - $a['year'];
+    }
+    return $b['month'] - $a['month'];
+});
+
 include ROOT_DIR . '/includes/header.php';
 ?>
 
-<div class="content">
-    <h2>🚗 Uber Income Report</h2>
-    <table class="bookings-table">
-        <thead>
-            <tr>
-                <th>Week</th>
-                <th>Total Income (R)</th>
-                <th>Cash Received (R)</th>
-                <th>Total Trips</th>
-                <th>Time Online</th>
-                <th>Card Income (R)</th>
-                <th>Additional Costs (R)</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="uber-report-body">
-            <tr>
-                <td colspan="8" style="text-align:center;">Loading...</td>
-            </tr>
-        </tbody>
-    </table>
+<div class="financial-dashboard">
+    <h2>🚗 Uber Reports (Last <?= htmlspecialchars($monthsBack) ?> Months)</h2>
+
+    <?php foreach ($months as $m):
+        $tz        = new DateTimeZone(TIME_ZONE);
+        $startDate = new DateTime("{$m['year']}-{$m['month']}-01", $tz);
+        $endDate   = clone $startDate;
+        $endDate->modify('last day of this month');
+
+        $startUnix = $startDate->getTimestamp();
+        $endUnix   = $endDate->getTimestamp();
+
+        $stmt = $pdo->prepare(
+            "SELECT COALESCE(SUM(ui.total_income), 0)  AS total_income,
+                    COALESCE(SUM(ui.cash_received), 0)  AS cash_received,
+                    COALESCE(SUM(ui.total_trips), 0)    AS total_trips,
+                    COALESCE(SUM(ui.total_time_online), 0) AS total_time_online,
+                    COALESCE(SUM(uac.amount), 0)        AS additional_costs
+             FROM uber_income ui
+             LEFT JOIN uber_additional_costs uac ON uac.uber_income_id = ui.id
+             WHERE ui.week_start BETWEEN ? AND ?"
+        );
+        $stmt->execute([$startUnix, $endUnix]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $cardIncome = $row['total_income'] - $row['cash_received'];
+        $monthLabel = date('F Y', mktime(0, 0, 0, $m['month'], 1, $m['year']));
+    ?>
+        <div class="financial-month-block" data-year="<?= $m['year'] ?>" data-month="<?= $m['month'] ?>">
+            <div class="month-header">
+                <h3><?= htmlspecialchars($monthLabel) ?></h3>
+                <span class="net-amount profit">R<?= number_format($row['total_income'], 2) ?></span>
+            </div>
+
+            <div class="metric-row"><span>Total Income:</span>      <strong>R<?= number_format($row['total_income'], 2) ?></strong></div>
+            <div class="metric-row"><span>Cash Received:</span>     <span>R<?= number_format($row['cash_received'], 2) ?></span></div>
+            <div class="metric-row"><span>Card Income:</span>        <span>R<?= number_format($cardIncome, 2) ?></span></div>
+            <div class="metric-row"><span>Total Trips:</span>        <strong><?= (int) $row['total_trips'] ?></strong></div>
+            <div class="metric-row"><span>Time Online:</span>        <span><?= number_format($row['total_time_online'], 1) ?> hrs</span></div>
+            <div class="metric-row"><span>Additional Costs:</span>   <span>R<?= number_format($row['additional_costs'], 2) ?></span></div>
+
+            <button class="toggle-weeks-btn" data-year="<?= $m['year'] ?>" data-month="<?= $m['month'] ?>">
+                🔽 View Weeks
+            </button>
+            <div class="weeks-container hidden"></div>
+        </div>
+    <?php endforeach; ?>
 </div>
 
 <script>
-    $(document).ready(function () {
-        loadUberReports();
-
-        function loadUberReports() {
-            $.ajax({
-                url: '<?= BASE_URL ?>/modules/Uber/api/index.php?action=get_all',
-                dataType: 'json',
-                success: function (response) {
-                    const body = $('#uber-report-body');
-                    if (response.success && response.data.length > 0) {
-                        body.empty();
-                        response.data.forEach(log => {
-                            const cardIncome = (parseFloat(log.total_income) - parseFloat(log.cash_received)).toFixed(2);
-
-                            // Build additional costs display from the array
-                            let additionalCostsHtml = '—';
-                            if (log.additional_costs && log.additional_costs.length > 0) {
-                                const parts = log.additional_costs.map(c =>
-                                    `${c.reason}: R ${parseFloat(c.amount).toFixed(2)}`
-                                );
-                                additionalCostsHtml = parts.join('<br>');
-                            }
-
-                            body.append(`
-                                <tr data-log-id="${log.id}">
-                                    <td data-label="Week">${log.week_display}</td>
-                                    <td data-label="Total Income">R ${parseFloat(log.total_income).toFixed(2)}</td>
-                                    <td data-label="Cash Received">R ${parseFloat(log.cash_received).toFixed(2)}</td>
-                                    <td data-label="Trips">${log.total_trips}</td>
-                                    <td data-label="Time Online">${parseFloat(log.total_time_online).toFixed(1)} hrs</td>
-                                    <td data-label="Card Income">R ${cardIncome}</td>
-                                    <td data-label="Additional Costs">${additionalCostsHtml}</td>
-                                    <td data-label="Actions">
-                                        <div class="actions-container">
-                                            <a href="<?= BASE_URL ?>/modules/Uber/edit.php?id=${log.id}" class="action-btn edit-btn">✏️ Edit</a>
-                                            <button class="action-btn delete-btn" data-id="${log.id}">🗑️ Delete</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            `);
-                        });
-                    } else {
-                        body.html('<tr><td colspan="8" class="error-message">No Uber income records found.</td></tr>');
-                    }
-                },
-                error: function () {
-                    $('#uber-report-body').html('<tr><td colspan="8" class="error-message">Failed to load Uber income reports.</td></tr>');
-                }
-            });
+    function buildWeekBlock(log) {
+        let costsHtml = '—';
+        if (log.additional_costs && log.additional_costs.length > 0) {
+            costsHtml = log.additional_costs.map(c =>
+                `${c.reason}: R ${parseFloat(c.amount).toFixed(2)}`
+            ).join('<br>');
         }
+        const cardIncome = (parseFloat(log.total_income) - parseFloat(log.cash_received)).toFixed(2);
 
-        // Delete button
+        return `
+            <div class="weekly-block">
+                <div class="week-header">
+                    <strong>Week: ${log.week_display}</strong>
+                    <span class="net-amount profit">R${parseFloat(log.total_income || 0).toFixed(2)}</span>
+                </div>
+                <div class="metric-row"><span>Total Income:</span>    <strong>R${parseFloat(log.total_income || 0).toFixed(2)}</strong></div>
+                <div class="metric-row"><span>Cash Received:</span>   <span>R${parseFloat(log.cash_received || 0).toFixed(2)}</span></div>
+                <div class="metric-row"><span>Card Income:</span>     <span>R${cardIncome}</span></div>
+                <div class="metric-row"><span>Total Trips:</span>     <strong>${log.total_trips}</strong></div>
+                <div class="metric-row"><span>Time Online:</span>     <span>${parseFloat(log.total_time_online || 0).toFixed(1)} hrs</span></div>
+                <div class="metric-row"><span>Additional Costs:</span><span>${costsHtml}</span></div>
+                <div class="metric-row">
+                    <span></span>
+                    <span>
+                        <a href="<?= BASE_URL ?>/modules/Uber/edit.php?id=${log.id}" class="action-btn edit-btn">✏️ Edit</a>
+                        <button class="action-btn delete-btn" data-id="${log.id}">🗑️ Delete</button>
+                    </span>
+                </div>
+            </div>
+        `;
+    }
+
+    $(document).ready(function () {
+        let currentlyOpenContainer = null;
+
+        $(document).on('click', '.toggle-weeks-btn', function () {
+            const button    = $(this);
+            const year      = button.data('year');
+            const month     = button.data('month');
+            const container = button.next('.weeks-container');
+
+            if (currentlyOpenContainer && currentlyOpenContainer !== container[0]) {
+                $(currentlyOpenContainer).addClass('hidden').empty();
+                $(currentlyOpenContainer).prev('.toggle-weeks-btn').text('🔽 View Weeks');
+            }
+
+            if (container.hasClass('hidden')) {
+                if (container.is(':empty')) {
+                    container.html('<div style="text-align:center; padding:10px;">Loading weeks…</div>');
+                    $.ajax({
+                        url: '<?= BASE_URL ?>/modules/Uber/api/index.php',
+                        method: 'GET',
+                        data: { action: 'get_by_month', year: year, month: month },
+                        dataType: 'json',
+                        success: function (response) {
+                            container.empty();
+                            if (response.success && response.data.length > 0) {
+                                response.data.forEach(function (log) {
+                                    container.append(buildWeekBlock(log));
+                                });
+                            } else if (response.success) {
+                                container.html('<div class="error-message">No Uber records found for this month.</div>');
+                            } else {
+                                container.html('<div class="error-message">⚠️ ' + (response.message || 'Failed to load weeks') + '</div>');
+                            }
+                        },
+                        error: function (xhr, status, err) {
+                            container.html('<div class="error-message">⚠️ Network error: ' + err + '</div>');
+                        }
+                    });
+                }
+                container.removeClass('hidden');
+                button.text('🔼 Hide Weeks');
+                currentlyOpenContainer = container[0];
+            } else {
+                container.addClass('hidden');
+                button.text('🔽 View Weeks');
+                currentlyOpenContainer = null;
+            }
+        });
+
+        // Delete handler for Uber records inside weekly blocks
         $(document).on('click', '.delete-btn', function () {
             if (!confirm('Delete this week\'s income?')) return;
             const id = $(this).data('id');
@@ -95,10 +175,13 @@ include ROOT_DIR . '/includes/header.php';
                 dataType: 'json',
                 success: function (res) {
                     if (res.success) {
-                        $('tr[data-log-id="' + id + '"]').fadeOut(function () {
+                        // Remove the weekly-block and reset its container so it reloads next time
+                        const weekBlock = $('button[data-id="' + id + '"]').closest('.weekly-block');
+                        const container = weekBlock.closest('.weeks-container');
+                        weekBlock.fadeOut(function () {
                             $(this).remove();
-                            if ($('#uber-report-body tr').length === 0) {
-                                loadUberReports();
+                            if (container.find('.weekly-block').length === 0) {
+                                container.html('<div class="error-message">No Uber records found for this month.</div>');
                             }
                         });
                         showNotification('✓ ' + res.message, 'success');
@@ -115,7 +198,7 @@ include ROOT_DIR . '/includes/header.php';
         function showNotification(message, type) {
             const className = type === 'success' ? 'success-message' : 'error-message';
             const notification = $('<div class="' + className + '">' + message + '</div>');
-            $('.content').prepend(notification);
+            $('.financial-dashboard').before(notification);
             setTimeout(function () {
                 notification.fadeOut(function () {
                     $(this).remove();

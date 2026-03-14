@@ -1,112 +1,134 @@
 <?php
 //booking reports
 $page_title = 'Booking Reports';
-$page_subtitle = 'Weekly Summary';
+$page_subtitle = 'Monthly Summary';
 $show_breadcrumb = true;
-$breadcrumb = ' > Reports > Weekly Bookings';
+$breadcrumb = ' > Reports > Bookings';
 
 require_once __DIR__ . '/../../config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
+
+$monthsBack = (int) getSystemVariable($pdo, 'financial_months_back');
+if ($monthsBack < 1) {
+    $monthsBack = 3;
+}
+
+$months = [];
+$today  = new DateTime();
+for ($i = 0; $i < $monthsBack; $i++) {
+    $date  = clone $today;
+    $date->modify("-$i months");
+    $months[] = [
+        'year'  => (int) $date->format('Y'),
+        'month' => (int) $date->format('n'),
+    ];
+}
+usort($months, function ($a, $b) {
+    if ($a['year'] !== $b['year']) {
+        return $b['year'] - $a['year'];
+    }
+    return $b['month'] - $a['month'];
+});
+
 include ROOT_DIR . '/includes/header.php';
 ?>
 
-<div class="content">
-    <h2>📊 Weekly Booking Report</h2>
-    <p>Summary of bookings and income from Monday 00:00 to Sunday 24:00.</p>
+<div class="financial-dashboard">
+    <h2>📊 Booking Reports (Last <?= htmlspecialchars($monthsBack) ?> Months)</h2>
 
-    <div id="report-container">
-        <table class="bookings-table">
-            <thead>
-                <tr>
-                    <th>Week</th>
-                    <th>Bookings</th>
-                    <th>Total Income (R)</th>
-                </tr>
-            </thead>
-            <tbody id="report-body">
-                <tr>
-                    <td colspan="3" style="text-align:center;">Loading report...</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+    <?php foreach ($months as $m):
+        $startDate = new DateTime("{$m['year']}-{$m['month']}-01");
+        $endDate   = clone $startDate;
+        $endDate->modify('last day of this month');
 
-    <!-- Monthly Report -->
-    <h3 style="margin-top: 40px;">📆 Monthly Report (<?= date('Y') ?>)</h3>
-    <div id="monthly-report-container">
-        <table class="bookings-table">
-            <thead>
-                <tr>
-                    <th>Month</th>
-                    <th>Bookings</th>
-                    <th>Total Income (R)</th>
-                </tr>
-            </thead>
-            <tbody id="monthly-report-body">
-                <tr>
-                    <td colspan="3" style="text-align:center;">Loading monthly report...</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+        $stmt = $pdo->prepare(
+            "SELECT COALESCE(SUM(cost), 0) AS total_income, COUNT(*) AS booking_count
+             FROM bookings WHERE trip_date BETWEEN ? AND ?"
+        );
+        $stmt->execute([$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $monthLabel = date('F Y', mktime(0, 0, 0, $m['month'], 1, $m['year']));
+    ?>
+        <div class="financial-month-block" data-year="<?= $m['year'] ?>" data-month="<?= $m['month'] ?>">
+            <div class="month-header">
+                <h3><?= htmlspecialchars($monthLabel) ?></h3>
+                <span class="net-amount profit">R<?= number_format($row['total_income'], 2) ?></span>
+            </div>
+
+            <div class="metric-row"><span>Total Bookings:</span> <strong><?= (int) $row['booking_count'] ?></strong></div>
+            <div class="metric-row"><span>Total Income:</span>   <strong>R<?= number_format($row['total_income'], 2) ?></strong></div>
+
+            <button class="toggle-weeks-btn" data-year="<?= $m['year'] ?>" data-month="<?= $m['month'] ?>">
+                🔽 View Weeks
+            </button>
+            <div class="weeks-container hidden"></div>
+        </div>
+    <?php endforeach; ?>
 </div>
 
 <script>
+    function buildWeekBlock(week) {
+        return `
+            <div class="weekly-block">
+                <div class="week-header">
+                    <strong>Week: ${week.week_label}</strong>
+                    <span class="net-amount profit">R${parseFloat(week.total_income || 0).toFixed(2)}</span>
+                </div>
+                <div class="metric-row"><span>Bookings:</span>     <strong>${week.booking_count}</strong></div>
+                <div class="metric-row"><span>Total Income:</span> <strong>R${parseFloat(week.total_income || 0).toFixed(2)}</strong></div>
+            </div>
+        `;
+    }
+
     $(document).ready(function () {
-        $.ajax({
-            url: '<?= BASE_URL ?>/modules/Bookings/api/index.php?action=weekly_bookings',
-            dataType: 'json',
-            success: function (response) {
-                const body = $('#report-body');
-                if (response.success && response.data.length > 0) {
-                    body.empty();
-                    response.data.forEach(week => {
-                        body.append(`
-                        <tr>
-                            <td data-label="Week">${escapeHtml(week.week_label)}</td>
-                            <td data-label="Bookings">${week.booking_count}</td>
-                            <td data-label="Total Income (R)">R ${parseFloat(week.total_income).toFixed(2)}</td>
-                        </tr>
-                    `);
+        let currentlyOpenContainer = null;
+
+        $(document).on('click', '.toggle-weeks-btn', function () {
+            const button    = $(this);
+            const year      = button.data('year');
+            const month     = button.data('month');
+            const container = button.next('.weeks-container');
+
+            if (currentlyOpenContainer && currentlyOpenContainer !== container[0]) {
+                $(currentlyOpenContainer).addClass('hidden').empty();
+                $(currentlyOpenContainer).prev('.toggle-weeks-btn').text('🔽 View Weeks');
+            }
+
+            if (container.hasClass('hidden')) {
+                if (container.is(':empty')) {
+                    container.html('<div style="text-align:center; padding:10px;">Loading weeks…</div>');
+                    $.ajax({
+                        url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                        method: 'GET',
+                        data: { action: 'weekly_bookings_by_month', year: year, month: month },
+                        dataType: 'json',
+                        success: function (response) {
+                            container.empty();
+                            if (response.success && response.data.length > 0) {
+                                response.data.forEach(function (week) {
+                                    container.append(buildWeekBlock(week));
+                                });
+                            } else if (response.success) {
+                                container.html('<div class="error-message">No weeks found for this month.</div>');
+                            } else {
+                                container.html('<div class="error-message">⚠️ ' + (response.message || 'Failed to load weeks') + '</div>');
+                            }
+                        },
+                        error: function (xhr, status, err) {
+                            container.html('<div class="error-message">⚠️ Network error: ' + err + '</div>');
+                        }
                     });
-                } else {
-                    body.html('<tr><td colspan="3" class="error-message">No data available.</td></tr>');
                 }
-            },
-            error: function () {
-                $('#report-body').html('<tr><td colspan="3" class="error-message">Failed to load report.</td></tr>');
+                container.removeClass('hidden');
+                button.text('🔼 Hide Weeks');
+                currentlyOpenContainer = container[0];
+            } else {
+                container.addClass('hidden');
+                button.text('🔽 View Weeks');
+                currentlyOpenContainer = null;
             }
         });
-
-        // Load monthly report
-        $.ajax({
-            url: '<?= BASE_URL ?>/modules/Bookings/api/index.php?action=monthly_bookings',
-            dataType: 'json',
-            success: function (response) {
-                const body = $('#monthly-report-body');
-                if (response.success && response.data.length > 0) {
-                    body.empty();
-                    response.data.forEach(month => {
-                        body.append(`
-                    <tr>
-                        <td data-label="Month">${escapeHtml(month.month_label)}</td>
-                        <td data-label="Bookings">${month.booking_count}</td>
-                        <td data-label="Total Income (R)">R ${parseFloat(month.total_income).toFixed(2)}</td>
-                    </tr>
-                `);
-                    });
-                } else {
-                    body.html('<tr><td colspan="3" class="error-message">No data available.</td></tr>');
-                }
-            },
-            error: function () {
-                $('#monthly-report-body').html('<tr><td colspan="3" class="error-message">Failed to load report.</td></tr>');
-            }
-        });
-
-        function escapeHtml(str) {
-            var map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-            return String(str).replace(/[&<>"']/g, function (m) { return map[m]; });
-        }
     });
 </script>
 
