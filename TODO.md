@@ -56,12 +56,12 @@
 ---
 
 #### Uber Additional Costs Integration
-- [ ] core/Time.php is used in exactly one place: financials/helper.php, which includes it and calls. Deleted. Note for when we work on financials
-- [ ] Update `financials/helper.php` to include `additional_cost` in expense calculations
-- [ ] Modify `getWeeklyMetrics()` function
-- [ ] Modify `getMonthlyMetrics()` function
-- [ ] Update financial dashboard displays
-- [ ] Test that additional costs are deducted from net profit
+- [x] core/Time.php is used in exactly one place: financials/helper.php, which includes it and calls. Deleted. Note for when we work on financials
+- [x] Update `financials/helper.php` to include `additional_cost` in expense calculations
+- [x] Modify `getWeeklyMetrics()` function
+- [x] Modify `getMonthlyMetrics()` function
+- [x] Update financial dashboard displays
+- [x] Test that additional costs are deducted from net profit
 
 **Calculation:**
 ```
@@ -76,9 +76,7 @@ Net Profit = Total Income - Total Expenses
 - [x] Add "Send Message" button to booking view page (`modules/Bookings/view.php`)
 - [x] Add "Send Message" button to client list (`modules/Clients/index.php`)
 - [x] Open a WA msg with Pre-fill client name 
-- [ ] Add "Send Message" button to booking view page (`modules/Bookings/view.php`)
-- [ ] Add "Send Message" button to client list (`modules/Clients/index.php`)
-- [ ] Open a WA msg with Pre-fill client name
+
 
 
 ---
@@ -95,7 +93,6 @@ Net Profit = Total Income - Total Expenses
   - `sent_by` VARCHAR (user identifier)
 - [x] Display message history in client bookings page
 - [x] Useful for tracking "I never got a confirmation" disputes
-- [ ] Add filter/search in message log
 
 ---
 
