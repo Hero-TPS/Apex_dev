@@ -20,7 +20,15 @@
   - Discuss WhatsApp Business group creation
   - Ideas for direct WhatsApp communication with existing clients
 - [ ] WhatsApp Business integration for bulk messaging
-- [ ] Group management still to be discussed.
+
+---
+### Group management/duplicate clients
+- [ ] Currently it is a still a seperate folder. it is a sub of clients module, but it also going to use data from bookings
+  - whole idea is to deal with duplicated clients.
+- [ ] Move it to a new module.
+- [ ] Show which duplicate already has bookings, that why I can decide which one to delete.
+
+
 
 ---
 
@@ -29,7 +37,7 @@
 ---
 
 ### Uber Module Enhancements and Fixes
-- [ ] Currently, I can only add the current week's uber log after end of day on Sunday . Want to be able to add an uber log on Sunday as well, even if the day is not done (End of work week for me).
+- [x] Currently, I can only add the current week's uber log after end of day on Sunday . Want to be able to add an uber log on Sunday as well, even if the day is not done (End of work week for me).
  - Keep in mind Uber period does not change, it is still from start of day on Monday till end of day on Sunday.
  - The way it is done now is old code.
 
@@ -43,13 +51,16 @@
 
 #### Logs
 - [ ] Logs are still to verbrose, being cluttered up with actions marked as info, but show now actual errors logs, those are still shown on page views.
+- [ ] Filter select : Page not found.
 
 ---
 
 ### Financials:
 
-#### Backport finance overview structure
-- [ ] Use the same structure in Bookings, fuel and Uber report have having a month view and weeks are a toggle.
+#### Backport financials overview structure
+- [ ] Use the same structure in Bookings, fuel and Uber reports having a month view and weeks are a toggle.
+  - it is also a change from table view to block view.
+  - use the same financial history from system variables
 
 ---
 
