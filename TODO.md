@@ -6,7 +6,7 @@
 ---
 
 ### Bookings Module Enhancements and Fixes
-- [ ] WhatsApp message history tracking (see detailed spec below)
+- [x] WhatsApp message history tracking (see detailed spec below)
 - [ ] Some clients wants to make a booking on a date, but do not have the time or details. I need ideas how to handle this viea calendar
   - idea prebooking and reminders
   - use another calendar
@@ -42,12 +42,12 @@
 - [ ] Use the same structure in Bookings, fuel and Uber report have having a month view and weeks are a toggle.
 
 #### Uber Additional Costs Integration
-- [ ] core/Time.php is used in exactly one place: financials/helper.php, which includes it and calls. Deleted. Note for when we work on financials
-- [ ] Update `financials/helper.php` to include `additional_cost` in expense calculations
-- [ ] Modify `getWeeklyMetrics()` function
-- [ ] Modify `getMonthlyMetrics()` function
-- [ ] Update financial dashboard displays
-- [ ] Test that additional costs are deducted from net profit
+- [x] core/Time.php is used in exactly one place: financials/helper.php, which includes it and calls. Deleted. Note for when we work on financials
+- [x] Update `financials/helper.php` to include `additional_cost` in expense calculations
+- [x] Modify `getWeeklyMetrics()` function
+- [x] Modify `getMonthlyMetrics()` function
+- [x] Update financial dashboard displays
+- [x] Test that additional costs are deducted from net profit
 
 **Calculation:**
 ```
@@ -58,15 +58,15 @@ Net Profit = Total Income - Total Expenses
 ---
 
 ### Send Custom WhatsApp Message to Client
-- [ ] Add "Send Message" button to booking view page (`modules/Bookings/view.php`)
-- [ ] Add "Send Message" button to client list (`modules/Clients/index.php`)
-- [ ] Open a WA msg with Pre-fill client name
+- [x] Add "Send Message" button to booking view page (`modules/Bookings/view.php`)
+- [x] Add "Send Message" button to client list (`modules/Clients/index.php`)
+- [x] Open a WA msg with Pre-fill client name
 
 ---
 
 ### WhatsApp Message History (Detailed Spec)
-- [ ] Log all WhatsApp confirmations sent
-- [ ] Create `whatsapp_log` table with columns:
+- [x] Log all WhatsApp confirmations sent
+- [x] Create `whatsapp_log` table with columns:
   - `id` INT AUTO_INCREMENT PRIMARY KEY
   - `booking_id` INT (foreign key)
   - `contact_id` INT (foreign key)
@@ -74,10 +74,10 @@ Net Profit = Total Income - Total Expenses
   - `message_content` TEXT
   - `sent_at` DATETIME
   - `sent_by` VARCHAR (user identifier)
-- [ ] Display message history in booking view page
-- [ ] Display message history in client bookings page
-- [ ] Useful for tracking "I never got a confirmation" disputes
-- [ ] Add filter/search in message log
+- [x] Display message history in booking view page
+- [x] Display message history in client bookings page
+- [x] Useful for tracking "I never got a confirmation" disputes
+- [x] Add filter/search in message log
 
 ---
 
