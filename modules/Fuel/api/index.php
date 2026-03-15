@@ -251,7 +251,8 @@ function handleWeekly()
                 MAX(DATE(FROM_UNIXTIME(log_timestamp)))                     AS week_end,
                 COUNT(*)                                                    AS fill_count,
                 SUM(trip_km)                                                AS total_km,
-                SUM(total_cost)                                             AS total_cost
+                SUM(total_cost)                                             AS total_cost,
+                SUM(total_cost / NULLIF(fuel_price, 0))                     AS total_liters
             FROM fuel_logs
             WHERE FROM_UNIXTIME(log_timestamp) >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 3 MONTH), '%Y-%m-01')
               AND FROM_UNIXTIME(log_timestamp) <  DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-01')
@@ -262,13 +263,19 @@ function handleWeekly()
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $data = array_map(function ($row) {
-            $start = new DateTime($row['week_start']);
-            $end   = new DateTime($row['week_end']);
+            $start  = new DateTime($row['week_start']);
+            $end    = new DateTime($row['week_end']);
+            $wKm    = (float) $row['total_km'];
+            $wCost  = (float) $row['total_cost'];
+            $wLiters = (float) ($row['total_liters'] ?? 0);
             return [
-                'week_label' => $start->format('d M') . ' – ' . $end->format('d M Y'),
-                'fill_count' => (int)   $row['fill_count'],
-                'total_km'   => (float) $row['total_km'],
-                'total_cost' => (float) $row['total_cost'],
+                'week_label'  => $start->format('d M') . ' – ' . $end->format('d M Y'),
+                'fill_count'  => (int) $row['fill_count'],
+                'total_km'    => $wKm,
+                'total_cost'  => $wCost,
+                'cost_per_km' => ($wKm     > 0) ? ($wCost   / $wKm)        : 0.0,
+                'km_per_l'    => ($wLiters > 0) ? ($wKm     / $wLiters)    : 0.0,
+                'l_per_100km' => ($wKm     > 0) ? ($wLiters / $wKm * 100)  : 0.0,
             ];
         }, $rows);
 
@@ -293,7 +300,8 @@ function handleMonthly()
                 YEAR(FROM_UNIXTIME(log_timestamp))      AS year,
                 COUNT(*)                                AS fill_count,
                 SUM(trip_km)                            AS total_km,
-                SUM(total_cost)                         AS total_cost
+                SUM(total_cost)                         AS total_cost,
+                SUM(total_cost / NULLIF(fuel_price, 0)) AS total_liters
             FROM fuel_logs
             WHERE FROM_UNIXTIME(log_timestamp) >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 3 MONTH), '%Y-%m-01')
               AND FROM_UNIXTIME(log_timestamp) <  DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-01')
@@ -304,11 +312,17 @@ function handleMonthly()
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $data = array_map(function ($row) {
+            $mKm    = (float) $row['total_km'];
+            $mCost  = (float) $row['total_cost'];
+            $mLiters = (float) ($row['total_liters'] ?? 0);
             return [
                 'month_label' => $row['month_name'] . ' ' . $row['year'],
-                'fill_count'  => (int)   $row['fill_count'],
-                'total_km'    => (float) $row['total_km'],
-                'total_cost'  => (float) $row['total_cost'],
+                'fill_count'  => (int) $row['fill_count'],
+                'total_km'    => $mKm,
+                'total_cost'  => $mCost,
+                'cost_per_km' => ($mKm     > 0) ? ($mCost   / $mKm)        : 0.0,
+                'km_per_l'    => ($mLiters > 0) ? ($mKm     / $mLiters)    : 0.0,
+                'l_per_100km' => ($mKm     > 0) ? ($mLiters / $mKm * 100)  : 0.0,
             ];
         }, $rows);
 
@@ -355,17 +369,24 @@ function handleWeeklyFuelByMonth()
             $stmt = $pdo->prepare(
                 "SELECT COALESCE(COUNT(*), 0) AS fill_count,
                         COALESCE(SUM(trip_km), 0) AS total_km,
-                        COALESCE(SUM(total_cost), 0) AS total_cost
+                        COALESCE(SUM(total_cost), 0) AS total_cost,
+                        COALESCE(SUM(total_cost / NULLIF(fuel_price, 0)), 0) AS total_liters
                  FROM fuel_logs WHERE log_timestamp BETWEEN ? AND ?"
             );
             $stmt->execute([$startUnix, $endUnix]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
+            $wKm     = (float) $row['total_km'];
+            $wCost   = (float) $row['total_cost'];
+            $wLiters = (float) $row['total_liters'];
             $data[] = [
-                'week_label' => $monday->format('d M') . ' – ' . $sunday->format('d M Y'),
-                'fill_count' => (int)   $row['fill_count'],
-                'total_km'   => (float) $row['total_km'],
-                'total_cost' => (float) $row['total_cost'],
+                'week_label'  => $monday->format('d M') . ' – ' . $sunday->format('d M Y'),
+                'fill_count'  => (int) $row['fill_count'],
+                'total_km'    => $wKm,
+                'total_cost'  => $wCost,
+                'cost_per_km' => ($wKm     > 0) ? ($wCost   / $wKm)        : 0.0,
+                'km_per_l'    => ($wLiters > 0) ? ($wKm     / $wLiters)    : 0.0,
+                'l_per_100km' => ($wKm     > 0) ? ($wLiters / $wKm * 100)  : 0.0,
             ];
 
             $current->modify('+1 week');
