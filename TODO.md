@@ -33,6 +33,9 @@
 ---
 
 ### Fuel Module Enhancements and Fixes
+- [ ] fuel reports: 
+  - add cost/km
+  - efficiancy in both km/l and l/100km. Can be done on one line.
 
 ---
 
@@ -58,7 +61,7 @@
 ### Financials:
 
 #### Backport financials overview structure
-- [ ] Use the same structure in Bookings, fuel and Uber reports having a month view and weeks are a toggle.
+- [x] Use the same structure in Bookings, fuel and Uber reports having a month view and weeks are a toggle.
   - it is also a change from table view to block view.
   - use the same financial history from system variables
 
