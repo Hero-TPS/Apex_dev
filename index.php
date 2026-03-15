@@ -63,6 +63,7 @@ include ROOT_DIR . '/includes/header.php';
         <h3 class="menu-toggle" data-target="financials-section">💰 Financials</h3>
         <div id="financials-section" class="menu-content">
             <a href="modules/Financials/" class="dashboard-button db-reports">Financial Summary</a>
+            <a href="modules/Financials/balance_sheet.php" class="dashboard-button db-balance-sheet">Balance Sheet</a>
         </div>
     </div>
 
