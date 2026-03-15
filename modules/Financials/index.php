@@ -71,6 +71,8 @@ usort($months, function ($a, $b) {
             <div class="metric-row"><span>Income / Trip:</span> <span>R<?= number_format($metrics['income_per_trip'], 2) ?></span></div>
             <div class="metric-row"><span>Cost / km:</span>     <span>R<?= number_format($metrics['cost_per_km'],    2) ?></span></div>
             <div class="metric-row"><span>Income / km:</span>   <span>R<?= number_format($metrics['income_per_km'],  2) ?></span></div>
+            <div class="metric-row"><span>Fuel Cost / km:</span><span>R<?= number_format($metrics['fuel_cost_per_km'], 2) ?></span></div>
+            <div class="metric-row"><span>Fuel Efficiency:</span><span><?= number_format($metrics['fuel_km_per_l'], 2) ?> km/l (<?= number_format($metrics['fuel_l_per_100km'], 2) ?> l/100km)</span></div>
 
             <button class="toggle-weeks-btn" data-year="<?= $m['year'] ?>" data-month="<?= $m['month'] ?>">
                 🔽 View Weeks
@@ -124,6 +126,8 @@ usort($months, function ($a, $b) {
                 <div class="metric-row"><span>Income / Trip:</span> <span>${fmtR(week.income_per_trip)}</span></div>
                 <div class="metric-row"><span>Cost / km:</span>     <span>${fmtR(week.cost_per_km)}</span></div>
                 <div class="metric-row"><span>Income / km:</span>   <span>${fmtR(week.income_per_km)}</span></div>
+                <div class="metric-row"><span>Fuel Cost / km:</span><span>${fmtR(week.fuel_cost_per_km)}</span></div>
+                <div class="metric-row"><span>Fuel Efficiency:</span><span>${parseFloat(week.fuel_km_per_l || 0).toFixed(2)} km/l (${parseFloat(week.fuel_l_per_100km || 0).toFixed(2)} l/100km)</span></div>
             </div>
         `;
     }

@@ -88,13 +88,15 @@ function getWeeklyMetrics(PDO $pdo, int $startUnix, int $endUnix): array
     $fuelEnd   = $fuelEndObj->getTimestamp();
 
     $stmt = $pdo->prepare(
-        "SELECT COALESCE(SUM(total_cost), 0) AS cost, COALESCE(SUM(trip_km), 0) AS km
+        "SELECT COALESCE(SUM(total_cost), 0) AS cost, COALESCE(SUM(trip_km), 0) AS km,
+                COALESCE(SUM(total_cost / NULLIF(fuel_price, 0)), 0) AS liters
          FROM fuel_logs WHERE log_timestamp BETWEEN ? AND ?"
     );
     $stmt->execute([$fuelStart, $fuelEnd]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     $fuelCost    = (float) $row['cost'];
     $totalTripKm = (float) $row['km'];
+    $fuelLiters  = (float) $row['liters'];
 
     // === CAR RENTAL (weekly rate from system variables) ===
     $carRental = (float) getSystemVariable($pdo, 'car_rental_price');
@@ -108,6 +110,9 @@ function getWeeklyMetrics(PDO $pdo, int $startUnix, int $endUnix): array
     $incomePerTrip  = ($totalTrips  > 0) ? ($totalIncome   / $totalTrips)  : 0.0;
     $costPerKm      = ($totalTripKm > 0) ? ($totalExpenses / $totalTripKm) : 0.0;
     $incomePerKm    = ($totalTripKm > 0) ? ($totalIncome   / $totalTripKm) : 0.0;
+    $fuelCostPerKm  = ($totalTripKm > 0) ? ($fuelCost      / $totalTripKm) : 0.0;
+    $fuelKmPerL     = ($fuelLiters  > 0) ? ($totalTripKm   / $fuelLiters)  : 0.0;
+    $fuelL100Km     = ($totalTripKm > 0) ? ($fuelLiters    / $totalTripKm * 100) : 0.0;
 
     return [
         'uber_income'           => $uberIncome,
@@ -127,6 +132,9 @@ function getWeeklyMetrics(PDO $pdo, int $startUnix, int $endUnix): array
         'cost_per_km'           => $costPerKm,
         'net_profit'            => $netProfit,
         'income_per_km'         => $incomePerKm,
+        'fuel_cost_per_km'      => $fuelCostPerKm,
+        'fuel_km_per_l'         => $fuelKmPerL,
+        'fuel_l_per_100km'      => $fuelL100Km,
     ];
 }
 
@@ -187,13 +195,15 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
     $fuelEnd   = $endDateFull->getTimestamp();
 
     $stmt = $pdo->prepare(
-        "SELECT COALESCE(SUM(total_cost), 0) AS cost, COALESCE(SUM(trip_km), 0) AS km
+        "SELECT COALESCE(SUM(total_cost), 0) AS cost, COALESCE(SUM(trip_km), 0) AS km,
+                COALESCE(SUM(total_cost / NULLIF(fuel_price, 0)), 0) AS liters
          FROM fuel_logs WHERE log_timestamp BETWEEN ? AND ?"
     );
     $stmt->execute([$fuelStart, $fuelEnd]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     $fuelCost    = (float) $row['cost'];
     $totalTripKm = (float) $row['km'];
+    $fuelLiters  = (float) $row['liters'];
 
     // === CAR RENTAL (weekly rate × number of billing weeks in month) ===
     $carRental = (float) getSystemVariable($pdo, 'car_rental_price') * getWeeksInMonth($year, $month);
@@ -207,6 +217,9 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
     $incomePerTrip  = ($totalTrips  > 0) ? ($totalIncome   / $totalTrips)  : 0.0;
     $costPerKm      = ($totalTripKm > 0) ? ($totalExpenses / $totalTripKm) : 0.0;
     $incomePerKm    = ($totalTripKm > 0) ? ($totalIncome   / $totalTripKm) : 0.0;
+    $fuelCostPerKm  = ($totalTripKm > 0) ? ($fuelCost      / $totalTripKm) : 0.0;
+    $fuelKmPerL     = ($fuelLiters  > 0) ? ($totalTripKm   / $fuelLiters)  : 0.0;
+    $fuelL100Km     = ($totalTripKm > 0) ? ($fuelLiters    / $totalTripKm * 100) : 0.0;
 
     return [
         'uber_income'           => $uberIncome,
@@ -226,6 +239,9 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
         'cost_per_km'           => $costPerKm,
         'net_profit'            => $netProfit,
         'income_per_km'         => $incomePerKm,
+        'fuel_cost_per_km'      => $fuelCostPerKm,
+        'fuel_km_per_l'         => $fuelKmPerL,
+        'fuel_l_per_100km'      => $fuelL100Km,
     ];
 }
 

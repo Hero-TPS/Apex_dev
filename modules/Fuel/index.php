@@ -45,23 +45,33 @@ include ROOT_DIR . '/includes/header.php';
         $stmt = $pdo->prepare(
             "SELECT COALESCE(COUNT(*), 0) AS fill_count,
                     COALESCE(SUM(trip_km), 0) AS total_km,
-                    COALESCE(SUM(total_cost), 0) AS total_cost
+                    COALESCE(SUM(total_cost), 0) AS total_cost,
+                    COALESCE(SUM(total_cost / NULLIF(fuel_price, 0)), 0) AS total_liters
              FROM fuel_logs WHERE log_timestamp BETWEEN ? AND ?"
         );
         $stmt->execute([$startDate->getTimestamp(), $endDate->getTimestamp()]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $totalKm     = (float) $row['total_km'];
+        $totalCost   = (float) $row['total_cost'];
+        $totalLiters = (float) $row['total_liters'];
+        $costPerKm   = ($totalKm     > 0) ? ($totalCost   / $totalKm)          : 0.0;
+        $kmPerL      = ($totalLiters > 0) ? ($totalKm     / $totalLiters)       : 0.0;
+        $lPer100Km   = ($totalKm     > 0) ? ($totalLiters / $totalKm * 100)     : 0.0;
 
         $monthLabel = date('F Y', mktime(0, 0, 0, $m['month'], 1, $m['year']));
     ?>
         <div class="financial-month-block" data-year="<?= $m['year'] ?>" data-month="<?= $m['month'] ?>">
             <div class="month-header">
                 <h3><?= htmlspecialchars($monthLabel) ?></h3>
-                <span class="net-amount loss">R<?= number_format($row['total_cost'], 2) ?></span>
+                <span class="net-amount loss">R<?= number_format($totalCost, 2) ?></span>
             </div>
 
             <div class="metric-row"><span>Fill-ups:</span>    <strong><?= (int) $row['fill_count'] ?></strong></div>
-            <div class="metric-row"><span>Total km:</span>    <strong><?= number_format($row['total_km'], 1) ?> km</strong></div>
-            <div class="metric-row"><span>Total Cost:</span>  <strong>R<?= number_format($row['total_cost'], 2) ?></strong></div>
+            <div class="metric-row"><span>Total km:</span>    <strong><?= number_format($totalKm, 1) ?> km</strong></div>
+            <div class="metric-row"><span>Total Cost:</span>  <strong>R<?= number_format($totalCost, 2) ?></strong></div>
+            <div class="metric-row"><span>Cost / km:</span>   <strong>R<?= number_format($costPerKm, 2) ?></strong></div>
+            <div class="metric-row"><span>Efficiency:</span>  <strong><?= number_format($kmPerL, 2) ?> km/l (<?= number_format($lPer100Km, 2) ?> l/100km)</strong></div>
 
             <button class="toggle-weeks-btn" data-year="<?= $m['year'] ?>" data-month="<?= $m['month'] ?>">
                 🔽 View Weeks
@@ -97,15 +107,22 @@ include ROOT_DIR . '/includes/header.php';
 
 <script>
     function buildWeekBlock(week) {
+        const totalKm   = parseFloat(week.total_km   || 0);
+        const totalCost = parseFloat(week.total_cost || 0);
+        const costPerKm = parseFloat(week.cost_per_km || 0);
+        const kmPerL    = parseFloat(week.km_per_l    || 0);
+        const lPer100Km = parseFloat(week.l_per_100km || 0);
         return `
             <div class="weekly-block">
                 <div class="week-header">
                     <strong>Week: ${week.week_label}</strong>
-                    <span class="net-amount loss">R${parseFloat(week.total_cost || 0).toFixed(2)}</span>
+                    <span class="net-amount loss">R${totalCost.toFixed(2)}</span>
                 </div>
                 <div class="metric-row"><span>Fill-ups:</span>   <strong>${week.fill_count}</strong></div>
-                <div class="metric-row"><span>Total km:</span>   <strong>${parseFloat(week.total_km || 0).toFixed(1)} km</strong></div>
-                <div class="metric-row"><span>Total Cost:</span> <strong>R${parseFloat(week.total_cost || 0).toFixed(2)}</strong></div>
+                <div class="metric-row"><span>Total km:</span>   <strong>${totalKm.toFixed(1)} km</strong></div>
+                <div class="metric-row"><span>Total Cost:</span> <strong>R${totalCost.toFixed(2)}</strong></div>
+                <div class="metric-row"><span>Cost / km:</span>  <strong>R${costPerKm.toFixed(2)}</strong></div>
+                <div class="metric-row"><span>Efficiency:</span> <strong>${kmPerL.toFixed(2)} km/l (${lPer100Km.toFixed(2)} l/100km)</strong></div>
             </div>
         `;
     }
