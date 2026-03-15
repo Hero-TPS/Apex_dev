@@ -35,7 +35,7 @@
 ### Fuel Module Enhancements and Fixes
 - [ ] fuel reports: 
   - add cost/km
-  - efficiancy in both km/l and l/100km. Can be done on one line.
+  - efficiancy in both km/l and l/100km. Can be done on one line. Also add this to financials.
 
 ---
 
