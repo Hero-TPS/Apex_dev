@@ -14,6 +14,7 @@
         <a href="<?= BASE_URL ?>/modules/Fuel/add.php" class="hamburger-item">⛽ Add Fuel Log</a>
         <a href="<?= BASE_URL ?>/modules/Uber/add.php" class="hamburger-item">🚕 Log Uber Income</a>
         <a href="<?= BASE_URL ?>/modules/Financials/" class="hamburger-item">💰 Financials</a>
+        <a href="<?= BASE_URL ?>/modules/Financials/balance_sheet.php" class="hamburger-item">📊 Balance Sheet</a>
         <a href="https://calendar.google.com/calendar/u/0?cid=<?= urlencode(CUSTOM_CALENDAR_ID) ?>"
            onclick="event.preventDefault(); openCalendarApp('<?= urlencode(CUSTOM_CALENDAR_ID) ?>');"
            class="hamburger-item">🗓️ Open Calendar</a>
