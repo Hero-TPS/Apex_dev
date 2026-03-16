@@ -33,7 +33,7 @@
 ---
 
 ### Fuel Module Enhancements and Fixes
-- [ ] fuel reports: 
+- [x] fuel reports: 
   - add cost/km
   - efficiancy in both km/l and l/100km. Can be done on one line. Also add this to financials.
 
@@ -65,6 +65,14 @@
   - it is also a change from table view to block view.
   - use the same financial history from system variables
 
+#### Balance sheets. This is the big one:
+- [ ] Create a monthly balance sheet report. with credit and debits.
+  - it will only be filled with money in and out info. and totals at the end.
+  - if it is a eft or cash payment must show.
+  - stylng is more laptop related than mobile, as I need to create PDF's on A4 sheets (by using Windows print to pdf, no extra function needed)
+  - additional link for this under finances.
+  - default reporting months follow the setting in maintainace.
+  - Will be used for general reporting and credit applications, etc.
 ---
 
 ### General System Improvements
