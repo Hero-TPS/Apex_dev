@@ -67,6 +67,11 @@ function handleGetClients()
         
         $stmt = $pdo->query($sql);
         $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($contacts as &$contact) {
+            $contact['whatsapp_phone'] = formatPhoneNumberForWhatsApp($contact['phone'] ?? '');
+        }
+        unset($contact);
         
         jsonResponse([
             'success' => true,

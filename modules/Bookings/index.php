@@ -77,6 +77,7 @@ include ROOT_DIR . '/includes/header.php';
                     if (response.success && response.bookings.length > 0) {
                         $.each(response.bookings, function (index, booking) {
                             var rowClass = booking.is_overdue ? 'booking-overdue' : '';
+                            var waGreeting = 'Hi ' + booking.client_name;
                             var row =
                                 '<tr id="booking-row-' + booking.id + '" ' +
                                 'class="' + rowClass + '" ' +
@@ -92,6 +93,9 @@ include ROOT_DIR . '/includes/header.php';
                                 '<div class="actions-container">' +
                                 '<a href="<?= BASE_URL ?>/modules/Bookings/view.php?id=' + booking.id + '" class="action-btn view-details-btn">View</a>' +
                                 '<a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=' + booking.id + '" class="action-btn edit-btn">Edit</a>' +
+                                (booking.client_phone
+                                    ? '<a href="https://wa.me/' + booking.client_phone + '?text=' + encodeURIComponent(waGreeting + '\n') + '" target="_blank" class="action-btn whatsapp-btn" onclick="logWhatsAppSend(' + booking.id + ', ' + booking.contact_id + ', ' + JSON.stringify(waGreeting) + ', \'message\')">Send Msg</a>'
+                                    : '') +
                                 '<button class="action-btn delete-btn" data-id="' + booking.id + '">Delete</button>' 
 
                             // Status button logic
@@ -355,6 +359,22 @@ include ROOT_DIR . '/includes/header.php';
             return div.innerHTML;
         }
     });
+
+    function logWhatsAppSend(bookingId, contactId, messageContent, messageType) {
+        $.ajax({
+            type: 'POST',
+            url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+            data: {
+                action: 'log_whatsapp',
+                booking_id: bookingId,
+                contact_id: contactId,
+                message_type: messageType || 'message',
+                message_content: messageContent,
+                sent_by: 'user'
+            },
+            dataType: 'json'
+        });
+    }
 </script>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>
