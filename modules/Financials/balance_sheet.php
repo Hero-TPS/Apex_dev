@@ -15,7 +15,7 @@ if ($monthsBack < 1) {
 
 $months = [];
 $today  = new DateTime();
-for ($i = 1; $i <= $monthsBack; $i++) {
+for ($i = 1; $i < $monthsBack; $i++) {
     $date  = clone $today;
     $date->modify("-$i months");
     $months[] = [

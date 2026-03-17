@@ -92,9 +92,7 @@ include ROOT_DIR . '/includes/header.php';
                                 '<div class="actions-container">' +
                                 '<a href="<?= BASE_URL ?>/modules/Bookings/view.php?id=' + booking.id + '" class="action-btn view-details-btn">View</a>' +
                                 '<a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=' + booking.id + '" class="action-btn edit-btn">Edit</a>' +
-                                '<button class="action-btn delete-btn" data-id="' + booking.id + '">Delete</button>' +
-                                '<a href="<?= BASE_URL ?>/modules/Bookings/invoice.php?id=' + booking.id + '" class="action-btn invoice-btn" target="_blank">Invoice</a>' +
-                                '<button class="action-btn thank-you-btn" data-id="' + booking.id + '">Thank You</button>';
+                                '<button class="action-btn delete-btn" data-id="' + booking.id + '">Delete</button>' 
 
                             // Status button logic
                             var showStatusButton = false;
@@ -140,7 +138,7 @@ include ROOT_DIR . '/includes/header.php';
                 error: function (xhr, status, error) {
                     tableBody.empty();
                     let errorMsg = 'Failed to load bookings';
-                    
+
                     // Try to parse JSON error response
                     try {
                         const response = JSON.parse(xhr.responseText);
@@ -151,14 +149,14 @@ include ROOT_DIR . '/includes/header.php';
                         // If not JSON, use status text
                         errorMsg = xhr.statusText || error || 'Unknown error occurred';
                     }
-                    
+
                     // Log to console for debugging
                     console.error('Booking load error:', {
                         status: xhr.status,
                         error: errorMsg,
                         response: xhr.responseText
                     });
-                    
+
                     showNotification('❌ ' + errorMsg, 'error');
                 }
             });

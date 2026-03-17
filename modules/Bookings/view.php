@@ -154,7 +154,7 @@ if (isset($_GET['id'])) {
             target="_blank" class="page-action-btn whatsapp"
             onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= htmlspecialchars(json_encode(createWhatsAppMessage($booking)), ENT_QUOTES) ?>, 'confirmation')">💬
             Send Confirmation</a>
-        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode('Hi ' . $booking['client_name']) ?>"
+        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode('Hi ' . $booking['client_name']."\n") ?>"
             target="_blank" class="page-action-btn whatsapp"
             onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= htmlspecialchars(json_encode('Hi ' . $booking['client_name']), ENT_QUOTES) ?>, 'message')">💬
             Send Message</a>
