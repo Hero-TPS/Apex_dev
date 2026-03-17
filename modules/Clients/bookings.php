@@ -6,6 +6,7 @@ $breadcrumb = ' > Clients > Bookings';
 
 require_once __DIR__ . '/../../config.php';
 include ROOT_DIR . '/includes/header.php';
+require_once ROOT_DIR . '/includes/helpers.php';
 
 $client_id = intval($_GET['id'] ?? 0);
 
@@ -110,6 +111,7 @@ try {
         </a>
     </div>
 <?php else: ?>
+    <?php $clientWhatsAppPhone = formatPhoneNumberForWhatsApp($client['phone'] ?? ''); ?>
     <table class="bookings-table">
         <thead>
             <tr>
@@ -141,6 +143,11 @@ try {
                         <div class="actions-container">
                             <a href="<?= BASE_URL ?>/modules/Bookings/view.php?id=<?= $booking['id'] ?>" class="action-btn view-details-btn">View</a>
                             <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= $booking['id'] ?>" class="action-btn edit-btn">Edit</a>
+                            <?php if ($clientWhatsAppPhone): ?>
+                            <a href="https://wa.me/<?= $clientWhatsAppPhone ?>?text=<?= urlencode('Hi ' . $client['name'] . "\n") ?>"
+                                target="_blank" class="action-btn whatsapp-btn"
+                                onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $client_id ?>, <?= htmlspecialchars(json_encode('Hi ' . $client['name']), ENT_QUOTES) ?>, 'message')">Send Msg</a>
+                            <?php endif; ?>
                         </div>
                     </td>
                 </tr>
@@ -234,6 +241,22 @@ try {
             return (text || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
         }
     });
+
+    function logWhatsAppSend(bookingId, contactId, messageContent, messageType) {
+        $.ajax({
+            type: 'POST',
+            url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+            data: {
+                action: 'log_whatsapp',
+                booking_id: bookingId,
+                contact_id: contactId,
+                message_type: messageType || 'message',
+                message_content: messageContent,
+                sent_by: 'user'
+            },
+            dataType: 'json'
+        });
+    }
 </script>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>

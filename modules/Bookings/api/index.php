@@ -94,9 +94,9 @@ function handleGetBookings()
         if ($show === 'all') {
             $sql = "
                 SELECT 
-                    b.id, b.trip_date, b.start_time, b.end_time, b.status,
+                    b.id, b.contact_id, b.trip_date, b.start_time, b.end_time, b.status,
                     b.original_pickup, b.original_destination, b.was_swapped, b.cost,
-                    c.name AS client_name 
+                    c.name AS client_name, c.phone AS client_phone
                 FROM bookings b
                 JOIN contacts c ON b.contact_id = c.id
                 ORDER BY b.trip_date DESC, b.start_time DESC
@@ -109,9 +109,9 @@ function handleGetBookings()
             $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
             $sql = "
                 SELECT 
-                    b.id, b.trip_date, b.start_time, b.end_time, b.status,
+                    b.id, b.contact_id, b.trip_date, b.start_time, b.end_time, b.status,
                     b.original_pickup, b.original_destination, b.was_swapped, b.cost,
-                    c.name AS client_name 
+                    c.name AS client_name, c.phone AS client_phone
                 FROM bookings b
                 JOIN contacts c ON b.contact_id = c.id
                 WHERE b.trip_date >= ? AND b.status != 'completed'
@@ -137,6 +137,7 @@ function handleGetBookings()
 
             $response['bookings'][] = [
                 'id' => (int) $row['id'],
+                'contact_id' => (int) $row['contact_id'],
                 'trip_date' => date('d/m/y', strtotime($row['trip_date'])),
                 'trip_date_raw' => $row['trip_date'],
                 'start_time' => date('H:i', strtotime($row['start_time'])),
@@ -147,7 +148,8 @@ function handleGetBookings()
                 'pickup_location' => $pickup,
                 'destination' => $destination,
                 'cost' => 'R' . number_format((float) $row['cost'], 2),
-                'client_name' => $row['client_name']
+                'client_name' => $row['client_name'],
+                'client_phone' => formatPhoneNumberForWhatsApp($row['client_phone'] ?? '')
             ];
         }
 

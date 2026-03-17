@@ -120,9 +120,10 @@ $highlightClientId = $_GET['highlight'] ?? null;
         `);
 
                         response.contacts.forEach(function (contact) {
-                            var cleanPhone = (contact.phone || '').replace(/\D/g, '');
-                            if (cleanPhone.charAt(0) === '0') { cleanPhone = '27' + cleanPhone.substring(1); }
-                            var waHref = 'https://wa.me/' + cleanPhone + '?text=' + encodeURIComponent('Hi ' + contact.name);
+                            var waGreeting = 'Hi ' + contact.name;
+                            var waHref = contact.whatsapp_phone
+                                ? 'https://wa.me/' + contact.whatsapp_phone + '?text=' + encodeURIComponent(waGreeting)
+                                : '#';
 
                             var rowClass = (highlightId && contact.id == highlightId) ? 'highlight-row' : '';
                             var row = '<tr class="' + rowClass + '" data-client-id="' + contact.id + '">' +
@@ -136,7 +137,9 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 '<div class="actions-container">' +
                                 '<a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=' + contact.id + '" class="action-btn view-details-btn">View Bookings</a>' +
                                 '<a href="<?= BASE_URL ?>/modules/Clients/edit.php?id=' + contact.id + '" class="action-btn edit-btn">Edit</a>' +
-                                '<a href="' + waHref + '" target="_blank" class="action-btn whatsapp-btn">Send Msg</a>' +
+                                (contact.whatsapp_phone
+                                    ? '<a href="' + waHref + '" target="_blank" class="action-btn whatsapp-btn" onclick="logWhatsAppSend(null, ' + contact.id + ', ' + JSON.stringify(waGreeting) + ', \'message\')">Send Msg</a>'
+                                    : '') +
                                 '<button class="action-btn delete-btn" data-id="' + contact.id + '">Delete</button>' +
                                 '</div>' +
                                 '</td>' +
@@ -256,8 +259,20 @@ $highlightClientId = $_GET['highlight'] ?? null;
         }
     });
 
-    function logWhatsAppSend() {
-        // fire-and-forget log (no booking_id context on this page)
+    function logWhatsAppSend(bookingId, contactId, messageContent, messageType) {
+        $.ajax({
+            type: 'POST',
+            url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+            data: {
+                action: 'log_whatsapp',
+                booking_id: bookingId,
+                contact_id: contactId,
+                message_type: messageType || 'message',
+                message_content: messageContent,
+                sent_by: 'user'
+            },
+            dataType: 'json'
+        });
     }
 </script>
 
