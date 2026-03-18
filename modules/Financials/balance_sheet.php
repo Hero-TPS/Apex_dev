@@ -340,6 +340,7 @@ include ROOT_DIR . '/includes/header.php';
         </table>
 
         <!-- ============ DEBITS TABLE ============ -->
+        <div class="bs-page-break">
         <table class="bs-table">
             <thead>
                 <tr>
@@ -400,7 +401,8 @@ include ROOT_DIR . '/includes/header.php';
                 </tr>
             </tfoot>
         </table>
-
+        </div><!-- .bs-page-break -->
+        
         <!-- Net Balance Summary -->
         <div class="bs-net-summary <?= $netBalance >= 0 ? 'profit' : 'loss' ?>">
             <span class="bs-net-label">NET BALANCE</span>
