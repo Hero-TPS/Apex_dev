@@ -44,18 +44,27 @@ include ROOT_DIR . '/includes/header.php';
         $startUnix = $startDate->getTimestamp();
         $endUnix   = $endDate->getTimestamp();
 
+        // === INCOME TOTALS ===
         $stmt = $pdo->prepare(
-            "SELECT COALESCE(SUM(ui.total_income), 0)  AS total_income,
-                    COALESCE(SUM(ui.cash_received), 0)  AS cash_received,
-                    COALESCE(SUM(ui.total_trips), 0)    AS total_trips,
-                    COALESCE(SUM(ui.total_time_online), 0) AS total_time_online,
-                    COALESCE(SUM(uac.amount), 0)        AS additional_costs
-             FROM uber_income ui
-             LEFT JOIN uber_additional_costs uac ON uac.uber_income_id = ui.id
-             WHERE ui.week_start BETWEEN ? AND ?"
+            "SELECT COALESCE(SUM(total_income), 0)     AS total_income,
+                    COALESCE(SUM(cash_received), 0)     AS cash_received,
+                    COALESCE(SUM(total_trips), 0)       AS total_trips,
+                    COALESCE(SUM(total_time_online), 0) AS total_time_online
+             FROM uber_income
+             WHERE week_start BETWEEN ? AND ?"
         );
         $stmt->execute([$startUnix, $endUnix]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // === ADDITIONAL COSTS (separate to avoid row multiplication) ===
+        $costStmt = $pdo->prepare(
+            "SELECT COALESCE(SUM(uac.amount), 0) AS additional_costs
+             FROM uber_additional_costs uac
+             JOIN uber_income ui ON uac.uber_income_id = ui.id
+             WHERE ui.week_start BETWEEN ? AND ?"
+        );
+        $costStmt->execute([$startUnix, $endUnix]);
+        $row['additional_costs'] = (float) $costStmt->fetchColumn();
 
         $cardIncome = $row['total_income'] - $row['cash_received'];
         $monthLabel = date('F Y', mktime(0, 0, 0, $m['month'], 1, $m['year']));

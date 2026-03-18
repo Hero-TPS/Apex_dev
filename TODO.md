@@ -10,7 +10,6 @@
   - idea prebooking and reminders
   - use another calendar
   - turn reminders into bookings
-- [ ] Start thinkng of how to deal with additional car drivers, mark bookings as such and commission taken
 
 ---
 
@@ -26,7 +25,7 @@
 - [ ] Currently it is a still a seperate folder. it is a sub of clients module, but it also going to use data from bookings
   - whole idea is to deal with duplicated clients.
 - [ ] Move it to a new module.
-- [ ] Show which duplicate already has bookings, that why I can decide which one to delete.
+- [ ] Show which duplicate already has bookings, that way I can decide which one to delete.
 
 
 
@@ -66,16 +65,25 @@
   - use the same financial history from system variables
 
 #### Balance sheets. This is the big one:
-- [ ] Create a monthly balance sheet report. with credit and debits.
+- [x] Create a monthly balance sheet report. with credit and debits.
   - it will only be filled with money in and out info. and totals at the end.
   - if it is a eft or cash payment must show.
   - stylng is more laptop related than mobile, as I need to create PDF's on A4 sheets (by using Windows print to pdf, no extra function needed)
   - additional link for this under finances.
   - default reporting months follow the setting in maintainace.
   - Will be used for general reporting and credit applications, etc.
+- [ ] Add to top of ballance sheet. Summary report.
+  -all the similar entries grouped together with total
 ---
 
 ### General System Improvements
 - [ ] **Breadcrumbs:** Check consistency across all pages
   - Consider creating helper function for breadcrumb generation
   - OR implement proper main menu navigation
+
+
+## NEXT CYCLE
+### Drivers
+#### Start thinkng of how to deal with additional car drivers, mark bookings as such and commission taken
+
+### Access Control
