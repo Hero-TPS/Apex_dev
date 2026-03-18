@@ -32,6 +32,8 @@ usort($months, function ($a, $b) {
 
 $tz = new DateTimeZone(TIME_ZONE);
 
+$carRentalWeekly = (float) getSystemVariable($pdo, 'car_rental_price');
+
 include ROOT_DIR . '/includes/header.php';
 ?>
 
@@ -105,8 +107,7 @@ include ROOT_DIR . '/includes/header.php';
         $uberCosts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // === CAR RENTAL (weekly rate per billing week) ===
-        $carRentalWeekly = (float) getSystemVariable($pdo, 'car_rental_price');
-        $carRentalWeeks  = [];
+        $carRentalWeeks = [];
 
         $firstDay = new DateTime("{$m['year']}-{$m['month']}-01", $tz);
         if ($firstDay->format('N') !== '1') {
@@ -138,6 +139,38 @@ include ROOT_DIR . '/includes/header.php';
         foreach ($carRentalWeeks as $cr) { $totalDebits += $cr['amount'];            }
 
         $netBalance = $totalCredits - $totalDebits;
+
+        // === MONTHLY SUMMARY (grouped totals for this month) ===
+        $mSummaryBookings = [];
+        foreach ($bookings as $b) {
+            $mMethod = strtoupper($b['payment_method'] ?? 'CASH');
+            $mSummaryBookings[$mMethod] = ($mSummaryBookings[$mMethod] ?? 0.0) + (float) $b['cost'];
+        }
+        ksort($mSummaryBookings);
+
+        $mSummaryUberEft  = 0.0;
+        $mSummaryUberCash = 0.0;
+        foreach ($uberRows as $u) {
+            $mSummaryUberEft  += max(0.0, (float) $u['total_income'] - (float) $u['cash_received']);
+            $mSummaryUberCash += (float) $u['cash_received'];
+        }
+
+        $mSummaryFuel = 0.0;
+        foreach ($fuelRows as $f) {
+            $mSummaryFuel += (float) $f['total_cost'];
+        }
+
+        $mSummaryUberCosts = [];
+        foreach ($uberCosts as $uc) {
+            $reason = $uc['reason'] ?? 'Other';
+            $mSummaryUberCosts[$reason] = ($mSummaryUberCosts[$reason] ?? 0.0) + (float) $uc['amount'];
+        }
+        ksort($mSummaryUberCosts);
+
+        $mSummaryCarRental = count($carRentalWeeks) * $carRentalWeekly;
+
+        $mSummaryTotalIncome   = array_sum($mSummaryBookings) + $mSummaryUberEft + $mSummaryUberCash;
+        $mSummaryTotalExpenses = $mSummaryFuel + array_sum($mSummaryUberCosts) + $mSummaryCarRental;
     ?>
 
     <div class="bs-month-block<?= ($idx > 0) ? ' bs-page-break' : '' ?>">
@@ -149,6 +182,91 @@ include ROOT_DIR . '/includes/header.php';
                 Net: R <?= number_format(abs($netBalance), 2) ?> <?= $netBalance >= 0 ? '(Credit)' : '(Debit)' ?>
             </div>
         </div>
+
+        <!-- ============ MONTHLY SUMMARY ============ -->
+        <div class="bs-summary-tables">
+
+            <!-- Income Summary -->
+            <table class="bs-summary-table">
+                <thead>
+                    <tr>
+                        <th colspan="2" class="bs-section-head bs-credit-head">INCOME SUMMARY</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($mSummaryBookings as $mMethod => $mTotal): ?>
+                    <tr>
+                        <td>Bookings (<?= htmlspecialchars($mMethod) ?>)</td>
+                        <td class="bs-amt"><?= number_format($mTotal, 2) ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <?php if (round($mSummaryUberEft, 2) > 0): ?>
+                    <tr>
+                        <td>Uber Payouts (EFT)</td>
+                        <td class="bs-amt"><?= number_format($mSummaryUberEft, 2) ?></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (round($mSummaryUberCash, 2) > 0): ?>
+                    <tr>
+                        <td>Uber Cash</td>
+                        <td class="bs-amt"><?= number_format($mSummaryUberCash, 2) ?></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (empty($mSummaryBookings) && round($mSummaryUberEft, 2) <= 0 && round($mSummaryUberCash, 2) <= 0): ?>
+                    <tr>
+                        <td colspan="2" class="bs-empty">No income recorded for this month.</td>
+                    </tr>
+                    <?php endif; ?>
+                </tbody>
+                <tfoot>
+                    <tr class="bs-total-row">
+                        <td class="bs-total-label">TOTAL INCOME</td>
+                        <td class="bs-amt bs-total-amt"><?= number_format($mSummaryTotalIncome, 2) ?></td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <!-- Expense Summary -->
+            <table class="bs-summary-table">
+                <thead>
+                    <tr>
+                        <th colspan="2" class="bs-section-head bs-debit-head">EXPENSE SUMMARY</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (round($mSummaryFuel, 2) > 0): ?>
+                    <tr>
+                        <td>Fuel Fill-ups</td>
+                        <td class="bs-amt"><?= number_format($mSummaryFuel, 2) ?></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php foreach ($mSummaryUberCosts as $mReason => $mCostTotal): ?>
+                    <tr>
+                        <td>Uber Cost – <?= htmlspecialchars($mReason) ?></td>
+                        <td class="bs-amt"><?= number_format($mCostTotal, 2) ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <?php if (round($mSummaryCarRental, 2) > 0): ?>
+                    <tr>
+                        <td>Car Rental</td>
+                        <td class="bs-amt"><?= number_format($mSummaryCarRental, 2) ?></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (round($mSummaryFuel, 2) <= 0 && empty($mSummaryUberCosts) && round($mSummaryCarRental, 2) <= 0): ?>
+                    <tr>
+                        <td colspan="2" class="bs-empty">No expenses recorded for this month.</td>
+                    </tr>
+                    <?php endif; ?>
+                </tbody>
+                <tfoot>
+                    <tr class="bs-total-row">
+                        <td class="bs-total-label">TOTAL EXPENSES</td>
+                        <td class="bs-amt bs-total-amt"><?= number_format($mSummaryTotalExpenses, 2) ?></td>
+                    </tr>
+                </tfoot>
+            </table>
+
+        </div><!-- .bs-summary-tables -->
 
         <!-- ============ CREDITS TABLE ============ -->
         <table class="bs-table">

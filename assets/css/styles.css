@@ -1432,4 +1432,34 @@ body:not(.home-page) .floating-menu-toggle {
     font-size: 16px;
 }
 
+/* ---- Balance Sheet Summary Block ---- */
+
+.bs-summary-tables {
+    display: flex;
+    gap: 0;
+    margin-bottom: 0;
+}
+
+.bs-summary-table {
+    flex: 1;
+    border-collapse: collapse;
+    font-size: 13px;
+    table-layout: fixed;
+}
+
+.bs-summary-table th,
+.bs-summary-table td {
+    border: 1px solid #ddd;
+    padding: 6px 10px;
+    vertical-align: middle;
+    overflow: hidden;
+}
+
+.bs-summary-table td.bs-amt {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    width: 120px;
+}
+
 
