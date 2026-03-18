@@ -32,6 +32,103 @@ usort($months, function ($a, $b) {
 
 $tz = new DateTimeZone(TIME_ZONE);
 
+$carRentalWeekly = (float) getSystemVariable($pdo, 'car_rental_price');
+
+// === PERIOD SUMMARY (aggregated across all displayed months) ===
+$summaryBookings      = [];
+$summaryUberEft       = 0.0;
+$summaryUberCash      = 0.0;
+$summaryFuel          = 0.0;
+$summaryUberCosts     = [];
+$summaryCarRental     = 0.0;
+$summaryTotalIncome   = 0.0;
+$summaryTotalExpenses = 0.0;
+$summaryNetBalance    = 0.0;
+$summaryPeriodLabel   = '';
+
+if (!empty($months)) {
+    $oldestMonth = $months[count($months) - 1];
+    $newestMonth = $months[0];
+
+    $summaryStart   = new DateTime("{$oldestMonth['year']}-{$oldestMonth['month']}-01", $tz);
+    $summaryEnd     = new DateTime("{$newestMonth['year']}-{$newestMonth['month']}-01", $tz);
+    $summaryEnd->modify('last day of this month');
+    $summaryEndFull = clone $summaryEnd;
+    $summaryEndFull->setTime(23, 59, 59);
+
+    $summaryStartStr = $summaryStart->format('Y-m-d');
+    $summaryEndStr   = $summaryEnd->format('Y-m-d');
+    $summaryStartTs  = $summaryStart->getTimestamp();
+    $summaryEndTs    = $summaryEndFull->getTimestamp();
+
+    $summaryPeriodLabel = date('M Y', mktime(0, 0, 0, $oldestMonth['month'], 1, $oldestMonth['year']))
+                        . ' – '
+                        . date('M Y', mktime(0, 0, 0, $newestMonth['month'], 1, $newestMonth['year']));
+
+    // Bookings grouped by payment method
+    $stmt = $pdo->prepare(
+        "SELECT UPPER(COALESCE(payment_method, 'CASH')) AS method, SUM(cost) AS total
+         FROM bookings
+         WHERE trip_date BETWEEN ? AND ?
+         GROUP BY UPPER(COALESCE(payment_method, 'CASH'))
+         ORDER BY method ASC"
+    );
+    $stmt->execute([$summaryStartStr, $summaryEndStr]);
+    $summaryBookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Uber income totals (EFT portion and cash portion)
+    $stmt = $pdo->prepare(
+        "SELECT SUM(total_income) AS total_income, SUM(cash_received) AS total_cash
+         FROM uber_income
+         WHERE week_start BETWEEN ? AND ?"
+    );
+    $stmt->execute([$summaryStartTs, $summaryEndTs]);
+    $summaryUber     = $stmt->fetch(PDO::FETCH_ASSOC);
+    $summaryUberEft  = max(0.0, (float) ($summaryUber['total_income'] ?? 0) - (float) ($summaryUber['total_cash'] ?? 0));
+    $summaryUberCash = (float) ($summaryUber['total_cash'] ?? 0);
+
+    // Fuel total
+    $stmt = $pdo->prepare(
+        "SELECT SUM(total_cost) AS total FROM fuel_logs WHERE log_timestamp BETWEEN ? AND ?"
+    );
+    $stmt->execute([$summaryStartTs, $summaryEndTs]);
+    $summaryFuel = (float) ($stmt->fetchColumn() ?? 0);
+
+    // Uber additional costs grouped by reason
+    $stmt = $pdo->prepare(
+        "SELECT COALESCE(uac.reason, 'Other') AS reason, SUM(uac.amount) AS total
+         FROM uber_additional_costs uac
+         JOIN uber_income ui ON uac.uber_income_id = ui.id
+         WHERE ui.week_start BETWEEN ? AND ?
+         GROUP BY COALESCE(uac.reason, 'Other')
+         ORDER BY reason ASC"
+    );
+    $stmt->execute([$summaryStartTs, $summaryEndTs]);
+    $summaryUberCosts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Car rental total (computed from weekly rate across all displayed months)
+    foreach ($months as $sm) {
+        $smFirst = new DateTime("{$sm['year']}-{$sm['month']}-01", $tz);
+        if ($smFirst->format('N') !== '1') {
+            $smFirst->modify('next monday');
+        }
+        $smLast = new DateTime("{$sm['year']}-{$sm['month']}-01", $tz);
+        $smLast->modify('last day of this month');
+        $smCurrent = clone $smFirst;
+        while ($smCurrent <= $smLast) {
+            $summaryCarRental += $carRentalWeekly;
+            $smCurrent->modify('+1 week');
+        }
+    }
+
+    $summaryTotalIncome   = array_sum(array_column($summaryBookings, 'total'))
+                          + $summaryUberEft + $summaryUberCash;
+    $summaryTotalExpenses = $summaryFuel
+                          + array_sum(array_column($summaryUberCosts, 'total'))
+                          + $summaryCarRental;
+    $summaryNetBalance    = $summaryTotalIncome - $summaryTotalExpenses;
+}
+
 include ROOT_DIR . '/includes/header.php';
 ?>
 
@@ -41,6 +138,110 @@ include ROOT_DIR . '/includes/header.php';
         <h2>📊 Monthly Balance Sheet</h2>
         <button onclick="window.print()" class="bs-print-btn">🖨️ Print / Save as PDF</button>
     </div>
+
+    <?php if (!empty($months)): ?>
+    <!-- ============ PERIOD SUMMARY ============ -->
+    <div class="bs-summary-block">
+
+        <div class="bs-summary-title">
+            <div class="bs-month-name">📋 Period Summary</div>
+            <div class="bs-summary-period"><?= htmlspecialchars($summaryPeriodLabel) ?></div>
+        </div>
+
+        <div class="bs-summary-tables">
+
+            <!-- Income Summary -->
+            <table class="bs-summary-table">
+                <thead>
+                    <tr>
+                        <th colspan="2" class="bs-section-head bs-credit-head">INCOME SUMMARY</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($summaryBookings as $sb): ?>
+                    <tr>
+                        <td>Bookings (<?= htmlspecialchars($sb['method']) ?>)</td>
+                        <td class="bs-amt"><?= number_format((float) $sb['total'], 2) ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <?php if (round($summaryUberEft, 2) > 0): ?>
+                    <tr>
+                        <td>Uber Payouts (EFT)</td>
+                        <td class="bs-amt"><?= number_format($summaryUberEft, 2) ?></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (round($summaryUberCash, 2) > 0): ?>
+                    <tr>
+                        <td>Uber Cash</td>
+                        <td class="bs-amt"><?= number_format($summaryUberCash, 2) ?></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (empty($summaryBookings) && round($summaryUberEft, 2) <= 0 && round($summaryUberCash, 2) <= 0): ?>
+                    <tr>
+                        <td colspan="2" class="bs-empty">No income recorded for this period.</td>
+                    </tr>
+                    <?php endif; ?>
+                </tbody>
+                <tfoot>
+                    <tr class="bs-total-row">
+                        <td class="bs-total-label">TOTAL INCOME</td>
+                        <td class="bs-amt bs-total-amt"><?= number_format($summaryTotalIncome, 2) ?></td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <!-- Expense Summary -->
+            <table class="bs-summary-table">
+                <thead>
+                    <tr>
+                        <th colspan="2" class="bs-section-head bs-debit-head">EXPENSE SUMMARY</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (round($summaryFuel, 2) > 0): ?>
+                    <tr>
+                        <td>Fuel Fill-ups</td>
+                        <td class="bs-amt"><?= number_format($summaryFuel, 2) ?></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php foreach ($summaryUberCosts as $suc): ?>
+                    <tr>
+                        <td>Uber Cost – <?= htmlspecialchars($suc['reason']) ?></td>
+                        <td class="bs-amt"><?= number_format((float) $suc['total'], 2) ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <?php if (round($summaryCarRental, 2) > 0): ?>
+                    <tr>
+                        <td>Car Rental</td>
+                        <td class="bs-amt"><?= number_format($summaryCarRental, 2) ?></td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php if (round($summaryFuel, 2) <= 0 && empty($summaryUberCosts) && round($summaryCarRental, 2) <= 0): ?>
+                    <tr>
+                        <td colspan="2" class="bs-empty">No expenses recorded for this period.</td>
+                    </tr>
+                    <?php endif; ?>
+                </tbody>
+                <tfoot>
+                    <tr class="bs-total-row">
+                        <td class="bs-total-label">TOTAL EXPENSES</td>
+                        <td class="bs-amt bs-total-amt"><?= number_format($summaryTotalExpenses, 2) ?></td>
+                    </tr>
+                </tfoot>
+            </table>
+
+        </div><!-- .bs-summary-tables -->
+
+        <div class="bs-net-summary <?= $summaryNetBalance >= 0 ? 'profit' : 'loss' ?>">
+            <span class="bs-net-label">OVERALL NET BALANCE</span>
+            <span class="bs-net-value">
+                R <?= number_format(abs($summaryNetBalance), 2) ?>
+                <?= $summaryNetBalance >= 0 ? 'CREDIT' : 'DEBIT' ?>
+            </span>
+        </div>
+
+    </div><!-- .bs-summary-block -->
+    <?php endif; ?>
 
     <?php foreach ($months as $idx => $m):
 
@@ -105,8 +306,7 @@ include ROOT_DIR . '/includes/header.php';
         $uberCosts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // === CAR RENTAL (weekly rate per billing week) ===
-        $carRentalWeekly = (float) getSystemVariable($pdo, 'car_rental_price');
-        $carRentalWeeks  = [];
+        $carRentalWeeks = [];
 
         $firstDay = new DateTime("{$m['year']}-{$m['month']}-01", $tz);
         if ($firstDay->format('N') !== '1') {
