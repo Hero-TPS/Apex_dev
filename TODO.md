@@ -72,7 +72,7 @@
   - additional link for this under finances.
   - default reporting months follow the setting in maintainace.
   - Will be used for general reporting and credit applications, etc.
-- [ ] Add to top of ballance sheet. Summary report.
+- [x] Add to top of ballance sheet. Summary report.
   -all the similar entries grouped together with total
 ---
 
