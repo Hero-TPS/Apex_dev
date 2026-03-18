@@ -1434,29 +1434,10 @@ body:not(.home-page) .floating-menu-toggle {
 
 /* ---- Balance Sheet Summary Block ---- */
 
-.bs-summary-block {
-    margin-bottom: 32px;
-}
-
-.bs-summary-title {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #2c3e50;
-    color: white;
-    padding: 10px 14px;
-    border-radius: 4px 4px 0 0;
-}
-
-.bs-summary-period {
-    font-size: 14px;
-    font-weight: normal;
-    opacity: 0.85;
-}
-
 .bs-summary-tables {
     display: flex;
     gap: 0;
+    margin-bottom: 0;
 }
 
 .bs-summary-table {
@@ -1479,10 +1460,6 @@ body:not(.home-page) .floating-menu-toggle {
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
     width: 120px;
-}
-
-.bs-summary-block .bs-net-summary {
-    border-radius: 0 0 4px 4px;
 }
 
 
