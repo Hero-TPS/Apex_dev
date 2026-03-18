@@ -83,7 +83,24 @@
 
 
 ## NEXT CYCLE
+
 ### Drivers
-#### Start thinkng of how to deal with additional car drivers, mark bookings as such and commission taken
+#### Start thinking of how to deal with additional car drivers, mark bookings as such and commission taken
+- [ ] Driver has an account 
+- [ ] Admin or manager role can assign bookings to drivers
+- [ ] Set up a commision persent field in maintanance
+- [ ] set up role permission for a role that does not pay commision (such as admin)
+- [ ] if driver is asigned a booking 
+    - the booking is not added as income, only the commision
+    - booking is removed from calendar
+    - booking is still show in list, but marked as assigned
+    - when a booking is created, then it can also be emmediatly asigned
+- [ ] Admin overview of driver bookings
+    -drivers has access to their own list of upcomming bookings
 
 ### Access Control
+- [ ] Similar to dupal access control
+  - Admin user. Superuser
+  - access control to pages, based on roles. need a set up page for this.
+  - users with roles
+  
