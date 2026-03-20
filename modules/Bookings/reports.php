@@ -3,11 +3,14 @@
 $page_title = 'Booking Reports';
 $page_subtitle = 'Monthly Summary';
 $show_breadcrumb = true;
-$breadcrumb = ' > Reports > Bookings';
 
 require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
-
+$breadcrumb = buildBreadcrumb([
+    ['label' => 'Bookings', 'url' => BASE_URL . '/modules/Bookings/'],
+    ['label' => 'Reports'],
+]);
+include ROOT_DIR . '/includes/header.php';
 $monthsBack = (int) getSystemVariable($pdo, 'financial_months_back');
 if ($monthsBack < 1) {
     $monthsBack = 3;
@@ -30,7 +33,6 @@ usort($months, function ($a, $b) {
     return $b['month'] - $a['month'];
 });
 
-include ROOT_DIR . '/includes/header.php';
 ?>
 
 <div class="financial-dashboard">

@@ -77,9 +77,14 @@
 ---
 
 ### General System Improvements
-- [ ] **Breadcrumbs:** Check consistency across all pages
-  - Consider creating helper function for breadcrumb generation
-  - OR implement proper main menu navigation
+- [x] **Breadcrumbs:** Check consistency across all pages
+  - Created `buildBreadcrumb()` helper function in `includes/helpers.php`
+  - Fixed missing breadcrumb in `maintenance/index.php`
+  - Fixed wrong order in `modules/Bookings/reports.php` (was `> Reports > Bookings`)
+  - Fixed missing parent segment in `modules/Bookings/add.php`
+  - Added parent links to all multi-segment breadcrumbs across all modules
+  - Standardised "Add New" → "Add" in `modules/Clients/add.php`
+  - Fixed include order in `modules/Clients/bookings.php` (helpers loaded before header)
 
 
 ## NEXT CYCLE

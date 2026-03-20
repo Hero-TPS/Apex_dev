@@ -2,10 +2,10 @@
 $page_title = 'Fuel Reports';
 $page_subtitle = 'Monthly Summary';
 $show_breadcrumb = true;
-$breadcrumb = ' > Fuel';
 
 require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
+$breadcrumb = buildBreadcrumb([['label' => 'Fuel']]);
 
 $monthsBack = (int) getSystemVariable($pdo, 'financial_months_back');
 if ($monthsBack < 1) {

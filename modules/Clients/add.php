@@ -2,9 +2,13 @@
 $page_title = 'Add New Client';
 $page_subtitle = 'Client Management';
 $show_breadcrumb = true;
-$breadcrumb = ' > Clients > Add New';
 
 require_once __DIR__ . '/../../config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
+$breadcrumb = buildBreadcrumb([
+    ['label' => 'Clients', 'url' => BASE_URL . '/modules/Clients/'],
+    ['label' => 'Add'],
+]);
 include ROOT_DIR . '/includes/header.php';
 ?>
 

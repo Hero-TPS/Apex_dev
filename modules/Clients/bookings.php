@@ -2,11 +2,14 @@
 $page_title = 'Client Bookings';
 $page_subtitle = 'View Client Bookings';
 $show_breadcrumb = true;
-$breadcrumb = ' > Clients > Bookings';
 
 require_once __DIR__ . '/../../config.php';
-include ROOT_DIR . '/includes/header.php';
 require_once ROOT_DIR . '/includes/helpers.php';
+$breadcrumb = buildBreadcrumb([
+    ['label' => 'Clients', 'url' => BASE_URL . '/modules/Clients/'],
+    ['label' => 'Bookings'],
+]);
+include ROOT_DIR . '/includes/header.php';
 
 $client_id = intval($_GET['id'] ?? 0);
 

@@ -2,9 +2,13 @@
 $page_title = 'System Logs';
 $page_subtitle = 'Activity & Error Logs';
 $show_breadcrumb = true;
-$breadcrumb = ' > Maintenance > Logs';
 
 require_once __DIR__ . '/../config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
+$breadcrumb = buildBreadcrumb([
+    ['label' => 'Maintenance', 'url' => BASE_URL . '/maintenance/'],
+    ['label' => 'Logs'],
+]);
 include ROOT_DIR . '/includes/header.php';
 
 // Get filter parameters

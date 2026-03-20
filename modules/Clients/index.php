@@ -2,9 +2,10 @@
 $page_title = 'Clients';
 $page_subtitle = 'Client Management';
 $show_breadcrumb = true;
-$breadcrumb = ' > Clients';
 
 require_once __DIR__ . '/../../config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
+$breadcrumb = buildBreadcrumb([['label' => 'Clients']]);
 include ROOT_DIR . '/includes/header.php';
 
 // Check for highlight parameter

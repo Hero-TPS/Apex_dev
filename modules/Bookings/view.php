@@ -6,11 +6,14 @@ $page_subtitle = 'View Booking';
 $show_breadcrumb = true;
 
 require_once __DIR__ . '/../../config.php';
-$breadcrumb = ' > <a href="' . BASE_URL . '/modules/Bookings/">Bookings</a> > Booking Details';
-
-include ROOT_DIR . '/includes/header.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once __DIR__ . '/helpers.php';
+$breadcrumb = buildBreadcrumb([
+    ['label' => 'Bookings', 'url' => BASE_URL . '/modules/Bookings/'],
+    ['label' => 'Booking Details'],
+]);
+
+include ROOT_DIR . '/includes/header.php';
 
 $booking = null;
 $error_message = '';

@@ -2,10 +2,13 @@
 $page_title = 'Edit Uber Income';
 $page_subtitle = 'Edit Weekly Record';
 $show_breadcrumb = true;
-$breadcrumb = ' > Uber > Edit';
 
 require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
+$breadcrumb = buildBreadcrumb([
+    ['label' => 'Uber', 'url' => BASE_URL . '/modules/Uber/'],
+    ['label' => 'Edit'],
+]);
 include ROOT_DIR . '/includes/header.php';
 
 $id = intval($_GET['id'] ?? 0);

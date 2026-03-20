@@ -2,10 +2,10 @@
 $page_title = 'Client Groups';
 $page_subtitle = 'Manage client groups';
 $show_breadcrumb = true;
-$breadcrumb = ' > Client Groups';
 
 require_once __DIR__ . '/config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
+$breadcrumb = buildBreadcrumb([['label' => 'Client Groups']]);
 include ROOT_DIR . '/includes/header.php';
 ?>
 

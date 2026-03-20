@@ -2,10 +2,13 @@
 $page_title = 'Log Uber Income';
 $page_subtitle = 'Log Weekly Uber Earnings';
 $show_breadcrumb = true;
-$breadcrumb = ' > Uber > Add';
 
 require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
+$breadcrumb = buildBreadcrumb([
+    ['label' => 'Uber', 'url' => BASE_URL . '/modules/Uber/'],
+    ['label' => 'Add'],
+]);
 include ROOT_DIR . '/includes/header.php';
 
 // Generate last 8 Mondays (2 months back), starting from the current week's Monday.
