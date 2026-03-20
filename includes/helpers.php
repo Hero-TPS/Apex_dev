@@ -238,6 +238,30 @@ function e(?string $string): string
 }
 
 /**
+ * Build a breadcrumb HTML string for use with the $breadcrumb variable.
+ * Generates linked segments for parent pages and plain text for the current page.
+ * Must be called after config.php is loaded (BASE_URL required for 'url' values).
+ * Used by: all pages with $show_breadcrumb = true
+ *
+ * @param array $items  Each item: ['label' => '...'] for the current page,
+ *                      or ['label' => '...', 'url' => '...'] for a parent segment.
+ * @return string       HTML string starting with ' > ', for appending after "Home".
+ */
+function buildBreadcrumb(array $items): string
+{
+    $parts = [];
+    foreach ($items as $item) {
+        if (!empty($item['url'])) {
+            $parts[] = '<a href="' . htmlspecialchars($item['url'], ENT_QUOTES, 'UTF-8') . '">'
+                     . htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') . '</a>';
+        } else {
+            $parts[] = htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8');
+        }
+    }
+    return ' > ' . implode(' > ', $parts);
+}
+
+/**
  * Send a JSON response and exit.
  * Used by: all API files site-wide.
  *

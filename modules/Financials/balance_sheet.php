@@ -2,11 +2,14 @@
 $page_title      = 'Balance Sheet';
 $page_subtitle   = 'Monthly Balance Sheet Report';
 $show_breadcrumb = true;
-$breadcrumb      = ' > Financials > Balance Sheet';
 
 require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once ROOT_DIR . '/modules/Financials/helper.php';
+$breadcrumb = buildBreadcrumb([
+    ['label' => 'Financials', 'url' => BASE_URL . '/modules/Financials/'],
+    ['label' => 'Balance Sheet'],
+]);
 
 $monthsBack = (int) getSystemVariable($pdo, 'financial_months_back');
 if ($monthsBack < 1) {

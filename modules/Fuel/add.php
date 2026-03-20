@@ -2,9 +2,13 @@
 $page_title = 'Log Fuel';
 $page_subtitle = 'Track fuel expenses';
 $show_breadcrumb = true;
-$breadcrumb = ' > Fuel > Add';
 
 require_once __DIR__ . '/../../config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
+$breadcrumb = buildBreadcrumb([
+    ['label' => 'Fuel', 'url' => BASE_URL . '/modules/Fuel/'],
+    ['label' => 'Add'],
+]);
 include ROOT_DIR . '/includes/header.php';
 
 // Get last fuel price for default

@@ -2,9 +2,13 @@
 $page_title = 'Edit Fuel Log';
 $page_subtitle = 'Update fuel log entry';
 $show_breadcrumb = true;
-$breadcrumb = ' > Fuel > Edit';
 
 require_once __DIR__ . '/../../config.php';
+require_once ROOT_DIR . '/includes/helpers.php';
+$breadcrumb = buildBreadcrumb([
+    ['label' => 'Fuel', 'url' => BASE_URL . '/modules/Fuel/'],
+    ['label' => 'Edit'],
+]);
 include ROOT_DIR . '/includes/header.php';
 
 $log_id = intval($_GET['id'] ?? 0);
