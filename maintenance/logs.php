@@ -236,7 +236,7 @@ $(document).ready(function() {
         const category = $('#categoryFilter').val();
         const limit = $('#limitFilter').val();
         
-        window.location.href = '<?= BASE_URL ?>/Maintenance/logs.php' +
+        window.location.href = '<?= BASE_URL ?>/maintenance/logs.php' +
             '?level=' + level +
             '&category=' + encodeURIComponent(category) +
             '&limit=' + limit;
@@ -254,7 +254,7 @@ $(document).ready(function() {
         btn.prop('disabled', true).text('Clearing...');
 
         $.ajax({
-            url: '<?= BASE_URL ?>/Maintenance/api/logs.php?action=clear_all',
+            url: '<?= BASE_URL ?>/maintenance/api/logs.php?action=clear_all',
             type: 'POST',
             dataType: 'json',
             success: function(response) {
