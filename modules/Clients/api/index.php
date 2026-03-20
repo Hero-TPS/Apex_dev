@@ -141,7 +141,13 @@ function handleAddClient()
         if (empty($name)) {
             jsonResponse(['success' => false, 'message' => 'Client name is required'], 400);
         }
-        
+
+        // Normalise phone before storing
+        if ($phone !== '') {
+            $normalised = formatPhoneNumberForWhatsApp($phone);
+            $phone = $normalised !== '' ? $normalised : preg_replace('/\D/', '', $phone);
+        }
+
         // Insert client
         $stmt = $pdo->prepare("
             INSERT INTO contacts (name, phone, email, address, additional_info, date_added)
@@ -196,7 +202,13 @@ function handleUpdateClient()
         if (empty($name)) {
             jsonResponse(['success' => false, 'message' => 'Name is required'], 400);
         }
-        
+
+        // Normalise phone before storing
+        if ($phone !== '') {
+            $normalised = formatPhoneNumberForWhatsApp($phone);
+            $phone = $normalised !== '' ? $normalised : preg_replace('/\D/', '', $phone);
+        }
+
         // Update client
         $stmt = $pdo->prepare("
             UPDATE contacts 

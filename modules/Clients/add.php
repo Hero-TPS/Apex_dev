@@ -15,11 +15,12 @@ include ROOT_DIR . '/includes/header.php';
 <form id="contactForm">
     <div class="form-group">
         <label for="name">Full Name <span class="required">*</span></label>
-        <input type="text" id="name" name="name" required placeholder="Enter full name">
+        <input type="text" id="client-name" name="name" required placeholder="Enter full name">
     </div>
     <div class="form-group">
         <label for="phone">Phone Number <span class="required">*</span></label>
-        <input type="tel" id="phone" name="phone" required placeholder="e.g., 082 123 4567">
+        <input type="tel" id="client-phone" name="phone" required placeholder="e.g., 082 123 4567">
+        <div id="duplicate-warning" class="error-message" style="display:none;"></div>
     </div>
     <div class="form-group">
         <label for="email">Email Address</label>
@@ -68,7 +69,7 @@ $(document).ready(function() {
                 if (response.success) {
                     if (isSaveAndBook && response.contact_id) {
                         // Redirect to AddBooking with client pre-filled
-                        window.location.href = '<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=' + response.contact_id + '&contact_name=' + encodeURIComponent($('#name').val());
+                        window.location.href = '<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=' + response.contact_id + '&contact_name=' + encodeURIComponent($('#client-name').val());
                     } else {
                         result.html('<div class="success-message">' + response.message + '. Redirecting...</div>');
                         
@@ -88,6 +89,43 @@ $(document).ready(function() {
             }
         });
     });
+
+    // Duplicate warning on blur
+    function checkDuplicates() {
+        var name  = $('#client-name').val().trim();
+        var phone = $('#client-phone').val().trim();
+        if (!name && !phone) {
+            $('#duplicate-warning').hide();
+            return;
+        }
+        $.ajax({
+            url: '<?= BASE_URL ?>/modules/Clients/duplicates/api/index.php',
+            data: { action: 'check_duplicate', name: name, phone: phone },
+            dataType: 'json',
+            success: function (res) {
+                if (res.success && res.matches && res.matches.length > 0) {
+                    var html = '⚠️ Similar client(s) found: ';
+                    var parts = [];
+                    $.each(res.matches, function (i, m) {
+                        parts.push('<strong>' + escHtml(m.name) + '</strong> — ' + escHtml(m.phone || '') + ' — ' + escHtml(m.address || '') +
+                            ' <a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=' + parseInt(m.id) + '" target="_blank">[View]</a>');
+                    });
+                    html += parts.join(' &nbsp;|&nbsp; ');
+                    $('#duplicate-warning').html(html).show();
+                } else {
+                    $('#duplicate-warning').hide();
+                }
+            }
+        });
+    }
+
+    $('#client-name, #client-phone').on('blur', checkDuplicates);
+
+    function escHtml(str) {
+        var d = document.createElement('div');
+        d.textContent = String(str || '');
+        return d.innerHTML;
+    }
 });
 </script>
 

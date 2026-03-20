@@ -47,6 +47,20 @@ try {
     ");
     $stmt->execute([$client_id]);
     $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Get linked contacts
+    $linkedStmt = $pdo->prepare("
+        SELECT c.id, c.name, c.phone,
+               (SELECT COUNT(*) FROM bookings b WHERE b.contact_id = c.id) AS booking_count
+        FROM contact_links cl
+        JOIN contacts c ON c.id = CASE
+            WHEN cl.contact_id_a = ? THEN cl.contact_id_b
+            ELSE cl.contact_id_a
+        END
+        WHERE cl.contact_id_a = ? OR cl.contact_id_b = ?
+    ");
+    $linkedStmt->execute([$client_id, $client_id, $client_id]);
+    $linkedContacts = $linkedStmt->fetchAll(PDO::FETCH_ASSOC);
     
 } catch (PDOException $e) {
     logError('CLIENT', 'Failed to fetch client bookings', [
@@ -102,6 +116,34 @@ try {
         </a>
     </div>
 </div>
+
+<?php if (!empty($linkedContacts)): ?>
+<div class="menu-section">
+    <h3>🔗 Linked Contacts</h3>
+    <table class="bookings-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Bookings</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($linkedContacts as $lc): ?>
+            <tr>
+                <td data-label="Name"><?= htmlspecialchars($lc['name']) ?></td>
+                <td data-label="Phone"><?= htmlspecialchars($lc['phone'] ?? '—') ?></td>
+                <td data-label="Bookings"><?= (int)$lc['booking_count'] ?></td>
+                <td data-label="Actions">
+                    <a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=<?= (int)$lc['id'] ?>" class="action-btn view-details-btn">View Bookings</a>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</div>
+<?php endif; ?>
 
 <h2>📅 Bookings (<?= count($bookings) ?>)</h2>
 
