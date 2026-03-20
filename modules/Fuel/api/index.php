@@ -158,7 +158,7 @@ function handleAdd()
         ");
         $stmt->execute([$log_timestamp, $odo_km, $trip_km, $fuel_price, $total_cost, $payment_method]);
 
-        logInfo('FUEL', 'Fuel log created', [
+        logDebug('FUEL', 'Fuel log created', [
             'log_id'  => $pdo->lastInsertId(),
             'odo_km'  => $odo_km,
             'trip_km' => $trip_km
@@ -194,7 +194,7 @@ function handleUpdate()
         ");
         $stmt->execute([$log_timestamp, $fuel_price, $total_cost, $payment_method, $id]);
 
-        logInfo('FUEL', 'Fuel log updated', ['log_id' => $id]);
+        logDebug('FUEL', 'Fuel log updated', ['log_id' => $id]);
 
         jsonResponse(['success' => true, 'message' => 'Fuel log updated successfully']);
 
@@ -222,7 +222,7 @@ function handleDelete()
         $stmt->execute([$id]);
 
         if ($stmt->rowCount() > 0) {
-            logInfo('FUEL', 'Fuel log deleted', ['log_id' => $id]);
+            logDebug('FUEL', 'Fuel log deleted', ['log_id' => $id]);
             jsonResponse(['success' => true, 'message' => 'Fuel log deleted successfully']);
         } else {
             jsonResponse(['success' => false, 'message' => 'Fuel log not found'], 404);

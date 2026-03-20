@@ -151,7 +151,7 @@ function handleAddClient()
         
         $clientId = $pdo->lastInsertId();
         
-        logInfo('CLIENT', 'Client created', [
+        logDebug('CLIENT', 'Client created', [
             'client_id' => $clientId,
             'name' => $name
         ]);
@@ -206,7 +206,7 @@ function handleUpdateClient()
         $updated = $stmt->execute([$name, $phone, $email, $address, $additional_info, $id]);
         
         if ($updated) {
-            logInfo('CLIENT', 'Client updated', [
+            logDebug('CLIENT', 'Client updated', [
                 'client_id' => $id,
                 'name' => $name
             ]);
@@ -264,7 +264,7 @@ function handleDeleteClient()
         $stmt->execute([$id]);
         
         if ($stmt->rowCount() > 0) {
-            logInfo('CLIENT', 'Client deleted', [
+            logDebug('CLIENT', 'Client deleted', [
                 'client_id' => $id,
                 'name' => $clientName
             ]);

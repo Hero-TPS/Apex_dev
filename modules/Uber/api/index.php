@@ -175,7 +175,7 @@ function handleAdd()
         // Insert additional costs
         saveAdditionalCosts($pdo, $uberIncomeId, $reasons, $amounts);
 
-        logInfo('UBER', 'Uber income created', [
+        logDebug('UBER', 'Uber income created', [
             'record_id'  => $uberIncomeId,
             'week_start' => date('Y-m-d', $weekStart),
             'total_income' => $totalIncome
@@ -219,7 +219,7 @@ function handleUpdate()
         $pdo->prepare("DELETE FROM uber_additional_costs WHERE uber_income_id = ?")->execute([$id]);
         saveAdditionalCosts($pdo, $id, $reasons, $amounts);
 
-        logInfo('UBER', 'Uber income updated', ['record_id' => $id]);
+        logDebug('UBER', 'Uber income updated', ['record_id' => $id]);
 
         jsonResponse(['success' => true, 'message' => 'Uber income updated successfully']);
 
@@ -247,7 +247,7 @@ function handleDelete()
         $stmt->execute([$id]);
 
         if ($stmt->rowCount() > 0) {
-            logInfo('UBER', 'Uber income deleted', ['record_id' => $id]);
+            logDebug('UBER', 'Uber income deleted', ['record_id' => $id]);
             jsonResponse(['success' => true, 'message' => 'Uber income deleted successfully']);
         } else {
             jsonResponse(['success' => false, 'message' => 'Record not found'], 404);
