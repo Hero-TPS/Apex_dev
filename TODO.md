@@ -53,6 +53,7 @@
 
 #### Logs
 - [ ] Logs are still to verbrose, being cluttered up with actions marked as info, but show now actual errors logs, those are still shown on page views.
+- error reports are always on screen, which is fine, but they are never logged.
 - [ ] Filter select : Page not found.
 
 ---
