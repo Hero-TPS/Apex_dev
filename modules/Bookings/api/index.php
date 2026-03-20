@@ -519,7 +519,7 @@ function handleDeleteBooking()
             $calendarDeleted = deleteBookingFromGoogleCalendar($googleEventId);
         }
 
-        logInfo('BOOKING', 'Booking deleted', [
+        logDebug('BOOKING', 'Booking deleted', [
             'booking_id' => $bookingId,
             'had_calendar_event' => !empty($googleEventId),
             'calendar_deleted' => $calendarDeleted,
@@ -831,7 +831,7 @@ function handleMarkConfirmed()
             $logStmt->execute([$id, $contactId, $message]);
         }
 
-        logInfo('BOOKING_API', 'Booking marked as confirmed', ['booking_id' => $id]);
+        logDebug('BOOKING_API', 'Booking marked as confirmed', ['booking_id' => $id]);
         jsonResponse(['success' => true]);
 
     } catch (PDOException $e) {
@@ -868,7 +868,7 @@ function handleLogWhatsApp()
         ");
         $stmt->execute([$bookingId, $contactId, $messageType, $messageContent, $sentBy]);
 
-        logInfo('BOOKING_API', 'WhatsApp message logged', [
+        logDebug('BOOKING_API', 'WhatsApp message logged', [
             'booking_id' => $bookingId,
             'contact_id' => $contactId,
             'message_type' => $messageType
