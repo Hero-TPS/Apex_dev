@@ -36,7 +36,7 @@ include ROOT_DIR . '/includes/header.php';
         <div id="clients-section" class="menu-content">
             <a href="modules/Clients/" class="dashboard-button db-clients">View Clients</a>
             <a href="modules/Clients/add.php" class="dashboard-button db-contact">Add Client</a>
-            <a href="GroupManagement.php" class="dashboard-button db-groups">Client Groups</a>
+            <a href="modules/Clients/duplicates/" class="dashboard-button db-groups">Manage Duplicates</a>
         </div>
     </div>
 
