@@ -245,7 +245,7 @@ include ROOT_DIR . '/includes/header.php';
                     <?php endif; ?>
                     <?php foreach ($mSummaryUberCosts as $mReason => $mCostTotal): ?>
                     <tr>
-                        <td>Uber Cost – <?= htmlspecialchars($mReason) ?></td>
+                        <td>Vehicle Cost – <?= htmlspecialchars($mReason) ?></td>
                         <td class="bs-amt"><?= number_format($mCostTotal, 2) ?></td>
                     </tr>
                     <?php endforeach; ?>
@@ -376,7 +376,7 @@ include ROOT_DIR . '/includes/header.php';
                 ?>
                 <tr>
                     <td><?= htmlspecialchars($cDate->format('d M Y')) ?></td>
-                    <td>Uber Cost – <?= htmlspecialchars($uc['reason'] ?? '') ?></td>
+                    <td>Vehicle Cost – <?= htmlspecialchars($uc['reason'] ?? '') ?></td>
                     <td class="bs-method">—</td>
                     <td class="bs-amt"><?= number_format((float) $uc['amount'], 2) ?></td>
                 </tr>
