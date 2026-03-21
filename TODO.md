@@ -22,10 +22,10 @@
 
 ---
 ### Group management/duplicate clients
-- [ ] Currently it is a still a seperate folder. it is a sub of clients module, but it also going to use data from bookings
+- [x] Currently it is a still a seperate folder. it is a sub of clients module, but it also going to use data from bookings
   - whole idea is to deal with duplicated clients.
-- [ ] Move it to a new module.
-- [ ] Show which duplicate already has bookings, that way I can decide which one to delete.
+- [x] Move it to a new module.
+- [x] Show which duplicate already has bookings, that way I can decide which one to delete.
 
 
 

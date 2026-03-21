@@ -405,7 +405,7 @@ include ROOT_DIR . '/includes/header.php';
             </tfoot>
         </table>
         </div><!-- .bs-page-break -->
-        
+
         <!-- Net Balance Summary -->
         <div class="bs-net-summary <?= $netBalance >= 0 ? 'profit' : 'loss' ?>">
             <span class="bs-net-label">NET BALANCE</span>
