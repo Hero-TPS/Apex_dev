@@ -5,21 +5,6 @@
 
 ---
 
-### Bookings Module Enhancements and Fixes
-- [ ] Some clients wants to make a booking on a date, but do not have the time or details. I need ideas how to handle this via calendar
-  - idea prebooking and reminders
-  - use another calendar
-  - turn reminders into bookings
-
----
-
-### Clients Module Enhancements and Fixes
-- [ ] Create list of clients with prior bookings:
-  - Export names and phone numbers
-  - Discuss WhatsApp Business group creation
-  - Ideas for direct WhatsApp communication with existing clients
-- [ ] WhatsApp Business integration for bulk messaging
-
 ---
 ### Group management/duplicate clients
 - [x] Currently it is a still a seperate folder. it is a sub of clients module, but it also going to use data from bookings
@@ -110,4 +95,17 @@
   - Admin user. Superuser
   - access control to pages, based on roles. need a set up page for this.
   - users with roles
+
+### Bookings Module Enhancements and Fixes
+- [ ] Some clients wants to make a booking on a date, but do not have the time or details. I need ideas how to handle this via calendar
+  - idea prebooking and reminders
+  - use another calendar
+  - turn reminders into bookings
+
+### Clients Module Enhancements and Fixes
+- [ ] Create list of clients with prior bookings:
+  - Export names and phone numbers
+  - Discuss WhatsApp Business group creation
+  - Ideas for direct WhatsApp communication with existing clients
+- [ ] WhatsApp Business integration for bulk messaging
 
