@@ -68,10 +68,8 @@ include ROOT_DIR . '/includes/header.php';
 
         // === BOOKINGS ===
         $stmt = $pdo->prepare(
-            "SELECT b.trip_date, b.start_time, b.cost, b.payment_method,
-                    b.original_pickup, b.original_destination, c.name AS client_name
+            "SELECT b.trip_date, b.start_time, b.cost, b.payment_method
              FROM bookings b
-             LEFT JOIN contacts c ON b.contact_id = c.id
              WHERE b.trip_date BETWEEN ? AND ?
              ORDER BY b.trip_date ASC, b.start_time ASC"
         );
@@ -287,11 +285,7 @@ include ROOT_DIR . '/includes/header.php';
             <tbody>
                 <?php foreach ($bookings as $b):
                     $method = strtoupper($b['payment_method'] ?? 'cash');
-                    $desc   = ($b['client_name'] ?? 'Unknown')
-                              . ' — '
-                              . ($b['original_pickup'] ?? '')
-                              . ' → '
-                              . ($b['original_destination'] ?? '');
+                    $desc   = 'Booked trip';
                 ?>
                 <tr>
                     <td><?= htmlspecialchars(date('d M Y', strtotime($b['trip_date']))) ?></td>
