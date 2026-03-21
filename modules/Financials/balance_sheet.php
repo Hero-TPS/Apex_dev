@@ -68,43 +68,28 @@ include ROOT_DIR . '/includes/header.php';
 
         // === BOOKINGS ===
         $stmt = $pdo->prepare(
-            "SELECT b.trip_date, b.start_time, b.cost, b.payment_method,
-                    b.original_pickup, b.original_destination, c.name AS client_name
-             FROM bookings b
-             LEFT JOIN contacts c ON b.contact_id = c.id
-             WHERE b.trip_date BETWEEN ? AND ?
-             ORDER BY b.trip_date ASC, b.start_time ASC"
+            "SELECT b.trip_date, b.start_time, b.cost, b.payment_method,\n                    b.original_pickup, b.original_destination, c.name AS client_name\n             FROM bookings b\n             LEFT JOIN contacts c ON b.contact_id = c.id\n             WHERE b.trip_date BETWEEN ? AND ?\n             ORDER BY b.trip_date ASC, b.start_time ASC"
         );
         $stmt->execute([$startDateStr, $endDateStr]);
         $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // === UBER INCOME ===
         $stmt = $pdo->prepare(
-            "SELECT week_start, week_end, total_income, cash_received
-             FROM uber_income
-             WHERE week_start BETWEEN ? AND ?
-             ORDER BY week_start ASC"
+            "SELECT week_start, week_end, total_income, cash_received\n             FROM uber_income\n             WHERE week_start BETWEEN ? AND ?\n             ORDER BY week_start ASC"
         );
         $stmt->execute([$uberStart, $uberEnd]);
         $uberRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // === FUEL LOGS ===
         $stmt = $pdo->prepare(
-            "SELECT log_timestamp, total_cost, payment_method
-             FROM fuel_logs
-             WHERE log_timestamp BETWEEN ? AND ?
-             ORDER BY log_timestamp ASC"
+            "SELECT log_timestamp, total_cost, payment_method\n             FROM fuel_logs\n             WHERE log_timestamp BETWEEN ? AND ?\n             ORDER BY log_timestamp ASC"
         );
         $stmt->execute([$fuelStart, $fuelEnd]);
         $fuelRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // === UBER ADDITIONAL COSTS ===
         $stmt = $pdo->prepare(
-            "SELECT uac.amount, uac.reason, ui.week_start
-             FROM uber_additional_costs uac
-             JOIN uber_income ui ON uac.uber_income_id = ui.id
-             WHERE ui.week_start BETWEEN ? AND ?
-             ORDER BY ui.week_start ASC, uac.id ASC"
+            "SELECT uac.amount, uac.reason, ui.week_start\n             FROM uber_additional_costs uac\n             JOIN uber_income ui ON uac.uber_income_id = ui.id\n             WHERE ui.week_start BETWEEN ? AND ?\n             ORDER BY ui.week_start ASC, uac.id ASC"
         );
         $stmt->execute([$uberStart, $uberEnd]);
         $uberCosts = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -245,7 +230,7 @@ include ROOT_DIR . '/includes/header.php';
                     <?php endif; ?>
                     <?php foreach ($mSummaryUberCosts as $mReason => $mCostTotal): ?>
                     <tr>
-                        <td>Uber Cost – <?= htmlspecialchars($mReason) ?></td>
+                        <td>Vehicle Cost – <?= htmlspecialchars($mReason) ?></td>
                         <td class="bs-amt"><?= number_format($mCostTotal, 2) ?></td>
                     </tr>
                     <?php endforeach; ?>
@@ -287,11 +272,7 @@ include ROOT_DIR . '/includes/header.php';
             <tbody>
                 <?php foreach ($bookings as $b):
                     $method = strtoupper($b['payment_method'] ?? 'cash');
-                    $desc   = ($b['client_name'] ?? 'Unknown')
-                              . ' — '
-                              . ($b['original_pickup'] ?? '')
-                              . ' → '
-                              . ($b['original_destination'] ?? '');
+                    $desc   = ($b['client_name'] ?? 'Unknown')\n                              . ' — ' \n                              . ($b['original_pickup'] ?? '') \n                              . ' → ' \n                              . ($b['original_destination'] ?? '');
                 ?>
                 <tr>
                     <td><?= htmlspecialchars(date('d M Y', strtotime($b['trip_date']))) ?></td>
@@ -376,7 +357,7 @@ include ROOT_DIR . '/includes/header.php';
                 ?>
                 <tr>
                     <td><?= htmlspecialchars($cDate->format('d M Y')) ?></td>
-                    <td>Uber Cost – <?= htmlspecialchars($uc['reason'] ?? '') ?></td>
+                    <td>Vehicle Cost – <?= htmlspecialchars($uc['reason'] ?? '') ?></td>
                     <td class="bs-method">—</td>
                     <td class="bs-amt"><?= number_format((float) $uc['amount'], 2) ?></td>
                 </tr>
