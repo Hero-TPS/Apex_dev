@@ -37,7 +37,7 @@ This document captures the findings and decisions from a business planning sessi
 | **Total Income** | **R35,315.59** | **R27,751.70** | **R33,554.15** | **R32,207.15** |
 | Fuel | R7,394.27 | R7,417.00 | R7,510.00 | R7,440.42 |
 | Car Rental | R13,000.00 | R10,400.00 | R10,400.00 | R11,266.67 |
-| Uber Costs | R0.00 | R1,550.00 | R1,430.00 | R993.33 |
+| Vehicle Costs | R0.00 | R1,550.00 | R1,430.00 | R993.33 |
 | **Total Expenses** | **R20,394.27** | **R19,367.00** | **R19,340.00** | **R19,700.42** |
 | **Net Profit** | **R14,921.32** | **R8,384.70** | **R14,214.15** | **R12,506.72** |
 | Total km | 4,698.9 | 4,725.5 | 5,003.0 | **4,809.1** |
@@ -50,7 +50,7 @@ This document captures the findings and decisions from a business planning sessi
 | Total Income | R32,207.15 | 100% |
 | Fuel | R7,440.42 | 23.1% |
 | Car Rental | R11,266.67 | 35.0% |
-| Uber Costs | R993.33 | 3.1% |
+| Vehicle Costs | R993.33 | 3.1% |
 | **Net Profit** | **R12,506.72** | **38.8%** |
 
 ---
@@ -154,7 +154,7 @@ At month 36 the car is sold. Two options were considered:
 | Total Income | R32,207.15 | R32,207.15 | — |
 | Fuel | R7,440.42 | R7,440.42 | — |
 | Car Rental / Vehicle Costs | R11,266.67 | R9,114.00 | **−R2,152.67** |
-| Uber Costs | R993.33 | R993.33 | — |
+| Vehicle Costs | R993.33 | R993.33 | — |
 | **Net Profit** | **R12,506.72** | **R13,859.40** | **+R1,352.68** |
 | **% of Income** | **38.8%** | **43.0%** | **+4.2%** |
 
