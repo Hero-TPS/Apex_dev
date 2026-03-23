@@ -101,6 +101,9 @@
   - idea prebooking and reminders
   - use another calendar
   - turn reminders into bookings
+- [ ] Check for double bookings
+  - Immediate warning via JS
+  - decide what to do.
 
 ### Clients Module Enhancements and Fixes
 - [ ] Create list of clients with prior bookings:
