@@ -88,8 +88,8 @@
     - booking is still show in list, but marked as assigned
     - when a booking is created, then it can also be immediatly asigned
 - [ ] Admin overview of driver bookings
-    -drivers has access to their own list of upcomming bookings (How)
-
+    -drivers has access to their own list of upcoming bookings (How)
+- [ ] mananage cash payments with commission.
 ### Access Control
 - [ ] Similar to drupal access control
   - Admin user. Superuser
