@@ -566,9 +566,9 @@ textarea {
 .db-reports { background: linear-gradient(135deg, #6a11cb, #2575fc); }
 
 .menu-content .dashboard-button {
-  min-height: 50px;
-  padding: 10px;
-  font-size: 14px;
+  min-height: 64px;
+  padding: 14px 12px;
+  font-size: 17px;
   border-radius: 8px;
 }
 
@@ -601,22 +601,23 @@ textarea {
 
 .floating-menu {
   position: fixed;
-  bottom: 80px;
+  bottom: 100px;
   right: 20px;
   background: white;
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   z-index: 1000;
   display: none;
-  min-width: 200px;
-  padding: 10px 0;
+  min-width: 260px;
+  padding: 14px 0;
 }
 .floating-menu a {
   display: block;
-  padding: 10px 16px;
+  padding: 16px 22px;
   color: #333;
   text-decoration: none;
-  font-size: 14px;
+  font-size: 18px;
+  line-height: 1.4;
   transition: background 0.2s;
 }
 .floating-menu a:hover {
