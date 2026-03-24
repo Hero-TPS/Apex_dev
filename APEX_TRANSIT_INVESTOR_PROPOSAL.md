@@ -24,6 +24,24 @@ return over 36 months**.
 
 ---
 
+## Why Private Investment?
+
+Apex Transit has evaluated all available vehicle acquisition routes before approaching
+a private investor. Here is why each alternative was ruled out:
+
+| Route | Reason Not Suitable |
+|---|---|
+| **Bank vehicle finance** | Requires a 10–20% deposit (R25,000–R50,000) not currently available. Self-employed transport income does not meet standard bank credit approval criteria. Even if approved, monthly repayments at current interest rates would exceed this proposal. |
+| **Rent to own** | Monthly cost is higher than the current rental. Strict kilometre limits would be breached at 4,809 km/month. Terms run 48–60 months — longer than this proposal. Total cost over term exceeds the vehicle's market value. |
+| **Continue renting** | R11,267/month with nothing to show at the end. No asset, no equity, no improvement. |
+
+### Why This Deal Makes Sense for an Investor
+
+> The investor model proposed here costs less per month than the current rental,
+> carries no kilometre restrictions, is backed by comprehensive insurance, and
+> delivers a fixed 10% return over 36 months with a clean exit.
+>
+> It is not the easy route — it is the right route for this specific business.
 ## The Numbers — 3-Month Verified Average
 
 *Based on December 2025 – February 2026 actual business data*
@@ -44,8 +62,8 @@ return over 36 months**.
 |---------------------------|-------------------------------------------------------------------------------------------------------------------------------|
 | **Investment Amount**     | **R200,000 – R300,000**                                                                                                       |
 | Purpose                   | Purchase of owned business vehicle                                                                                            |
-| **Vehicle Candidates**    | Kia Pegas, Nissan Almera, Fiat Tipo, Suzuki Ciaz, Honda Ballade, VW Polo Sedan, Toyota Corolla, Renault Duster, Chery Tiggo 7 |
-| Vehicle Criteria          | Comfort sedan or SUV, 2022 or newer, max 50,000 km                                                                            |
+| **Vehicle Candidates**    | Kia Pegas, Suzuki Ciaz, Honda Ballade, VW Polo Sedan, Toyota Corolla, Chery Tiggo 7 |
+| Vehicle Criteria          | Comfort sedan or SUV, 2022 or newer, max 50,000 km Nust be able to transport 2 large and 2 cabin type suitcases. Also need to be able to fit a wheelchair and other mobility  equipment                                                                         |
 | **Repayment Period**      | **36 months**                                                                                                                 |
 | **Vehicle Sold at End**   | Proceeds paid to investor                                                                                                     |
 | **Total Investor Return** | **10% on invested amount**                                                                                                    |
@@ -141,5 +159,14 @@ For further information, full financial records, or to discuss terms, please con
 
 ---
 
-*All figures based on verified business data from December 2025 – February 2026.
-Full transaction records available on request.*
+## A Note on This Document
+
+This proposal was formatted and structured with the assistance of AI (GitHub Copilot).
+The financial data, business figures, and the reasoning presented are my own — drawn
+directly from verified records in my business management system covering December 2025
+to February 2026.
+
+The AI was used as a tool to present my thoughts clearly and professionally.
+The numbers are real. The plan is mine.
+
+> *Full transaction records are available on request to verify all figures in this document.*
