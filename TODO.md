@@ -92,7 +92,7 @@
 - [ ] mananage cash payments with commission.
 ### Access Control
 - [ ] Similar to drupal access control
-  - Admin user. Superuser
+  - Admin user
   - access control to pages, based on roles. need a set up page for this.
   - users with roles
 
