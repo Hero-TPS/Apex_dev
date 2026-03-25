@@ -1,5 +1,10 @@
 <?php
 // includes/header.php
+if (file_exists(ROOT_DIR . '/includes/auth.php')) {
+    require_once ROOT_DIR . '/includes/auth.php';
+    authStartSession();
+}
+$_authUser = function_exists('getCurrentUser') ? getCurrentUser() : null;
 ?>
 
 <!DOCTYPE html>
@@ -27,6 +32,12 @@
             <p class="subtitle">
                 <?php echo isset($page_subtitle) ? htmlspecialchars($page_subtitle) : 'Management Dashboard'; ?>
             </p>
+            <?php if ($_authUser): ?>
+            <div class="header-user-bar">
+                <span class="header-user-info">👤 <?= htmlspecialchars($_authUser['username']) ?></span>
+                <a href="<?= BASE_URL ?>/logout.php" class="header-logout-btn">Sign Out</a>
+            </div>
+            <?php endif; ?>
         </header>
 
         <main class="content">

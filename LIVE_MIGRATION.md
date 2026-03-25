@@ -7,6 +7,9 @@ Run in order. Check off each one after executing.
 
 ## Pending
 
+### Access Control (2026-03-25)
+- [ ] Run `migrations/access_control.sql` — creates `users`, `roles`, `user_roles`, `pages`, `role_permissions` tables and seeds default Admin role + admin user
+- [ ] **After migration**: Log in at `/login.php` with `admin` / `admin123` and **change the password immediately** via Access Control → Users → Edit
 
 ---
 
