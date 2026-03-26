@@ -73,6 +73,7 @@
   - Standardised "Add New" → "Add" in `modules/Clients/add.php`
   - Fixed include order in `modules/Clients/bookings.php` (helpers loaded before header)
 
+---
 
 ## NEXT CYCLE
 
@@ -89,13 +90,19 @@
     - when a booking is created, then it can also be immediatly asigned
 - [ ] Admin overview of driver bookings
     -drivers has access to their own list of upcoming bookings (How)
-- [ ] mananage cash payments with commission.
+- [ ] mananage cash payments with commission
+
+---
 ### Access Control
-- [ ] Similar to drupal access control
+- [x] Similar to drupal access control
   - Admin user
   - access control to pages, based on roles. need a set up page for this.
   - users with roles
+- [ ] Set up actual access control to pages
+- [ ] Create a homepage for visitors
+- [ ] Check cookie sessions
 
+---
 ### Bookings Module Enhancements and Fixes
 - [ ] Some clients wants to make a booking on a date, but do not have the time or details. I need ideas how to handle this via calendar
   - idea prebooking and reminders
@@ -103,8 +110,9 @@
   - turn reminders into bookings
 - [ ] Check for double bookings
   - Immediate warning via JS
-  - decide what to do.
+  - decide what to do
 
+---
 ### Clients Module Enhancements and Fixes
 - [ ] Create list of clients with prior bookings:
   - Export names and phone numbers
@@ -112,3 +120,4 @@
   - Ideas for direct WhatsApp communication with existing clients
 - [ ] WhatsApp Business integration for bulk messaging
 
+---
