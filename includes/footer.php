@@ -1,9 +1,5 @@
 <!-- includes/footer.php -->
-<?php
-// Show floating menu on all pages EXCEPT index.php
-//$is_home = basename($_SERVER['SCRIPT_NAME']) === 'index.php';
-?>
-
+<?php if (!isset($hide_hamburger) || !$hide_hamburger): ?>
     <div class="floating-menu-toggle" id="menuToggle">☰</div>
     <div class="floating-menu" id="floatingMenu">
         <a href="<?= BASE_URL ?>/index.php" class="hamburger-item">🏠 Home</a>
@@ -53,6 +49,7 @@
             });
         });
     </script>
+<?php endif; ?>
 
 <!-- Breadcrumb at Bottom -->
 <?php if (isset($show_breadcrumb) && $show_breadcrumb): ?>
