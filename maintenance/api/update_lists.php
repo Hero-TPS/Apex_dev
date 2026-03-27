@@ -1,6 +1,9 @@
 <?php
 header('Content-Type: application/json');
 require_once __DIR__ . '/../config.php'; // Ensure $pdo is defined here
+require_once __DIR__ . '/../../includes/auth.php';
+
+requireApiLogin();
 
 $response = ['success' => false, 'message' => ''];
 $messages = [];
