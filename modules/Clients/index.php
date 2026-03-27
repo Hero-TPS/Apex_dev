@@ -6,6 +6,7 @@ $show_breadcrumb = true;
 require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 $breadcrumb = buildBreadcrumb([['label' => 'Clients']]);
+$page_path = '/modules/Clients/';
 include ROOT_DIR . '/includes/header.php';
 
 // Check for highlight parameter

@@ -187,3 +187,65 @@ function getRolePermissions(PDO $pdo, int $roleId): array
     $stmt->execute([$roleId]);
     return $stmt->fetchAll(PDO::FETCH_COLUMN);
 }
+
+/**
+ * Check whether the logged-in user has permission to access a page path.
+ * Admins bypass all permission checks.
+ * Pages not listed in the `pages` table are accessible to all logged-in users.
+ *
+ * @param PDO    $pdo
+ * @param int    $userId
+ * @param string $pagePath  Path as stored in the pages table, e.g. '/modules/Bookings/'
+ * @return bool
+ */
+function hasPagePermission(PDO $pdo, int $userId, string $pagePath): bool
+{
+    $user = getCurrentUser();
+    // Admin bypass — verify the session user matches the requested user ID
+    if ($user && (int) $user['id'] === $userId && !empty($user['is_admin'])) {
+        return true;
+    }
+
+    try {
+        // Check if this path is a managed page
+        $stmt = $pdo->prepare("SELECT id FROM pages WHERE path = ? LIMIT 1");
+        $stmt->execute([$pagePath]);
+        $page = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$page) {
+            // Path not in the pages table — accessible to all authenticated users
+            return true;
+        }
+
+        // Check if any of the user's roles grant access to this page
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM role_permissions rp
+            JOIN user_roles ur ON ur.role_id = rp.role_id
+            WHERE ur.user_id = ? AND rp.page_id = ?
+        ");
+        $stmt->execute([$userId, (int) $page['id']]);
+        return (int) $stmt->fetchColumn() > 0;
+    } catch (Exception $e) {
+        error_log('hasPagePermission error: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Require the user to have permission to access a specific page path.
+ * Redirects to the dashboard with ?error=forbidden if access is denied.
+ *
+ * @param PDO    $pdo
+ * @param string $pagePath  Path as stored in the pages table, e.g. '/modules/Bookings/'
+ */
+function requirePagePermission(PDO $pdo, string $pagePath): void
+{
+    requireLogin();
+    $user = getCurrentUser();
+    if ($user && !hasPagePermission($pdo, (int) $user['id'], $pagePath)) {
+        $baseUrl = defined('BASE_URL') ? BASE_URL : '';
+        header('Location: ' . $baseUrl . '/dashboard.php?error=forbidden');
+        exit;
+    }
+}

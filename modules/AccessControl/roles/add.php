@@ -12,6 +12,7 @@ $breadcrumb = buildBreadcrumb([
     ['label' => 'Roles',          'url' => BASE_URL . '/modules/AccessControl/roles/'],
     ['label' => 'Add Role'],
 ]);
+$page_path = '/modules/AccessControl/roles/';
 include ROOT_DIR . '/includes/header.php';
 
 $allPages = $pdo->query("SELECT id, name, path, description FROM pages ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);

@@ -9,6 +9,7 @@ $breadcrumb = buildBreadcrumb([
     ['label' => 'Clients', 'url' => BASE_URL . '/modules/Clients/'],
     ['label' => 'Add'],
 ]);
+$page_path = '/modules/Clients/add.php';
 include ROOT_DIR . '/includes/header.php';
 ?>
 

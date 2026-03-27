@@ -12,6 +12,7 @@ $breadcrumb = buildBreadcrumb([
     ['label' => 'Bookings', 'url' => BASE_URL . '/modules/Bookings/'],
     ['label' => 'Add Booking'],
 ]);
+$page_path = '/modules/Bookings/add.php';
 include ROOT_DIR . '/includes/header.php';
 
 // Fetch data

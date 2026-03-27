@@ -6,6 +6,10 @@ if (file_exists(ROOT_DIR . '/includes/auth.php')) {
     // Gate the page unless it explicitly opts out (e.g. login.php sets $require_login = false)
     if (!isset($require_login) || $require_login !== false) {
         requireLogin();
+        // Role-based permission check — honour a $page_path set by the calling page
+        if (isset($pdo) && isset($page_path) && function_exists('requirePagePermission')) {
+            requirePagePermission($pdo, $page_path);
+        }
     }
 }
 $_authUser = function_exists('getCurrentUser') ? getCurrentUser() : null;

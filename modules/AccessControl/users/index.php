@@ -11,6 +11,7 @@ $breadcrumb = buildBreadcrumb([
     ['label' => 'Access Control', 'url' => BASE_URL . '/modules/AccessControl/'],
     ['label' => 'Users'],
 ]);
+$page_path = '/modules/AccessControl/users/';
 include ROOT_DIR . '/includes/header.php';
 
 // Fetch all users with their roles

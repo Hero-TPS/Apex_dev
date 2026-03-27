@@ -9,6 +9,7 @@ $breadcrumb = buildBreadcrumb([
     ['label' => 'Maintenance', 'url' => BASE_URL . '/maintenance/'],
     ['label' => 'Logs'],
 ]);
+$page_path = '/maintenance/';
 include ROOT_DIR . '/includes/header.php';
 
 // Get filter parameters

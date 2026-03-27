@@ -13,6 +13,7 @@ $breadcrumb = buildBreadcrumb([
     ['label' => 'Booking Details'],
 ]);
 
+$page_path = '/modules/Bookings/';
 include ROOT_DIR . '/includes/header.php';
 
 $booking = null;

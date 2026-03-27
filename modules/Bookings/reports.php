@@ -10,6 +10,7 @@ $breadcrumb = buildBreadcrumb([
     ['label' => 'Bookings', 'url' => BASE_URL . '/modules/Bookings/'],
     ['label' => 'Reports'],
 ]);
+$page_path = '/modules/Bookings/';
 include ROOT_DIR . '/includes/header.php';
 $monthsBack = (int) getSystemVariable($pdo, 'financial_months_back');
 if ($monthsBack < 1) {

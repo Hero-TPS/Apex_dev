@@ -9,6 +9,7 @@ $breadcrumb = buildBreadcrumb([
     ['label' => 'Fuel', 'url' => BASE_URL . '/modules/Fuel/'],
     ['label' => 'Add'],
 ]);
+$page_path = '/modules/Fuel/add.php';
 include ROOT_DIR . '/includes/header.php';
 
 // Get last fuel price for default

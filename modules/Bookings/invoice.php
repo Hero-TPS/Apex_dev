@@ -1,7 +1,11 @@
 <?php
 require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
+require_once ROOT_DIR . '/includes/auth.php';
 require_once __DIR__ . '/helpers.php';
+
+// Permission check — same as viewing/managing bookings
+requirePagePermission($pdo, '/modules/Bookings/');
 
 // Validate booking ID
 $bookingId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
