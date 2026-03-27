@@ -136,7 +136,7 @@ function handleCheckExists()
 function handleAdd()
 {
     global $pdo;
-
+    requireApiModulePermission($pdo, 'uber', 'create');
     try {
         $weekMonday    = trim($_POST['week_monday'] ?? '');
         $totalIncome   = floatval($_POST['total_income'] ?? 0);
@@ -195,7 +195,7 @@ function handleAdd()
 function handleUpdate()
 {
     global $pdo;
-
+    requireApiModulePermission($pdo, 'uber', 'edit');
     try {
         $id            = intval($_POST['id'] ?? 0);
         $totalIncome   = floatval($_POST['total_income'] ?? 0);
@@ -235,7 +235,7 @@ function handleUpdate()
 function handleDelete()
 {
     global $pdo;
-
+    requireApiModulePermission($pdo, 'uber', 'delete');
     $id = intval($_POST['id'] ?? 0);
 
     if ($id <= 0) {

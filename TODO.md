@@ -101,6 +101,11 @@
 - [x] Set up actual access control to pages
 - [x] Create a homepage for visitors
 - [x] Check cookie sessions
+- [x] RBAC CRUD permissions (Drupal 7-style): view / create / edit / delete per module
+- [ ] **Per-user calendar:** Future-proof design note — users may eventually have their own
+      personal calendar (e.g. linked to their Google account or a per-user calendar ID).
+      Currently the Calendar is admin-only. When implemented, the calendar permission should
+      become a grantable role permission rather than hard-coded to `isAdmin()`.
 
 ---
 ### Bookings Module Enhancements and Fixes

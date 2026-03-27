@@ -30,6 +30,7 @@ $canMaintenance     = $_can('/maintenance/');
 $canAccessControl   = $_can('/modules/AccessControl/');
 $canACUsers         = $_can('/modules/AccessControl/users/');
 $canACRoles         = $_can('/modules/AccessControl/roles/');
+$canCalendar        = function_exists('isAdmin') && isAdmin();
 ?>
 
 <div class="dashboard-container">
@@ -164,6 +165,7 @@ $canACRoles         = $_can('/modules/AccessControl/roles/');
     <?php endif; ?>
 
     <!-- Calendar -->
+    <?php if ($canCalendar): ?>
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="calendar-section">🗓️ Calendar</h3>
         <div id="calendar-section" class="menu-content">
@@ -175,6 +177,7 @@ $canACRoles         = $_can('/modules/AccessControl/roles/');
             </a>
         </div>
     </div>
+    <?php endif; // canCalendar ?>
 
 </div>
 
