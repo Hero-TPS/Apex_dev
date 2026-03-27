@@ -98,9 +98,9 @@
   - Admin user
   - access control to pages, based on roles. need a set up page for this.
   - users with roles
-- [ ] Set up actual access control to pages
-- [ ] Create a homepage for visitors
-- [ ] Check cookie sessions
+- [x] Set up actual access control to pages
+- [x] Create a homepage for visitors
+- [x] Check cookie sessions
 
 ---
 ### Bookings Module Enhancements and Fixes
