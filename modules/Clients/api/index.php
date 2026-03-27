@@ -132,7 +132,7 @@ function handleGetSingleClient()
 function handleAddClient()
 {
     global $pdo;
-    
+    requireApiModulePermission($pdo, 'clients', 'create');
     try {
         $name = trim($_POST['name'] ?? '');
         $phone = trim($_POST['phone'] ?? '');
@@ -189,7 +189,7 @@ function handleAddClient()
 function handleUpdateClient()
 {
     global $pdo;
-    
+    requireApiModulePermission($pdo, 'clients', 'edit');
     try {
         $id = intval($_POST['id'] ?? 0);
         $name = trim($_POST['name'] ?? '');
@@ -249,7 +249,7 @@ function handleUpdateClient()
 function handleDeleteClient()
 {
     global $pdo;
-    
+    requireApiModulePermission($pdo, 'clients', 'delete');
     $id = intval($_POST['id'] ?? 0);
     
     if ($id <= 0) {

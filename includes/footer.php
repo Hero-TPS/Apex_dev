@@ -39,9 +39,11 @@
         <?php if ($_footerHasPerm('/modules/Financials/balance_sheet.php')): ?>
         <a href="<?= BASE_URL ?>/modules/Financials/balance_sheet.php" class="hamburger-item">📊 Balance Sheet</a>
         <?php endif; ?>
+        <?php if (function_exists('isAdmin') && isAdmin()): ?>
         <a href="https://calendar.google.com/calendar/u/0?cid=<?= urlencode(CUSTOM_CALENDAR_ID) ?>"
            onclick="event.preventDefault(); openCalendarApp('<?= urlencode(CUSTOM_CALENDAR_ID) ?>');"
            class="hamburger-item">🗓️ Open Calendar</a>
+        <?php endif; ?>
         <div class="hamburger-divider"></div>
         <?php if ($_footerHasPerm('/modules/AccessControl/')): ?>
         <a href="<?= BASE_URL ?>/modules/AccessControl/" class="hamburger-item">🔐 Access Control</a>

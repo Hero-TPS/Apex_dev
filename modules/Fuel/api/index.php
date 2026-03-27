@@ -125,7 +125,7 @@ function handleGetSingle()
 function handleAdd()
 {
     global $pdo;
-
+    requireApiModulePermission($pdo, 'fuel', 'create');
     try {
         $log_timestamp   = intval($_POST['log_timestamp'] ?? 0);
         $meter_type      = $_POST['meter_type'] ?? 'trip';
@@ -178,7 +178,7 @@ function handleAdd()
 function handleUpdate()
 {
     global $pdo;
-
+    requireApiModulePermission($pdo, 'fuel', 'edit');
     try {
         $id             = intval($_POST['id'] ?? 0);
         $log_timestamp  = intval($_POST['log_timestamp'] ?? 0);
@@ -213,7 +213,7 @@ function handleUpdate()
 function handleDelete()
 {
     global $pdo;
-
+    requireApiModulePermission($pdo, 'fuel', 'delete');
     $id = intval($_POST['id'] ?? 0);
 
     if ($id <= 0) {

@@ -9,7 +9,7 @@ $breadcrumb = buildBreadcrumb([
     ['label' => 'Clients', 'url' => BASE_URL . '/modules/Clients/'],
     ['label' => 'Edit'],
 ]);
-$page_path = '/modules/Clients/add.php';
+$page_path = '/modules/Clients/edit.php';
 include ROOT_DIR . '/includes/header.php';
 
 $client_id = intval($_GET['id'] ?? 0);

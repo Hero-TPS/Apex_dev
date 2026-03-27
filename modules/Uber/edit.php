@@ -9,7 +9,7 @@ $breadcrumb = buildBreadcrumb([
     ['label' => 'Uber', 'url' => BASE_URL . '/modules/Uber/'],
     ['label' => 'Edit'],
 ]);
-$page_path = '/modules/Uber/add.php';
+$page_path = '/modules/Uber/edit.php';
 include ROOT_DIR . '/includes/header.php';
 
 $id = intval($_GET['id'] ?? 0);

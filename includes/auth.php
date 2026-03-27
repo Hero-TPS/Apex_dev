@@ -249,3 +249,59 @@ function requirePagePermission(PDO $pdo, string $pagePath): void
         exit;
     }
 }
+
+/**
+ * Check whether the logged-in user has a specific module-level CRUD permission.
+ * Looks up permissions by module name and operation rather than by page path.
+ * Admins bypass all checks.
+ *
+ * @param PDO    $pdo
+ * @param int    $userId
+ * @param string $module     Module identifier, e.g. 'bookings', 'clients'
+ * @param string $operation  One of: view, create, edit, delete
+ * @return bool
+ */
+function hasModulePermission(PDO $pdo, int $userId, string $module, string $operation): bool
+{
+    $user = getCurrentUser();
+    // Admin bypass
+    if ($user && (int) $user['id'] === $userId && !empty($user['is_admin'])) {
+        return true;
+    }
+
+    try {
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM role_permissions rp
+            JOIN user_roles       ur ON ur.role_id = rp.role_id
+            JOIN pages             p  ON p.id       = rp.page_id
+            WHERE ur.user_id = ? AND p.module = ? AND p.operation = ?
+        ");
+        $stmt->execute([$userId, $module, $operation]);
+        return (int) $stmt->fetchColumn() > 0;
+    } catch (Exception $e) {
+        error_log('hasModulePermission error: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Require the logged-in user to hold a specific module CRUD permission.
+ * Returns a 403 JSON response and exits if the check fails.
+ * Intended for use inside API endpoint handler functions.
+ *
+ * @param PDO    $pdo
+ * @param string $module     Module identifier, e.g. 'bookings', 'clients'
+ * @param string $operation  One of: view, create, edit, delete
+ */
+function requireApiModulePermission(PDO $pdo, string $module, string $operation): void
+{
+    requireApiLogin();
+    $user = getCurrentUser();
+    if ($user && !hasModulePermission($pdo, (int) $user['id'], $module, $operation)) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'You do not have permission to perform this action.']);
+        exit;
+    }
+}

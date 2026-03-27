@@ -184,9 +184,8 @@ function handleGetBookings()
 function handleAddBooking()
 {
     global $pdo;
-
+    requireApiModulePermission($pdo, 'bookings', 'create');
     try {
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             throw new Exception('POST method required');
         }
 
@@ -323,7 +322,7 @@ function handleAddBooking()
 function handleUpdateBooking()
 {
     global $pdo;
-
+    requireApiModulePermission($pdo, 'bookings', 'edit');
     try {
         // Sub-action: update payment method
         if (isset($_REQUEST['action']) && $_REQUEST['action'] === 'update_payment') {
@@ -495,7 +494,7 @@ function handleUpdateBooking()
 function handleDeleteBooking()
 {
     global $pdo;
-
+    requireApiModulePermission($pdo, 'bookings', 'delete');
     if ($_SERVER["REQUEST_METHOD"] !== "POST" || !isset($_POST['id'])) {
         jsonResponse(['success' => false, 'message' => 'Invalid request or missing booking ID.'], 400);
     }
@@ -556,7 +555,7 @@ function handleDeleteBooking()
 function handleUpdateGateCode()  // ✅ NEW
 {
     global $pdo;
-
+    requireApiModulePermission($pdo, 'bookings', 'edit');
     $id = intval($_POST['id'] ?? 0);
     $gate_code = trim($_POST['gate_code'] ?? '');
 
@@ -803,7 +802,7 @@ function handleTomorrowsBookings()
 function handleMarkConfirmed()
 {
     global $pdo;
-
+    requireApiModulePermission($pdo, 'bookings', 'edit');
     $id = intval($_POST['id'] ?? 0);
     $message = trim($_POST['message_content'] ?? '');
 
@@ -851,7 +850,7 @@ function handleMarkConfirmed()
 function handleLogWhatsApp()
 {
     global $pdo;
-
+    requireApiModulePermission($pdo, 'bookings', 'edit');
     $bookingId = !empty($_POST['booking_id']) ? intval($_POST['booking_id']) : null;
     $contactId = !empty($_POST['contact_id']) ? intval($_POST['contact_id']) : null;
     $messageType = trim($_POST['message_type'] ?? 'custom');
