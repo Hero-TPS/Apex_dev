@@ -3,6 +3,10 @@
 if (file_exists(ROOT_DIR . '/includes/auth.php')) {
     require_once ROOT_DIR . '/includes/auth.php';
     authStartSession();
+    // Gate the page unless it explicitly opts out (e.g. login.php sets $require_login = false)
+    if (!isset($require_login) || $require_login !== false) {
+        requireLogin();
+    }
 }
 $_authUser = function_exists('getCurrentUser') ? getCurrentUser() : null;
 ?>

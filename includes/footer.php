@@ -7,6 +7,9 @@
     <div class="floating-menu-toggle" id="menuToggle">☰</div>
     <div class="floating-menu" id="floatingMenu">
         <a href="<?= BASE_URL ?>/index.php" class="hamburger-item">🏠 Home</a>
+        <?php if (function_exists('isLoggedIn') && isLoggedIn()): ?>
+        <a href="<?= BASE_URL ?>/dashboard.php" class="hamburger-item">📊 Dashboard</a>
+        <?php endif; ?>
         <a href="<?= BASE_URL ?>/modules/Bookings/add.php" class="hamburger-item">🚗 Add Booking</a>
         <a href="<?= BASE_URL ?>/modules/Bookings/" class="hamburger-item">📅 View Bookings</a>
         <a href="<?= BASE_URL ?>/modules/Clients/add.php" class="hamburger-item">👥 Add Client</a>

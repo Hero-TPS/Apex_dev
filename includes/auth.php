@@ -5,11 +5,51 @@
 
 /**
  * Start the PHP session if it hasn't been started yet.
+ * Configures secure cookie parameters before starting the session.
  */
 function authStartSession(): void
 {
     if (session_status() === PHP_SESSION_NONE) {
+        $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+        session_set_cookie_params([
+            'lifetime' => 0,
+            'path'     => '/',
+            'domain'   => '',
+            'secure'   => $secure,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
         session_start();
+    }
+}
+
+/**
+ * Require the user to be logged in for a regular (HTML) page.
+ * Redirects unauthenticated visitors to the login page.
+ */
+function requireLogin(): void
+{
+    authStartSession();
+    if (!isLoggedIn()) {
+        $baseUrl = defined('BASE_URL') ? BASE_URL : '';
+        $redirect = $baseUrl . ($_SERVER['REQUEST_URI'] ?? '/');
+        header('Location: ' . $baseUrl . '/login.php?redirect=' . urlencode($redirect));
+        exit;
+    }
+}
+
+/**
+ * Require the user to be logged in for an API endpoint.
+ * Returns a 401 JSON response for unauthenticated requests.
+ */
+function requireApiLogin(): void
+{
+    authStartSession();
+    if (!isLoggedIn()) {
+        http_response_code(401);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'Unauthorized. Please log in.']);
+        exit;
     }
 }
 

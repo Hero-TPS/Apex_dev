@@ -11,7 +11,7 @@ authStartSession();
 
 // Redirect if already logged in
 if (isLoggedIn()) {
-    header('Location: ' . BASE_URL . '/index.php');
+    header('Location: ' . BASE_URL . '/dashboard.php');
     exit;
 }
 
@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Validate redirect to prevent open-redirect attacks (internal paths only)
             $redirect = $_GET['redirect'] ?? '';
             if ($redirect === '' || !str_starts_with($redirect, BASE_URL . '/') || str_contains($redirect, '//')) {
-                $redirect = BASE_URL . '/index.php';
+                $redirect = BASE_URL . '/dashboard.php';
             }
             header('Location: ' . $redirect);
             exit;
@@ -41,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$require_login = false;
 include ROOT_DIR . '/includes/header.php';
 ?>
 
