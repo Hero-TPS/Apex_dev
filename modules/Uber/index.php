@@ -29,6 +29,7 @@ usort($months, function ($a, $b) {
     return $b['month'] - $a['month'];
 });
 
+$page_path = '/modules/Uber/';
 include ROOT_DIR . '/includes/header.php';
 ?>
 

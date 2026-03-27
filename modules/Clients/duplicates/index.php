@@ -17,6 +17,7 @@ try {
     $dismissedCount = 0;
 }
 
+$page_path = '/modules/Clients/';
 include ROOT_DIR . '/includes/header.php';
 ?>
 

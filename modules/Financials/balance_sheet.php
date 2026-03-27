@@ -37,6 +37,7 @@ $tz = new DateTimeZone(TIME_ZONE);
 
 $carRentalWeekly = (float) getSystemVariable($pdo, 'car_rental_price');
 
+$page_path = '/modules/Financials/balance_sheet.php';
 include ROOT_DIR . '/includes/header.php';
 ?>
 

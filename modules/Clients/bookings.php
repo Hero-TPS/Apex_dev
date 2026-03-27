@@ -9,6 +9,7 @@ $breadcrumb = buildBreadcrumb([
     ['label' => 'Clients', 'url' => BASE_URL . '/modules/Clients/'],
     ['label' => 'Bookings'],
 ]);
+$page_path = '/modules/Clients/';
 include ROOT_DIR . '/includes/header.php';
 
 $client_id = intval($_GET['id'] ?? 0);

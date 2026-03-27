@@ -94,20 +94,30 @@ FROM `users` u, `roles` r
 WHERE u.username = 'admin' AND r.name = 'Admin';
 
 -- -----------------------------------------------------------------------------
--- Seed: Application pages (14 pages matching the Access Control module)
+-- Seed: Application pages
 -- -----------------------------------------------------------------------------
 INSERT IGNORE INTO `pages` (`name`, `path`, `description`) VALUES
-('Dashboard',               '/index.php',                                    'Main dashboard'),
 ('Log Booking',             '/modules/Bookings/add.php',                     'Add a new booking'),
-('Booking Reports',         '/modules/Bookings/',                            'View booking history'),
+('View Bookings',           '/modules/Bookings/',                            'View booking history'),
 ('Log Fuel',                '/modules/Fuel/add.php',                         'Add a fuel fill-up'),
 ('Fuel Reports',            '/modules/Fuel/',                                'View fuel logs'),
 ('Log Uber Income',         '/modules/Uber/add.php',                         'Add Uber income entry'),
 ('Uber Reports',            '/modules/Uber/',                                'View Uber income history'),
 ('Financial Summary',       '/modules/Financials/',                          'Monthly financial overview'),
 ('Balance Sheet',           '/modules/Financials/balance_sheet.php',         'Monthly balance sheet report'),
-('Contacts',                '/modules/Contacts/',                            'Manage contacts'),
-('Maintenance',             '/modules/Maintenance/',                         'System settings and variables'),
+('View Clients',            '/modules/Clients/',                             'View and search clients'),
+('Add Client',              '/modules/Clients/add.php',                      'Add a new client'),
+('Maintenance',             '/maintenance/',                                 'System settings and variables'),
 ('Access Control',          '/modules/AccessControl/',                       'Manage users and roles'),
 ('Access Control – Users',  '/modules/AccessControl/users/',                 'User management'),
 ('Access Control – Roles',  '/modules/AccessControl/roles/',                 'Role management');
+
+-- Fix legacy path entries if they exist from a previous migration run
+UPDATE `pages` SET `path` = '/modules/Clients/', `name` = 'View Clients', `description` = 'View and search clients'
+WHERE `path` = '/modules/Contacts/';
+
+UPDATE `pages` SET `path` = '/maintenance/'
+WHERE `path` = '/modules/Maintenance/';
+
+-- Remove the old public home-page entry if present (not a permission-controlled page)
+DELETE FROM `pages` WHERE `path` = '/index.php';

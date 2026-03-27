@@ -5,7 +5,49 @@
         <a href="<?= BASE_URL ?>/index.php" class="hamburger-item">🏠 Home</a>
         <?php if (function_exists('isLoggedIn') && isLoggedIn()): ?>
         <a href="<?= BASE_URL ?>/dashboard.php" class="hamburger-item">📊 Dashboard</a>
+        <?php
+        // Pre-compute permission flags for logged-in users
+        $_footerUser   = function_exists('getCurrentUser') ? getCurrentUser() : null;
+        $_footerUserId = $_footerUser ? (int) $_footerUser['id'] : 0;
+        $_footerHasPerm = function (string $path) use ($pdo, $_footerUserId): bool {
+            return isset($pdo) && $_footerUserId > 0 && function_exists('hasPagePermission')
+                ? hasPagePermission($pdo, $_footerUserId, $path)
+                : false;
+        };
+        ?>
+        <?php if ($_footerHasPerm('/modules/Bookings/add.php')): ?>
+        <a href="<?= BASE_URL ?>/modules/Bookings/add.php" class="hamburger-item">🚗 Add Booking</a>
         <?php endif; ?>
+        <?php if ($_footerHasPerm('/modules/Bookings/')): ?>
+        <a href="<?= BASE_URL ?>/modules/Bookings/" class="hamburger-item">📅 View Bookings</a>
+        <?php endif; ?>
+        <?php if ($_footerHasPerm('/modules/Clients/add.php')): ?>
+        <a href="<?= BASE_URL ?>/modules/Clients/add.php" class="hamburger-item">👥 Add Client</a>
+        <?php endif; ?>
+        <?php if ($_footerHasPerm('/modules/Clients/')): ?>
+        <a href="<?= BASE_URL ?>/modules/Clients/" class="hamburger-item">📋 View Clients</a>
+        <?php endif; ?>
+        <?php if ($_footerHasPerm('/modules/Fuel/add.php')): ?>
+        <a href="<?= BASE_URL ?>/modules/Fuel/add.php" class="hamburger-item">⛽ Add Fuel Log</a>
+        <?php endif; ?>
+        <?php if ($_footerHasPerm('/modules/Uber/add.php')): ?>
+        <a href="<?= BASE_URL ?>/modules/Uber/add.php" class="hamburger-item">🚕 Log Uber Income</a>
+        <?php endif; ?>
+        <?php if ($_footerHasPerm('/modules/Financials/')): ?>
+        <a href="<?= BASE_URL ?>/modules/Financials/" class="hamburger-item">💰 Financials</a>
+        <?php endif; ?>
+        <?php if ($_footerHasPerm('/modules/Financials/balance_sheet.php')): ?>
+        <a href="<?= BASE_URL ?>/modules/Financials/balance_sheet.php" class="hamburger-item">📊 Balance Sheet</a>
+        <?php endif; ?>
+        <a href="https://calendar.google.com/calendar/u/0?cid=<?= urlencode(CUSTOM_CALENDAR_ID) ?>"
+           onclick="event.preventDefault(); openCalendarApp('<?= urlencode(CUSTOM_CALENDAR_ID) ?>');"
+           class="hamburger-item">🗓️ Open Calendar</a>
+        <div class="hamburger-divider"></div>
+        <?php if ($_footerHasPerm('/modules/AccessControl/')): ?>
+        <a href="<?= BASE_URL ?>/modules/AccessControl/" class="hamburger-item">🔐 Access Control</a>
+        <?php endif; ?>
+        <a href="<?= BASE_URL ?>/logout.php" class="hamburger-item">🚪 Sign Out</a>
+        <?php else: ?>
         <a href="<?= BASE_URL ?>/modules/Bookings/add.php" class="hamburger-item">🚗 Add Booking</a>
         <a href="<?= BASE_URL ?>/modules/Bookings/" class="hamburger-item">📅 View Bookings</a>
         <a href="<?= BASE_URL ?>/modules/Clients/add.php" class="hamburger-item">👥 Add Client</a>
@@ -18,10 +60,6 @@
            onclick="event.preventDefault(); openCalendarApp('<?= urlencode(CUSTOM_CALENDAR_ID) ?>');"
            class="hamburger-item">🗓️ Open Calendar</a>
         <div class="hamburger-divider"></div>
-        <a href="<?= BASE_URL ?>/modules/AccessControl/" class="hamburger-item">🔐 Access Control</a>
-        <?php if (function_exists('isLoggedIn') && isLoggedIn()): ?>
-        <a href="<?= BASE_URL ?>/logout.php" class="hamburger-item">🚪 Sign Out</a>
-        <?php else: ?>
         <a href="<?= BASE_URL ?>/login.php" class="hamburger-item">🔑 Sign In</a>
         <?php endif; ?>
     </div>

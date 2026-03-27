@@ -9,6 +9,7 @@ $breadcrumb = buildBreadcrumb([
     ['label' => 'Uber', 'url' => BASE_URL . '/modules/Uber/'],
     ['label' => 'Add'],
 ]);
+$page_path = '/modules/Uber/add.php';
 include ROOT_DIR . '/includes/header.php';
 
 // Generate last 8 Mondays (2 months back), starting from the current week's Monday.

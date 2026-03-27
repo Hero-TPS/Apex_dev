@@ -11,6 +11,7 @@ $breadcrumb = buildBreadcrumb([
     ['label' => 'Access Control', 'url' => BASE_URL . '/modules/AccessControl/'],
     ['label' => 'Roles'],
 ]);
+$page_path = '/modules/AccessControl/roles/';
 include ROOT_DIR . '/includes/header.php';
 
 $stmt = $pdo->query("

@@ -1257,6 +1257,8 @@ body:not(.home-page) .floating-menu-toggle {
 
 .db-balance-sheet { background: linear-gradient(135deg, #2c3e50, #34495e); }
 
+.db-access-control { background: linear-gradient(135deg, #b92b27, #1565c0); }
+
 .balance-sheet-page {
     margin: 0;
 }

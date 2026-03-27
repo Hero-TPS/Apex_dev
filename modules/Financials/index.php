@@ -8,6 +8,7 @@ $page_title    = 'Financial Summary';
 $show_breadcrumb = true;
 $breadcrumb    = buildBreadcrumb([['label' => 'Financials']]);
 
+$page_path = '/modules/Financials/';
 include ROOT_DIR . '/includes/header.php';
 
 $monthsBack = (int) getSystemVariable($pdo, 'financial_months_back');
