@@ -28,6 +28,7 @@ $breadcrumb = buildBreadcrumb([
     ['label' => 'Users',          'url' => BASE_URL . '/modules/AccessControl/users/'],
     ['label' => 'Edit: ' . $user['username']],
 ]);
+$page_path = '/modules/AccessControl/users/';
 include ROOT_DIR . '/includes/header.php';
 
 $allRoles    = $pdo->query("SELECT id, name, description FROM roles ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);

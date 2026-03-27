@@ -9,6 +9,7 @@ $breadcrumb = buildBreadcrumb([
     ['label' => 'Fuel', 'url' => BASE_URL . '/modules/Fuel/'],
     ['label' => 'Edit'],
 ]);
+$page_path = '/modules/Fuel/add.php';
 include ROOT_DIR . '/includes/header.php';
 
 $log_id = intval($_GET['id'] ?? 0);

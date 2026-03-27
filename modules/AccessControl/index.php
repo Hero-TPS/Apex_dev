@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once ROOT_DIR . '/includes/auth.php';
 $breadcrumb = buildBreadcrumb([['label' => 'Access Control']]);
+$page_path = '/modules/AccessControl/';
 include ROOT_DIR . '/includes/header.php';
 
 // Summary counts
