@@ -43,8 +43,7 @@ try {
         case 'delete':
             handleDeleteBooking();
             break;
-        case 'update_gate_code':         // ✅ NEW
-            handleUpdateGateCode();
+        case 'update_gate_code':         
             break;
         case 'tomorrows_bookings':
             handleTomorrowsBookings();
@@ -198,7 +197,7 @@ function handleAddBooking()
         $original_destination = $_POST['original_destination'] ?? '';
         $cost = $_POST['cost'] ?? '';
         $payment_method = $_POST['payment_method'] ?? 'cash';
-        $was_swapped = isset($_POST['swap_locations']) ? 1 : 0; // ✅ FIX
+        $was_swapped = isset($_POST['swap_locations']) ? 1 : 0; 
 
         // Handle "Other" fields
         if ($original_pickup === 'other') {
