@@ -5,6 +5,7 @@ require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 
 requireApiLogin();
+requireApiModulePermission($pdo, 'maintenance', 'view');
 
 $response = ['success' => false, 'message' => 'Invalid action.'];
 

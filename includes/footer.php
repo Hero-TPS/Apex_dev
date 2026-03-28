@@ -39,6 +39,9 @@
         <?php if ($_footerHasPerm('/modules/Financials/balance_sheet.php')): ?>
         <a href="<?= BASE_URL ?>/modules/Financials/balance_sheet.php" class="hamburger-item">📊 Balance Sheet</a>
         <?php endif; ?>
+        <?php if ($_footerHasPerm('/maintenance/')): ?>
+        <a href="<?= BASE_URL ?>/maintenance/" class="hamburger-item">⚙️ Maintenance</a>
+        <?php endif; ?>
         <?php if (function_exists('isAdmin') && isAdmin()): ?>
         <a href="https://calendar.google.com/calendar/u/0?cid=<?= urlencode(CUSTOM_CALENDAR_ID) ?>"
            onclick="event.preventDefault(); openCalendarApp('<?= urlencode(CUSTOM_CALENDAR_ID) ?>');"
