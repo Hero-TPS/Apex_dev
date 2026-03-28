@@ -6,6 +6,7 @@ require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 
 requireApiLogin();
+requireApiModulePermission($pdo, 'clients', 'view');
 
 header('Content-Type: application/json');
 

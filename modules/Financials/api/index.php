@@ -7,6 +7,7 @@ require_once ROOT_DIR . '/includes/helpers.php';
 require_once ROOT_DIR . '/modules/Financials/helper.php';
 
 requireApiLogin();
+requireApiModulePermission($pdo, 'financials', 'view');
 
 header('Content-Type: application/json');
 

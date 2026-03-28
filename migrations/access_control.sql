@@ -51,10 +51,13 @@ CREATE TABLE IF NOT EXISTS `pages` (
     `id`          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
     `name`        VARCHAR(128)  NOT NULL,
     `path`        VARCHAR(255)  NOT NULL,
+    `module`      VARCHAR(64)            DEFAULT NULL,
+    `operation`   VARCHAR(16)            DEFAULT NULL COMMENT 'view | create | edit | delete',
     `description` VARCHAR(255)           DEFAULT NULL,
     `created_at`  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_pages_path` (`path`)
+    UNIQUE KEY `uq_pages_path` (`path`),
+    KEY `idx_pages_module_op` (`module`, `operation`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
@@ -96,28 +99,59 @@ WHERE u.username = 'admin' AND r.name = 'Admin';
 -- -----------------------------------------------------------------------------
 -- Seed: Application pages
 -- -----------------------------------------------------------------------------
-INSERT IGNORE INTO `pages` (`name`, `path`, `description`) VALUES
-('Log Booking',             '/modules/Bookings/add.php',                     'Add a new booking'),
-('View Bookings',           '/modules/Bookings/',                            'View booking history'),
-('Log Fuel',                '/modules/Fuel/add.php',                         'Add a fuel fill-up'),
-('Fuel Reports',            '/modules/Fuel/',                                'View fuel logs'),
-('Log Uber Income',         '/modules/Uber/add.php',                         'Add Uber income entry'),
-('Uber Reports',            '/modules/Uber/',                                'View Uber income history'),
-('Financial Summary',       '/modules/Financials/',                          'Monthly financial overview'),
-('Balance Sheet',           '/modules/Financials/balance_sheet.php',         'Monthly balance sheet report'),
-('View Clients',            '/modules/Clients/',                             'View and search clients'),
-('Add Client',              '/modules/Clients/add.php',                      'Add a new client'),
-('Maintenance',             '/maintenance/',                                 'System settings and variables'),
-('Access Control',          '/modules/AccessControl/',                       'Manage users and roles'),
-('Access Control – Users',  '/modules/AccessControl/users/',                 'User management'),
-('Access Control – Roles',  '/modules/AccessControl/roles/',                 'Role management');
+INSERT IGNORE INTO `pages` (`name`, `path`, `module`, `operation`, `description`) VALUES
+-- Bookings
+('Log Booking',            '/modules/Bookings/add.php',               'bookings',       'create', 'Add a new booking'),
+('View Bookings',          '/modules/Bookings/',                      'bookings',       'view',   'View booking history'),
+('Edit Booking',           '/modules/Bookings/edit.php',              'bookings',       'edit',   'Edit an existing booking'),
+-- Fuel
+('Log Fuel',               '/modules/Fuel/add.php',                   'fuel',           'create', 'Add a fuel fill-up'),
+('Fuel Reports',           '/modules/Fuel/',                          'fuel',           'view',   'View fuel logs'),
+('Edit Fuel Log',          '/modules/Fuel/edit.php',                  'fuel',           'edit',   'Edit a fuel entry'),
+-- Uber
+('Log Uber Income',        '/modules/Uber/add.php',                   'uber',           'create', 'Add Uber income entry'),
+('Uber Reports',           '/modules/Uber/',                          'uber',           'view',   'View Uber income history'),
+('Edit Uber Entry',        '/modules/Uber/edit.php',                  'uber',           'edit',   'Edit an Uber entry'),
+-- Financials
+('Financial Summary',      '/modules/Financials/',                    'financials',     'view',   'Monthly financial overview'),
+('Balance Sheet',          '/modules/Financials/balance_sheet.php',   'financials',     'view',   'Monthly balance sheet report'),
+-- Clients
+('View Clients',           '/modules/Clients/',                       'clients',        'view',   'View and search clients'),
+('Add Client',             '/modules/Clients/add.php',                'clients',        'create', 'Add a new client'),
+('Edit Client',            '/modules/Clients/edit.php',               'clients',        'edit',   'Edit an existing client'),
+-- Maintenance
+('Maintenance',            '/maintenance/',                           'maintenance',    'view',   'System settings and variables'),
+-- Access Control
+('Access Control',         '/modules/AccessControl/',                 'access_control', 'view',   'Manage users and roles'),
+('Access Control - Users', '/modules/AccessControl/users/',           'access_control', 'view',   'User management'),
+('Access Control - Roles', '/modules/AccessControl/roles/',           'access_control', 'view',   'Role management');
 
 -- Fix legacy path entries if they exist from a previous migration run
-UPDATE `pages` SET `path` = '/modules/Clients/', `name` = 'View Clients', `description` = 'View and search clients'
+UPDATE `pages` SET `path` = '/modules/Clients/', `name` = 'View Clients', `description` = 'View and search clients',
+                   `module` = 'clients', `operation` = 'view'
 WHERE `path` = '/modules/Contacts/';
 
-UPDATE `pages` SET `path` = '/maintenance/'
+UPDATE `pages` SET `path` = '/maintenance/', `module` = 'maintenance', `operation` = 'view'
 WHERE `path` = '/modules/Maintenance/';
 
 -- Remove the old public home-page entry if present (not a permission-controlled page)
 DELETE FROM `pages` WHERE `path` = '/index.php';
+
+-- -----------------------------------------------------------------------------
+-- Seed: Driver role — can log & view their own bookings, fuel, and Uber income
+-- -----------------------------------------------------------------------------
+INSERT IGNORE INTO `roles` (`name`, `description`)
+VALUES ('Driver', 'Field driver — log bookings, fuel and Uber income only');
+
+INSERT IGNORE INTO `role_permissions` (`role_id`, `page_id`)
+SELECT r.id, p.id
+FROM `roles` r
+JOIN `pages`  p ON p.path IN (
+    '/modules/Bookings/add.php',
+    '/modules/Bookings/',
+    '/modules/Fuel/add.php',
+    '/modules/Fuel/',
+    '/modules/Uber/add.php',
+    '/modules/Uber/'
+)
+WHERE r.name = 'Driver';
