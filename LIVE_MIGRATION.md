@@ -158,32 +158,40 @@ WHERE r.name = 'Driver';
 
 ---
 
-## Update Pages Table — Dashboard, Renames & Operation Fixes (2026-03-29)
+## Add Module-Level "Manage All" Permissions (2026-03-29)
 
 ### Description
-Adds a Dashboard page entry, renames "View Bookings" to "Booking Reports", updates the
-Access Control roles/users pages to use the `edit` operation, and grants the Driver role
-access to the dashboard.
+Adds a `manage` operation page entry for every module so that a single checkbox in the
+role editor grants full access to that module. Also adds a Dashboard page entry, renames
+"View Bookings" to "Booking Reports", and updates the Access Control roles/users pages to
+use the `edit` operation (they were previously `view`).
 
-Also renames "View Clients" to "Contacts" to match the application terminology.
+After running, any role that already has individual Bookings/Fuel/etc. permissions continues
+to work unchanged. Granting "Manage all X" to a role in addition gives access to any future
+pages added to that module automatically.
+
+Also add the Dashboard permission to the Driver role so existing Driver accounts keep
+access to the dashboard.
 
 - [ ] Done on Dev
 - [ ] Done on Live
 
 ```sql
--- Add Dashboard page entry
+-- Add module-level "manage" page entries
 INSERT IGNORE INTO `pages` (`name`, `path`, `module`, `operation`, `description`) VALUES
-('Dashboard', '/dashboard.php', 'dashboard', 'view', 'Main dashboard');
+('Manage all Bookings',       '/modules/Bookings/manage',         'bookings',       'manage', NULL),
+('Manage all Clients',        '/modules/Clients/manage',          'clients',        'manage', NULL),
+('Manage all Fuel',           '/modules/Fuel/manage',             'fuel',           'manage', NULL),
+('Manage all Uber',           '/modules/Uber/manage',             'uber',           'manage', NULL),
+('Manage all Financials',     '/modules/Financials/manage',       'financials',     'manage', NULL),
+('Manage all Maintenance',    '/maintenance/manage',              'maintenance',    'manage', NULL),
+('Manage all Access Control', '/modules/AccessControl/manage',    'access_control', 'manage', NULL),
+('Dashboard',                 '/dashboard.php',                   'dashboard',      'view',   'Main dashboard');
 
--- Rename "View Bookings" → "Booking Reports" (if not already renamed)
+-- Rename "View Bookings" → "Booking Reports"
 UPDATE `pages`
 SET `name` = 'Booking Reports'
 WHERE `path` = '/modules/Bookings/' AND `module` = 'bookings';
-
--- Rename "View Clients" → "Contacts"
-UPDATE `pages`
-SET `name` = 'Contacts', `description` = 'Manage contacts'
-WHERE `path` = '/modules/Clients/' AND `module` = 'clients';
 
 -- Update Access Control sub-pages: view → edit (they represent editing operations)
 UPDATE `pages`
