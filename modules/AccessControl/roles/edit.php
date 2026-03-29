@@ -31,7 +31,7 @@ $breadcrumb = buildBreadcrumb([
 $page_path = '/modules/AccessControl/roles/';
 include ROOT_DIR . '/includes/header.php';
 
-$allPages        = $pdo->query("SELECT id, name, path, module, operation, description FROM pages ORDER BY module ASC, FIELD(operation,'view','create','edit','delete'), name ASC")->fetchAll(PDO::FETCH_ASSOC);
+$allPages        = $pdo->query("SELECT id, name, path, module, operation, description FROM pages ORDER BY module ASC, FIELD(operation,'manage','view','create','edit','delete'), name ASC")->fetchAll(PDO::FETCH_ASSOC);
 $permittedPageIds = getRolePermissions($pdo, $roleId);
 $permittedPageIds = array_map('intval', $permittedPageIds);
 
@@ -50,6 +50,7 @@ $moduleLabels = [
     'financials'     => '💰 Financials',
     'maintenance'    => '⚙️ Maintenance',
     'access_control' => '🔐 Access Control',
+    'dashboard'      => '🏠 Dashboard',
 ];
 
 // Preferred module display order
@@ -93,8 +94,8 @@ $isAdmin = $role['name'] === 'Admin';
             <table class="permissions-grid" style="width:100%;border-collapse:collapse;">
                 <thead>
                     <tr style="background:#f5f5f5;">
-                        <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #ddd;width:55%;">Permission</th>
-                        <th style="text-align:center;padding:8px 6px;border-bottom:2px solid #ddd;">Operation</th>
+                        <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #ddd;width:20%;">Module</th>
+                        <th style="text-align:center;padding:8px 6px;border-bottom:2px solid #ddd;width:90px;">Operation</th>
                         <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #ddd;">Description</th>
                         <th style="text-align:center;padding:8px 6px;border-bottom:2px solid #ddd;width:70px;">Grant</th>
                     </tr>
@@ -112,29 +113,39 @@ $isAdmin = $role['name'] === 'Admin';
                     $label = $moduleLabels[$mod] ?? ucfirst(str_replace('_', ' ', $mod));
                     $first = true;
                     foreach ($pages as $page):
+                        $isManage = ($page['operation'] === 'manage');
                         $opBadge = [
+                            'manage' => '<span style="background:#6f42c1;color:#fff;padding:2px 7px;border-radius:4px;font-size:0.78em;">manage</span>',
                             'view'   => '<span style="background:#17a2b8;color:#fff;padding:2px 7px;border-radius:4px;font-size:0.78em;">view</span>',
                             'create' => '<span style="background:#28a745;color:#fff;padding:2px 7px;border-radius:4px;font-size:0.78em;">create</span>',
                             'edit'   => '<span style="background:#ffc107;color:#212529;padding:2px 7px;border-radius:4px;font-size:0.78em;">edit</span>',
                             'delete' => '<span style="background:#dc3545;color:#fff;padding:2px 7px;border-radius:4px;font-size:0.78em;">delete</span>',
                         ][$page['operation']] ?? e($page['operation']);
+                        $isChecked = in_array((int) $page['id'], $permittedPageIds, true);
                 ?>
-                    <tr style="border-bottom:1px solid #eee;<?= $first ? 'border-top:2px solid #ccc;' : '' ?>">
+                    <tr style="border-bottom:1px solid #eee;<?= $first ? 'border-top:2px solid #ccc;' : '' ?><?= $isManage ? 'background:#f9f9f9;' : '' ?>">
                         <?php if ($first): ?>
-                        <td rowspan="<?= count($pages) ?>" style="padding:8px 12px;vertical-align:top;font-weight:bold;background:#fafafa;border-right:1px solid #eee;">
+                        <td rowspan="<?= count($pages) ?>" style="padding:8px 12px;vertical-align:middle;font-weight:bold;background:#fafafa;border-right:1px solid #eee;">
                             <?= e($label) ?>
                         </td>
                         <?php endif; ?>
                         <td style="text-align:center;padding:8px 6px;"><?= $opBadge ?></td>
                         <td style="padding:8px 12px;">
-                            <strong><?= e($page['name']) ?></strong>
-                            <?php if ($page['description']): ?>
-                            <br><small class="text-muted"><?= e($page['description']) ?></small>
+                            <?php if ($isManage): ?>
+                                <em style="color:#555;"><?= e($page['name']) ?></em>
+                            <?php else: ?>
+                                <strong><?= e($page['name']) ?></strong>
+                                <?php if ($page['description']): ?>
+                                <br><small class="text-muted"><?= e($page['description']) ?></small>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </td>
                         <td style="text-align:center;padding:8px 6px;">
-                            <input type="checkbox" name="pages[]" value="<?= (int) $page['id'] ?>"
-                                <?= in_array((int) $page['id'], $permittedPageIds, true) ? 'checked' : '' ?>>
+                            <input type="checkbox" name="pages[]"
+                                   value="<?= (int) $page['id'] ?>"
+                                   data-module="<?= e($mod) ?>"
+                                   <?= $isManage ? 'class="perm-manage-all"' : '' ?>
+                                   <?= $isChecked ? 'checked' : '' ?>>
                         </td>
                     </tr>
                 <?php
@@ -161,6 +172,21 @@ $(document).ready(function () {
     });
     $('#deselectAllPages').on('click', function () {
         $('input[name="pages[]"]').prop('checked', false);
+    });
+
+    // "Manage all" checkbox toggles every permission in that module
+    $(document).on('change', '.perm-manage-all', function () {
+        var mod = $(this).data('module');
+        var checked = $(this).prop('checked');
+        $('input[name="pages[]"][data-module="' + mod + '"]').not(this).prop('checked', checked);
+    });
+
+    // Keep "Manage all" in sync when individual permissions change
+    $(document).on('change', 'input[name="pages[]"]:not(.perm-manage-all)', function () {
+        var mod = $(this).data('module');
+        var $perms = $('input[name="pages[]"][data-module="' + mod + '"]').not('.perm-manage-all');
+        var allChecked = $perms.length > 0 && $perms.length === $perms.filter(':checked').length;
+        $('.perm-manage-all[data-module="' + mod + '"]').prop('checked', allChecked);
     });
 
     $('#editRoleForm').on('submit', function (e) {

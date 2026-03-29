@@ -207,8 +207,8 @@ function hasPagePermission(PDO $pdo, int $userId, string $pagePath): bool
     }
 
     try {
-        // Check if this path is a managed page
-        $stmt = $pdo->prepare("SELECT id FROM pages WHERE path = ? LIMIT 1");
+        // Check if this path is a managed page (also fetch module for manage-all check)
+        $stmt = $pdo->prepare("SELECT id, module FROM pages WHERE path = ? LIMIT 1");
         $stmt->execute([$pagePath]);
         $page = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -217,14 +217,19 @@ function hasPagePermission(PDO $pdo, int $userId, string $pagePath): bool
             return true;
         }
 
-        // Check if any of the user's roles grant access to this page
+        // Check direct page permission OR module-level 'manage' permission
         $stmt = $pdo->prepare("
             SELECT COUNT(*)
             FROM role_permissions rp
             JOIN user_roles ur ON ur.role_id = rp.role_id
-            WHERE ur.user_id = ? AND rp.page_id = ?
+            WHERE ur.user_id = ? AND (
+                rp.page_id = ?
+                OR rp.page_id IN (
+                    SELECT id FROM pages WHERE module = ? AND operation = 'manage'
+                )
+            )
         ");
-        $stmt->execute([$userId, (int) $page['id']]);
+        $stmt->execute([$userId, (int) $page['id'], $page['module']]);
         return (int) $stmt->fetchColumn() > 0;
     } catch (Exception $e) {
         error_log('hasPagePermission error: ' . $e->getMessage());
@@ -270,12 +275,13 @@ function hasModulePermission(PDO $pdo, int $userId, string $module, string $oper
     }
 
     try {
+        // Also grant if the user holds the module-level 'manage' (all-operations) permission
         $stmt = $pdo->prepare("
             SELECT COUNT(*)
             FROM role_permissions rp
             JOIN user_roles       ur ON ur.role_id = rp.role_id
             JOIN pages             p  ON p.id       = rp.page_id
-            WHERE ur.user_id = ? AND p.module = ? AND p.operation = ?
+            WHERE ur.user_id = ? AND p.module = ? AND (p.operation = ? OR p.operation = 'manage')
         ");
         $stmt->execute([$userId, $module, $operation]);
         return (int) $stmt->fetchColumn() > 0;
