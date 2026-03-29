@@ -31,30 +31,10 @@ $breadcrumb = buildBreadcrumb([
 $page_path = '/modules/AccessControl/roles/';
 include ROOT_DIR . '/includes/header.php';
 
-$allPages        = $pdo->query("SELECT id, name, path, module, operation, description FROM pages ORDER BY module ASC, FIELD(operation,'manage','view','create','edit','delete'), name ASC")->fetchAll(PDO::FETCH_ASSOC);
+// Exclude virtual 'manage' rows — those are DB-only; individual page grants are used in the UI
+$allPages        = $pdo->query("SELECT id, name, path, module, operation, description FROM pages WHERE operation != 'manage' ORDER BY FIELD(operation,'view','create','edit','delete'), name ASC")->fetchAll(PDO::FETCH_ASSOC);
 $permittedPageIds = getRolePermissions($pdo, $roleId);
 $permittedPageIds = array_map('intval', $permittedPageIds);
-
-// Group pages by module for the permission grid
-$pagesByModule = [];
-foreach ($allPages as $page) {
-    $pagesByModule[$page['module']][] = $page;
-}
-
-// Display labels for each module
-$moduleLabels = [
-    'bookings'       => '📅 Bookings',
-    'clients'        => '👥 Clients',
-    'fuel'           => '⛽ Fuel',
-    'uber'           => '🚗 Uber',
-    'financials'     => '💰 Financials',
-    'maintenance'    => '⚙️ Maintenance',
-    'access_control' => '🔐 Access Control',
-    'dashboard'      => '🏠 Dashboard',
-];
-
-// Preferred module display order
-$moduleOrder = array_keys($moduleLabels);
 
 $isAdmin = $role['name'] === 'Admin';
 ?>
@@ -85,7 +65,7 @@ $isAdmin = $role['name'] === 'Admin';
         <?php if (!$isAdmin && !empty($allPages)): ?>
         <div class="form-group">
             <label>Permissions</label>
-            <p class="text-muted" style="margin-top:0;font-size:0.9em;">Select the operations this role may perform. Permissions are grouped by module.</p>
+            <p class="text-muted" style="margin-top:0;font-size:0.9em;">Select the pages this role may access.</p>
             <div style="margin-bottom: 10px;">
                 <button type="button" id="selectAllPages" class="page-action-btn toggle" style="font-size:0.85em;padding:4px 10px;">✅ Grant All</button>
                 <button type="button" id="deselectAllPages" class="page-action-btn" style="font-size:0.85em;padding:4px 10px;">❌ Revoke All</button>
@@ -94,28 +74,14 @@ $isAdmin = $role['name'] === 'Admin';
             <table class="permissions-grid" style="width:100%;border-collapse:collapse;">
                 <thead>
                     <tr style="background:#f5f5f5;">
-                        <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #ddd;width:20%;">Module</th>
                         <th style="text-align:center;padding:8px 6px;border-bottom:2px solid #ddd;width:90px;">Operation</th>
-                        <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #ddd;">Description</th>
+                        <th style="text-align:left;padding:8px 12px;border-bottom:2px solid #ddd;">Page</th>
                         <th style="text-align:center;padding:8px 6px;border-bottom:2px solid #ddd;width:70px;">Grant</th>
                     </tr>
                 </thead>
                 <tbody>
-                <?php
-                // Render modules in preferred order, then any extras
-                $rendered = [];
-                $orderedModules = array_merge(
-                    array_intersect($moduleOrder, array_keys($pagesByModule)),
-                    array_diff(array_keys($pagesByModule), $moduleOrder)
-                );
-                foreach ($orderedModules as $mod):
-                    $pages = $pagesByModule[$mod];
-                    $label = $moduleLabels[$mod] ?? ucfirst(str_replace('_', ' ', $mod));
-                    $first = true;
-                    foreach ($pages as $page):
-                        $isManage = ($page['operation'] === 'manage');
+                <?php foreach ($allPages as $page):
                         $opBadge = [
-                            'manage' => '<span style="background:#6f42c1;color:#fff;padding:2px 7px;border-radius:4px;font-size:0.78em;">manage</span>',
                             'view'   => '<span style="background:#17a2b8;color:#fff;padding:2px 7px;border-radius:4px;font-size:0.78em;">view</span>',
                             'create' => '<span style="background:#28a745;color:#fff;padding:2px 7px;border-radius:4px;font-size:0.78em;">create</span>',
                             'edit'   => '<span style="background:#ffc107;color:#212529;padding:2px 7px;border-radius:4px;font-size:0.78em;">edit</span>',
@@ -123,36 +89,21 @@ $isAdmin = $role['name'] === 'Admin';
                         ][$page['operation']] ?? e($page['operation']);
                         $isChecked = in_array((int) $page['id'], $permittedPageIds, true);
                 ?>
-                    <tr style="border-bottom:1px solid #eee;<?= $first ? 'border-top:2px solid #ccc;' : '' ?><?= $isManage ? 'background:#f9f9f9;' : '' ?>">
-                        <?php if ($first): ?>
-                        <td rowspan="<?= count($pages) ?>" style="padding:8px 12px;vertical-align:middle;font-weight:bold;background:#fafafa;border-right:1px solid #eee;">
-                            <?= e($label) ?>
-                        </td>
-                        <?php endif; ?>
+                    <tr style="border-bottom:1px solid #eee;">
                         <td style="text-align:center;padding:8px 6px;"><?= $opBadge ?></td>
                         <td style="padding:8px 12px;">
-                            <?php if ($isManage): ?>
-                                <em style="color:#555;"><?= e($page['name']) ?></em>
-                            <?php else: ?>
-                                <strong><?= e($page['name']) ?></strong>
-                                <?php if ($page['description']): ?>
-                                <br><small class="text-muted"><?= e($page['description']) ?></small>
-                                <?php endif; ?>
+                            <strong><?= e($page['name']) ?></strong>
+                            <?php if ($page['description']): ?>
+                            <br><small class="text-muted"><?= e($page['description']) ?></small>
                             <?php endif; ?>
                         </td>
                         <td style="text-align:center;padding:8px 6px;">
                             <input type="checkbox" name="pages[]"
                                    value="<?= (int) $page['id'] ?>"
-                                   data-module="<?= e($mod) ?>"
-                                   <?= $isManage ? 'class="perm-manage-all"' : '' ?>
                                    <?= $isChecked ? 'checked' : '' ?>>
                         </td>
                     </tr>
-                <?php
-                        $first = false;
-                    endforeach;
-                endforeach;
-                ?>
+                <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
@@ -172,21 +123,6 @@ $(document).ready(function () {
     });
     $('#deselectAllPages').on('click', function () {
         $('input[name="pages[]"]').prop('checked', false);
-    });
-
-    // "Manage all" checkbox toggles every permission in that module
-    $(document).on('change', '.perm-manage-all', function () {
-        var mod = $(this).data('module');
-        var checked = $(this).prop('checked');
-        $('input[name="pages[]"][data-module="' + mod + '"]').not(this).prop('checked', checked);
-    });
-
-    // Keep "Manage all" in sync when individual permissions change
-    $(document).on('change', 'input[name="pages[]"]:not(.perm-manage-all)', function () {
-        var mod = $(this).data('module');
-        var $perms = $('input[name="pages[]"][data-module="' + mod + '"]').not('.perm-manage-all');
-        var allChecked = $perms.length > 0 && $perms.length === $perms.filter(':checked').length;
-        $('.perm-manage-all[data-module="' + mod + '"]').prop('checked', allChecked);
     });
 
     $('#editRoleForm').on('submit', function (e) {
