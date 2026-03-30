@@ -158,49 +158,37 @@ WHERE r.name = 'Driver';
 
 ---
 
-## Add Module-Level "Manage All" Permissions (2026-03-29)
+## Fix Access Control Pages and Add Dashboard (2026-03-29)
 
 ### Description
-Adds a `manage` operation page entry for every module so that a single checkbox in the
-role editor grants full access to that module. Also adds a Dashboard page entry, renames
-"View Bookings" to "Booking Reports", and updates the Access Control roles/users pages to
-use the `edit` operation (they were previously `view`).
+Corrects the Access Control pages so the module-level index page shows with a blank operation
+(module-access grant), updates the Roles and Users sub-pages to the `edit` operation with
+proper em-dash names, and adds the Dashboard page.
 
-After running, any role that already has individual Bookings/Fuel/etc. permissions continues
-to work unchanged. Granting "Manage all X" to a role in addition gives access to any future
-pages added to that module automatically.
-
-Also add the Dashboard permission to the Driver role so existing Driver accounts keep
-access to the dashboard.
+Also grants the Driver role Dashboard access so existing Driver accounts keep access after
+the Dashboard page is registered.
 
 - [ ] Done on Dev
 - [ ] Done on Live
 
 ```sql
--- Add module-level "manage" page entries
-INSERT IGNORE INTO `pages` (`name`, `path`, `module`, `operation`, `description`) VALUES
-('Manage all Bookings',       '/modules/Bookings/manage',         'bookings',       'manage', NULL),
-('Manage all Clients',        '/modules/Clients/manage',          'clients',        'manage', NULL),
-('Manage all Fuel',           '/modules/Fuel/manage',             'fuel',           'manage', NULL),
-('Manage all Uber',           '/modules/Uber/manage',             'uber',           'manage', NULL),
-('Manage all Financials',     '/modules/Financials/manage',       'financials',     'manage', NULL),
-('Manage all Maintenance',    '/maintenance/manage',              'maintenance',    'manage', NULL),
-('Manage all Access Control', '/modules/AccessControl/manage',    'access_control', 'manage', NULL),
-('Dashboard',                 '/dashboard.php',                   'dashboard',      'view',   'Main dashboard');
-
--- Rename "View Bookings" → "Booking Reports"
+-- Access Control main page: blank operation (module-level access grant)
 UPDATE `pages`
-SET `name` = 'Booking Reports'
-WHERE `path` = '/modules/Bookings/' AND `module` = 'bookings';
+SET `operation` = NULL
+WHERE `path` = '/modules/AccessControl/' AND `module` = 'access_control';
 
--- Update Access Control sub-pages: view → edit (they represent editing operations)
+-- Access Control sub-pages: edit operation and em-dash names
 UPDATE `pages`
-SET `operation` = 'edit', `name` = 'Access Control - Roles'
+SET `operation` = 'edit', `name` = 'Access Control – Roles'
 WHERE `path` = '/modules/AccessControl/roles/';
 
 UPDATE `pages`
-SET `operation` = 'edit', `name` = 'Access Control - Users'
+SET `operation` = 'edit', `name` = 'Access Control – Users'
 WHERE `path` = '/modules/AccessControl/users/';
+
+-- Add Dashboard page
+INSERT IGNORE INTO `pages` (`name`, `path`, `module`, `operation`, `description`)
+VALUES ('Dashboard', '/dashboard.php', 'dashboard', 'view', 'Main dashboard');
 
 -- Grant Driver role access to the Dashboard
 INSERT IGNORE INTO `role_permissions` (`role_id`, `page_id`)
