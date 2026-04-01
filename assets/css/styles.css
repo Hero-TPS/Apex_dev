@@ -974,6 +974,23 @@ body:not(.home-page) .floating-menu-toggle {
     display: none !important;
 }
 
+.week-in-progress {
+    font-size: 12px;
+    font-weight: 600;
+    color: #e67e22;
+    background: #fef3e2;
+    border: 1px solid #f0a500;
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    white-space: nowrap;
+}
+
+.week-in-progress-block {
+    border-color: #f0a500;
+    background: #fffdf7;
+}
+
 @media (max-width: 600px) {
     .metric-row {
         flex-direction: column;

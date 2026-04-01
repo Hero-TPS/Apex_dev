@@ -112,10 +112,13 @@ include ROOT_DIR . '/includes/header.php';
         const costPerKm = parseFloat(week.cost_per_km || 0);
         const kmPerL    = parseFloat(week.km_per_l    || 0);
         const lPer100Km = parseFloat(week.l_per_100km || 0);
+        const inProgressBadge = week.in_progress
+            ? '<span class="week-in-progress">⏳ In Progress</span>'
+            : '';
         return `
-            <div class="weekly-block">
+            <div class="weekly-block${week.in_progress ? ' week-in-progress-block' : ''}">
                 <div class="week-header">
-                    <strong>Week: ${week.week_label}</strong>
+                    <strong>Week: ${week.week_label} ${inProgressBadge}</strong>
                     <span class="net-amount loss">R${totalCost.toFixed(2)}</span>
                 </div>
                 <div class="metric-row"><span>Fill-ups:</span>   <strong>${week.fill_count}</strong></div>

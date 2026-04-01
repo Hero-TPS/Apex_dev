@@ -682,6 +682,7 @@ function handleWeeklyBookingsByMonth()
         $lastDay = new DateTime(sprintf('%04d-%02d-01', (int) $year, (int) $month), $tz);
         $lastDay->modify('last day of this month');
 
+        $today   = new DateTime('now', $tz);
         $data    = [];
         $current = clone $firstDay;
         while ($current <= $lastDay) {
@@ -704,6 +705,7 @@ function handleWeeklyBookingsByMonth()
                 'week_label'    => $monday->format('d M') . ' – ' . $sunday->format('d M Y'),
                 'booking_count' => (int)   $row['booking_count'],
                 'total_income'  => (float) $row['total_income'],
+                'in_progress'   => ($sunday > $today),
             ];
 
             $current->modify('+1 week');

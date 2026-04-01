@@ -96,14 +96,17 @@ usort($months, function ($a, $b) {
     }
 
     function buildWeekBlock(week) {
-        const start    = new Date(week.monday * 1000);
-        const end      = new Date(week.sunday * 1000);
+        const start       = new Date(week.monday * 1000);
+        const end         = new Date(week.sunday * 1000);
         const profitClass = parseFloat(week.net_profit) >= 0 ? 'profit' : 'loss';
+        const inProgressBadge = week.in_progress
+            ? '<span class="week-in-progress">⏳ In Progress</span>'
+            : '';
 
         return `
-            <div class="weekly-block">
+            <div class="weekly-block${week.in_progress ? ' week-in-progress-block' : ''}">
                 <div class="week-header">
-                    <strong>Week: ${formatSA(start)} – ${formatSA(end)}</strong>
+                    <strong>Week: ${formatSA(start)} – ${formatSA(end)} ${inProgressBadge}</strong>
                     <span class="net-amount ${profitClass}">${fmtR(week.net_profit)}</span>
                 </div>
 

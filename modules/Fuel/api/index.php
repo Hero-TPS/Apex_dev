@@ -354,6 +354,7 @@ function handleWeeklyFuelByMonth()
         $lastDay = new DateTime(sprintf('%04d-%02d-01', (int) $year, (int) $month), $tz);
         $lastDay->modify('last day of this month');
 
+        $today   = new DateTime('now', $tz);
         $data    = [];
         $current = clone $firstDay;
         while ($current <= $lastDay) {
@@ -387,6 +388,7 @@ function handleWeeklyFuelByMonth()
                 'cost_per_km' => ($wKm     > 0) ? ($wCost   / $wKm)        : 0.0,
                 'km_per_l'    => ($wLiters > 0) ? ($wKm     / $wLiters)    : 0.0,
                 'l_per_100km' => ($wKm     > 0) ? ($wLiters / $wKm * 100)  : 0.0,
+                'in_progress' => ($sunday > $today),
             ];
 
             $current->modify('+1 week');
