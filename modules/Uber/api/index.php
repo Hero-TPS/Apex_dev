@@ -299,6 +299,9 @@ function handleGetByMonth()
         $stmt->execute([$startUnix, $endUnix]);
         $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        $today   = new DateTime('now', $tz);
+        $todayTs = $today->getTimestamp();
+
         foreach ($records as &$record) {
             if (isset($record['week_start']) && $record['week_start'] > 0) {
                 $start = new DateTime();
@@ -310,6 +313,8 @@ function handleGetByMonth()
             } else {
                 $record['week_display'] = 'Invalid Date';
             }
+
+            $record['in_progress'] = isset($record['week_end']) && ((int) $record['week_end'] > $todayTs);
 
             $costStmt = $pdo->prepare(
                 "SELECT id, reason, amount FROM uber_additional_costs WHERE uber_income_id = ? ORDER BY id ASC"

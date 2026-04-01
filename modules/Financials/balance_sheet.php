@@ -17,7 +17,8 @@ if ($monthsBack < 1) {
 }
 
 $months = [];
-$today  = new DateTime();
+$tz     = new DateTimeZone(TIME_ZONE);
+$today  = new DateTime('now', $tz);
 for ($i = 1; $i < $monthsBack; $i++) {
     $date  = clone $today;
     $date->modify("-$i months");
@@ -33,7 +34,26 @@ usort($months, function ($a, $b) {
     return $b['month'] - $a['month'];
 });
 
-$tz = new DateTimeZone(TIME_ZONE);
+// Filter out any month whose last billing week's Sunday is still in the future.
+// A month is only "closed" once the Sunday of the last Mon–Sun week that started
+// within that month has fully passed.
+$months = array_values(array_filter($months, function ($m) use ($tz, $today) {
+    $lastDay = new DateTime("{$m['year']}-{$m['month']}-01", $tz);
+    $lastDay->modify('last day of this month');
+
+    // Last Monday on or before the last day of the month
+    $lastMonday = clone $lastDay;
+    if ($lastMonday->format('N') !== '1') {
+        $lastMonday->modify('last monday');
+    }
+
+    // Closing Sunday of that week = last Monday + 6 days
+    $closingSunday = clone $lastMonday;
+    $closingSunday->modify('+6 days');
+    $closingSunday->setTime(23, 59, 59);
+
+    return $closingSunday <= $today;
+}));
 
 $carRentalWeekly = (float) getSystemVariable($pdo, 'car_rental_price');
 

@@ -260,13 +260,16 @@ function getWeeklyBreakdownForMonth(PDO $pdo, int $year, int $month): array
     $lastDay = new DateTime("$year-$month-01", $tz);
     $lastDay->modify('last day of this month');
 
+    $today   = new DateTime('now', $tz);
     $current = clone $firstDay;
     while ($current <= $lastDay) {
         $monday = clone $current;
         $monday->setTime(0, 0, 0);
 
-        $sunday = clone $monday;
-        $sunday->modify('+6 days');
+        $actualSunday = clone $monday;
+        $actualSunday->modify('+6 days');
+
+        $sunday = clone $actualSunday;
         if ($sunday > $lastDay) {
             $sunday = clone $lastDay;
         }
@@ -275,10 +278,11 @@ function getWeeklyBreakdownForMonth(PDO $pdo, int $year, int $month): array
         $startUnix = $monday->getTimestamp();
         $endUnix   = $sunday->getTimestamp();
 
-        $weekData            = getWeeklyMetrics($pdo, $startUnix, $endUnix);
-        $weekData['monday']  = $startUnix;
-        $weekData['sunday']  = $endUnix;
-        $weeks[]             = $weekData;
+        $weekData               = getWeeklyMetrics($pdo, $startUnix, $endUnix);
+        $weekData['monday']     = $startUnix;
+        $weekData['sunday']     = $endUnix;
+        $weekData['in_progress'] = ($actualSunday > $today);
+        $weeks[]                = $weekData;
 
         $current->modify('+1 week');
     }

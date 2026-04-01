@@ -99,11 +99,14 @@ include ROOT_DIR . '/includes/header.php';
             ).join('<br>');
         }
         const cardIncome = (parseFloat(log.total_income) - parseFloat(log.cash_received)).toFixed(2);
+        const inProgressBadge = log.in_progress
+            ? '<span class="week-in-progress">⏳ In Progress</span>'
+            : '';
 
         return `
-            <div class="weekly-block">
+            <div class="weekly-block${log.in_progress ? ' week-in-progress-block' : ''}">
                 <div class="week-header">
-                    <strong>Week: ${log.week_display}</strong>
+                    <strong>Week: ${log.week_display} ${inProgressBadge}</strong>
                     <span class="net-amount profit">R${parseFloat(log.total_income || 0).toFixed(2)}</span>
                 </div>
                 <div class="metric-row"><span>Total Income:</span>    <strong>R${parseFloat(log.total_income || 0).toFixed(2)}</strong></div>

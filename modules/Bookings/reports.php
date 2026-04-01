@@ -71,10 +71,13 @@ usort($months, function ($a, $b) {
 
 <script>
     function buildWeekBlock(week) {
+        const inProgressBadge = week.in_progress
+            ? '<span class="week-in-progress">⏳ In Progress</span>'
+            : '';
         return `
-            <div class="weekly-block">
+            <div class="weekly-block${week.in_progress ? ' week-in-progress-block' : ''}">
                 <div class="week-header">
-                    <strong>Week: ${week.week_label}</strong>
+                    <strong>Week: ${week.week_label} ${inProgressBadge}</strong>
                     <span class="net-amount profit">R${parseFloat(week.total_income || 0).toFixed(2)}</span>
                 </div>
                 <div class="metric-row"><span>Bookings:</span>     <strong>${week.booking_count}</strong></div>
