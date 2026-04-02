@@ -33,6 +33,16 @@ usort($months, function ($a, $b) {
     return $b['month'] - $a['month'];
 });
 
+// Calculate current working week boundaries (Mon–Sun)
+$tz = new DateTimeZone(TIME_ZONE);
+$todayDt    = new DateTime('now', $tz);
+$dayOfWeek  = (int) $todayDt->format('N'); // 1=Mon, 7=Sun
+$currentWeekMonday = clone $todayDt;
+$currentWeekMonday->modify('-' . ($dayOfWeek - 1) . ' days');
+$currentWeekMonday->setTime(0, 0, 0);
+$currentWeekSunday = clone $currentWeekMonday;
+$currentWeekSunday->modify('+6 days');
+$currentWeekSunday->setTime(23, 59, 59);
 ?>
 
 <div class="financial-dashboard">
@@ -51,10 +61,16 @@ usort($months, function ($a, $b) {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $monthLabel = date('F Y', mktime(0, 0, 0, $m['month'], 1, $m['year']));
+
+        $monthStart = new DateTime("{$m['year']}-{$m['month']}-01", $tz);
+        $monthEnd   = clone $monthStart;
+        $monthEnd->modify('last day of this month');
+        $monthEnd->setTime(23, 59, 59);
+        $isInProgressMonth = ($currentWeekMonday <= $monthEnd && $currentWeekSunday >= $monthStart);
     ?>
-        <div class="financial-month-block" data-year="<?= $m['year'] ?>" data-month="<?= $m['month'] ?>">
+        <div class="financial-month-block<?= $isInProgressMonth ? ' week-in-progress-block' : '' ?>" data-year="<?= $m['year'] ?>" data-month="<?= $m['month'] ?>">
             <div class="month-header">
-                <h3><?= htmlspecialchars($monthLabel) ?></h3>
+                <h3><?= htmlspecialchars($monthLabel) ?><?= $isInProgressMonth ? ' <span class="week-in-progress">⏳ In Progress</span>' : '' ?></h3>
                 <span class="net-amount profit">R<?= number_format($row['total_income'], 2) ?></span>
             </div>
 
