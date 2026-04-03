@@ -268,7 +268,8 @@ try {
             throw new Exception('Invalid driver ID.');
         }
 
-        // Unlink from bookings before deleting
+        // Unlink driver from any bookings before deleting to preserve booking records.
+        // Clears booking_fee as well since the fee was calculated for this driver.
         $pdo->prepare("UPDATE bookings SET driver_id = NULL, booking_fee = NULL WHERE driver_id = ?")->execute([$id]);
         $stmt = $pdo->prepare("DELETE FROM drivers WHERE id = ?");
         $stmt->execute([$id]);

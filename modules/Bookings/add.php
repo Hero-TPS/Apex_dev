@@ -360,7 +360,7 @@ if (isset($_GET['contact_id']) && isset($_GET['contact_name'])) {
             var costVal = $('#cost').val() === 'other'
                 ? parseFloat($('#otherCost').val()) || 0
                 : parseFloat($('#cost').val()) || 0;
-            var fee = Math.round(costVal * bookingFeePct / 100 * 100) / 100;
+            var fee = parseFloat((costVal * bookingFeePct / 100).toFixed(2));
             if (bookingFeePct > 0) {
                 $('#bookingFeeGroup').toggle(driverSelected);
                 $('#bookingFeeDisplay').text('R' + fee.toFixed(2));
