@@ -14,6 +14,8 @@ $breadcrumb = buildBreadcrumb([
 ]);
 include ROOT_DIR . '/includes/header.php';
 
+ensureDriverSchema($pdo);
+
 $booking = null;
 $error_message = '';
 
@@ -38,6 +40,13 @@ if (isset($_GET['id'])) {
             $costs = fetchColumn($pdo, 'costs', 'amount', 'amount ASC');
             $durations = fetchColumn($pdo, 'durations', 'hours', 'hours ASC');
             $timeOptions = generateTimeOptions();
+
+            // Fetch active drivers for allocation dropdown
+            $driversStmt = $pdo->query("SELECT id, name, phone FROM drivers WHERE active = 1 ORDER BY name ASC");
+            $drivers = $driversStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Booking fee percentage for JS calculation
+            $booking_fee_pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
         } catch (PDOException $e) {
             error_log('Edit form DB error: ' . $e->getMessage());
             $error_message = "Failed to load data.";
@@ -174,6 +183,36 @@ if (isset($_GET['id'])) {
                 <label for="description">Additional Notes</label>
                 <textarea id="description" name="description"><?php echo htmlspecialchars($booking['description']); ?></textarea>
             </div>
+
+            <!-- Driver Allocation -->
+            <div class="form-group">
+                <label for="driver_id">Allocate Driver</label>
+                <select id="driver_id" name="driver_id">
+                    <option value="">— No driver —</option>
+                    <?php foreach ($drivers as $driver): ?>
+                        <option value="<?= htmlspecialchars($driver['id']) ?>"
+                            <?= ($booking['driver_id'] == $driver['id']) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($driver['name']) ?>
+                            <?= $driver['phone'] ? ' (' . htmlspecialchars($driver['phone']) . ')' : '' ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <small>Optional — assign a driver to this booking</small>
+            </div>
+
+            <?php if ($booking_fee_pct > 0): ?>
+            <div class="form-group" id="bookingFeeGroup" <?= empty($booking['driver_id']) ? 'style="display:none;"' : '' ?>>
+                <label>Apex Booking Fee (<?= htmlspecialchars($booking_fee_pct) ?>%)</label>
+                <div id="bookingFeeDisplay" style="font-weight:bold; padding:6px 0;">
+                    <?php
+                    $currentFee = !empty($booking['booking_fee']) ? (float) $booking['booking_fee'] : calculateBookingFee((float) $booking['cost'], $booking_fee_pct);
+                    echo 'R' . number_format($currentFee, 2);
+                    ?>
+                </div>
+                <small>Recalculated from cost × <?= htmlspecialchars($booking_fee_pct) ?>% when saved</small>
+            </div>
+            <?php endif; ?>
+
             <button type="submit" class="page-action-btn save" id="submitBtn">💾 Update Booking</button>
         </form>
     <?php else: ?>
@@ -264,7 +303,29 @@ $(document).ready(function () {
             $('#otherCostGroup').addClass('hidden');
             $('#otherCost').prop('required', false);
         }
+        updateBookingFee();
     });
+
+    $('#otherCost').on('input', function () {
+        updateBookingFee();
+    });
+
+    $('#driver_id').on('change', function () {
+        updateBookingFee();
+    });
+
+    var bookingFeePct = <?= (float) ($booking_fee_pct ?? 0) ?>;
+    function updateBookingFee() {
+        var driverSelected = $('#driver_id').val() !== '';
+        var costVal = $('#cost').val() === 'other'
+            ? parseFloat($('#otherCost').val()) || 0
+            : parseFloat($('#cost').val()) || 0;
+        var fee = parseFloat((costVal * bookingFeePct / 100).toFixed(2));
+        if (bookingFeePct > 0) {
+            $('#bookingFeeGroup').toggle(driverSelected);
+            $('#bookingFeeDisplay').text('R' + fee.toFixed(2));
+        }
+    }
 
     // Initialize cost on page load
     if ($('#cost').val() === 'other') {

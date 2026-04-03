@@ -8,6 +8,8 @@ $response = ['success' => false, 'message' => 'Invalid action.'];
 $action = $_GET['action'] ?? '';
 
 try {
+    ensureDriverSchema($pdo);
+
     if ($action === 'update_lists' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $messages = [];
 
@@ -222,6 +224,59 @@ try {
         logInfo('MAINTENANCE', 'Overdue bookings marked as completed', [
             'count' => $count
         ]);
+
+    } elseif ($action === 'add_driver' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $name  = trim($_POST['name']  ?? '');
+        $phone = trim($_POST['phone'] ?? '');
+
+        if (empty($name)) {
+            throw new Exception('Driver name is required.');
+        }
+
+        $stmt = $pdo->prepare("INSERT INTO drivers (name, phone, active) VALUES (?, ?, 1)");
+        $stmt->execute([$name, $phone]);
+
+        $response['success'] = true;
+        $response['message'] = "✅ Driver '{$name}' added.";
+        logInfo('MAINTENANCE', 'Driver added', ['name' => $name]);
+
+    } elseif ($action === 'update_driver' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $id     = intval($_POST['id']   ?? 0);
+        $name   = trim($_POST['name']   ?? '');
+        $phone  = trim($_POST['phone']  ?? '');
+        $active = isset($_POST['active']) ? 1 : 0;
+
+        if ($id <= 0 || empty($name)) {
+            throw new Exception('Invalid driver data.');
+        }
+
+        $stmt = $pdo->prepare("UPDATE drivers SET name = ?, phone = ?, active = ? WHERE id = ?");
+        $stmt->execute([$name, $phone, $active, $id]);
+
+        if ($stmt->rowCount() === 0) {
+            throw new Exception('Driver not found.');
+        }
+
+        $response['success'] = true;
+        $response['message'] = "✅ Driver updated.";
+        logInfo('MAINTENANCE', 'Driver updated', ['id' => $id, 'name' => $name]);
+
+    } elseif ($action === 'delete_driver' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $id = intval($_POST['id'] ?? 0);
+
+        if ($id <= 0) {
+            throw new Exception('Invalid driver ID.');
+        }
+
+        // Unlink driver from any bookings before deleting to preserve booking records.
+        // Clears booking_fee as well since the fee was calculated for this driver.
+        $pdo->prepare("UPDATE bookings SET driver_id = NULL, booking_fee = NULL WHERE driver_id = ?")->execute([$id]);
+        $stmt = $pdo->prepare("DELETE FROM drivers WHERE id = ?");
+        $stmt->execute([$id]);
+
+        $response['success'] = true;
+        $response['message'] = "✅ Driver deleted.";
+        logInfo('MAINTENANCE', 'Driver deleted', ['id' => $id]);
 
     } else {
         $response['message'] = 'Unsupported action or method';

@@ -29,6 +29,7 @@ include ROOT_DIR . '/includes/header.php';
             <th>Pickup</th>
             <th>Destination</th>
             <th>Cost</th>
+            <th>Driver</th>
             <th>Actions</th>
         </tr>
     </thead>
@@ -67,7 +68,7 @@ include ROOT_DIR . '/includes/header.php';
         var showAll = false;
 
         function loadBookings() {
-            tableBody.html('<tr><td colspan="7" style="text-align:center;">Loading bookings...</td></tr>');
+            tableBody.html('<tr><td colspan="8" style="text-align:center;">Loading bookings...</td></tr>');
             $.ajax({
                 type: 'GET',
                 url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
@@ -90,6 +91,7 @@ include ROOT_DIR . '/includes/header.php';
                                 '<td data-label="Pickup">' + escapeHtml(booking.pickup_location) + '</td>' +
                                 '<td data-label="Destination">' + escapeHtml(booking.destination) + '</td>' +
                                 '<td data-label="Cost">' + escapeHtml(booking.cost) + '</td>' +
+                                '<td data-label="Driver">' + (booking.driver_name ? escapeHtml(booking.driver_name) : '<span style="color:#aaa;">—</span>') + '</td>' +
                                 '<td data-label="Actions">' +
                                 '<div class="actions-container">' +
                                 '<a href="<?= BASE_URL ?>/modules/Bookings/view.php?id=' + booking.id + '" class="action-btn view-details-btn">View</a>' +

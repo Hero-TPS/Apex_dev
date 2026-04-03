@@ -15,6 +15,8 @@ $breadcrumb = buildBreadcrumb([
 
 include ROOT_DIR . '/includes/header.php';
 
+ensureDriverSchema($pdo);
+
 $booking = null;
 $error_message = '';
 
@@ -143,6 +145,21 @@ if (isset($_GET['id'])) {
             </div>
             <div id="gate-code-result" style="margin-top: 4px;"></div>
         </div>
+
+        <!-- Driver Allocation (internal only) -->
+        <?php if (!empty($booking['driver_name'])): ?>
+        <div class="detail-item">
+            <strong>Driver:</strong> <?= htmlspecialchars($booking['driver_name']) ?>
+            <?php if (!empty($booking['driver_phone'])): ?>
+                — <?= htmlspecialchars($booking['driver_phone']) ?>
+            <?php endif; ?>
+        </div>
+        <?php if (!empty($booking['booking_fee'])): ?>
+        <div class="detail-item">
+            <strong>Booking Fee (Apex):</strong> R <?= number_format((float) $booking['booking_fee'], 2) ?>
+        </div>
+        <?php endif; ?>
+        <?php endif; ?>
     </div>
 
     <!-- Action Buttons -->
@@ -161,6 +178,16 @@ if (isset($_GET['id'])) {
             target="_blank" class="page-action-btn whatsapp"
             onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= htmlspecialchars(json_encode('Hi ' . $booking['client_name']), ENT_QUOTES) ?>, 'message')">💬
             Send Message</a>
+        <?php if (!empty($booking['driver_name']) && !empty($booking['driver_phone'])): ?>
+        <?php
+            $driverMsg = createDriverBookingMessage($booking);
+            $driverPhone = formatPhoneNumberForWhatsApp($booking['driver_phone']);
+        ?>
+        <a href="https://wa.me/<?= $driverPhone ?>?text=<?= urlencode($driverMsg) ?>"
+            target="_blank" class="page-action-btn whatsapp"
+            onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= htmlspecialchars(json_encode($driverMsg), ENT_QUOTES) ?>, 'driver_notification')">🚗
+            Message Driver</a>
+        <?php endif; ?>
         <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
             Edit Booking</a>
         <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>

@@ -14,12 +14,21 @@ $breadcrumb = buildBreadcrumb([
 ]);
 include ROOT_DIR . '/includes/header.php';
 
+ensureDriverSchema($pdo);
+
 // Fetch data
 $contacts = fetchData($pdo, 'contacts', 'name ASC');
 $destinations = fetchData($pdo, 'destinations', 'name ASC');
 $costs = fetchData($pdo, 'costs', 'amount ASC');
 $durations = fetchColumn($pdo, 'durations', 'hours', 'hours ASC');
 $timeOptions = generateTimeOptions();
+
+// Fetch active drivers for allocation dropdown
+$driversStmt = $pdo->query("SELECT id, name, phone FROM drivers WHERE active = 1 ORDER BY name ASC");
+$drivers = $driversStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Booking fee percentage for JS calculation
+$booking_fee_pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
 
 // Prefill contact if passed via URL
 $prefill_contact_id = null;
@@ -159,6 +168,29 @@ if (isset($_GET['contact_id']) && isset($_GET['contact_name'])) {
             <label for="description">Additional Notes</label>
             <textarea id="description" name="description" placeholder="Any special instructions..."></textarea>
         </div>
+
+        <!-- Driver Allocation -->
+        <div class="form-group">
+            <label for="driver_id">Allocate Driver</label>
+            <select id="driver_id" name="driver_id">
+                <option value="">— No driver —</option>
+                <?php foreach ($drivers as $driver): ?>
+                    <option value="<?= htmlspecialchars($driver['id']) ?>">
+                        <?= htmlspecialchars($driver['name']) ?>
+                        <?= $driver['phone'] ? ' (' . htmlspecialchars($driver['phone']) . ')' : '' ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <small>Optional — assign a driver to this booking</small>
+        </div>
+
+        <?php if ($booking_fee_pct > 0): ?>
+        <div class="form-group" id="bookingFeeGroup" style="display:none;">
+            <label>Apex Booking Fee (<?= htmlspecialchars($booking_fee_pct) ?>%)</label>
+            <div id="bookingFeeDisplay" style="font-weight:bold; padding:6px 0;">R0.00</div>
+            <small>Calculated from cost × <?= htmlspecialchars($booking_fee_pct) ?>% — stored when booking is saved</small>
+        </div>
+        <?php endif; ?>
 
         <button type="submit" class="btn" id="submitBtn">🚗 Create Booking</button>
     </form>
@@ -311,7 +343,29 @@ if (isset($_GET['contact_id']) && isset($_GET['contact_name'])) {
                 $('#otherCostGroup').addClass('hidden');
                 $('#otherCost').prop('required', false);
             }
+            updateBookingFee();
         });
+
+        $('#otherCost').on('input', function () {
+            updateBookingFee();
+        });
+
+        $('#driver_id').on('change', function () {
+            updateBookingFee();
+        });
+
+        var bookingFeePct = <?= (float) $booking_fee_pct ?>;
+        function updateBookingFee() {
+            var driverSelected = $('#driver_id').val() !== '';
+            var costVal = $('#cost').val() === 'other'
+                ? parseFloat($('#otherCost').val()) || 0
+                : parseFloat($('#cost').val()) || 0;
+            var fee = parseFloat((costVal * bookingFeePct / 100).toFixed(2));
+            if (bookingFeePct > 0) {
+                $('#bookingFeeGroup').toggle(driverSelected);
+                $('#bookingFeeDisplay').text('R' + fee.toFixed(2));
+            }
+        }
 
         // Trigger initial state
         $('#pickup').trigger('change');
