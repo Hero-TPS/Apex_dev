@@ -10,8 +10,6 @@ require_once ROOT_DIR . '/includes/helpers.php';
 $breadcrumb = buildBreadcrumb([['label' => 'Maintenance']]);
 include ROOT_DIR . '/includes/header.php';
 
-ensureDriverSchema($pdo);
-
 // Fetch dropdown data
 $current_destinations = fetchColumn($pdo, 'destinations', 'name', 'name ASC');
 $current_costs = fetchColumn($pdo, 'costs', 'amount', 'amount ASC');

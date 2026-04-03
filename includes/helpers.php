@@ -249,40 +249,6 @@ function getSystemVariable(PDO $pdo, string $name): mixed
 }
 
 /**
- * Ensure the drivers table and driver-related booking columns exist.
- * Safe to call on every request; uses IF NOT EXISTS guards.
- * Used by: modules/Bookings/api/index.php, modules/Bookings/add.php,
- *          modules/Bookings/edit.php, modules/Bookings/view.php,
- *          maintenance/index.php
- */
-function ensureDriverSchema(PDO $pdo): void
-{
-    try {
-        $pdo->exec("
-            CREATE TABLE IF NOT EXISTS drivers (
-                id         INT AUTO_INCREMENT PRIMARY KEY,
-                name       VARCHAR(255) NOT NULL,
-                phone      VARCHAR(50)  NOT NULL DEFAULT '',
-                active     TINYINT(1)   NOT NULL DEFAULT 1,
-                created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-        ");
-    } catch (PDOException $e) {
-        // Table already exists — ignore
-    }
-    try {
-        $pdo->exec("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS driver_id INT NULL DEFAULT NULL");
-    } catch (PDOException $e) {
-        // Column already exists — ignore
-    }
-    try {
-        $pdo->exec("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_fee DECIMAL(10,2) NULL DEFAULT NULL");
-    } catch (PDOException $e) {
-        // Column already exists — ignore
-    }
-}
-
-/**
  * Calculate the Apex booking fee from a trip cost and fee percentage.
  * Returns 0.0 if cost or pct is zero/negative.
  * Used by: modules/Bookings/api/index.php
