@@ -81,6 +81,11 @@ $currentWeekSunday->setTime(23, 59, 59);
                 🔽 View Weeks
             </button>
             <div class="weeks-container hidden"></div>
+
+            <button class="toggle-bookings-btn" data-year="<?= $m['year'] ?>" data-month="<?= $m['month'] ?>" style="margin-top:8px;">
+                📋 View Bookings
+            </button>
+            <div class="bookings-detail-container hidden" style="margin-top:8px; overflow-x:auto;"></div>
         </div>
     <?php endforeach; ?>
 </div>
@@ -102,8 +107,94 @@ $currentWeekSunday->setTime(23, 59, 59);
         `;
     }
 
+    function buildBookingsTable(bookings) {
+        if (!bookings || bookings.length === 0) {
+            return '<p style="color:#999; font-style:italic; padding:8px 0;">No bookings for this month.</p>';
+        }
+        var rows = bookings.map(function (b) {
+            var driverCell = b.driver_name
+                ? '<span style="color:#27ae60;">✓ ' + escapeHtml(b.driver_name) + '</span>'
+                : '<span style="color:#aaa;">—</span>';
+            var feeCell = b.booking_fee !== null && b.booking_fee !== undefined
+                ? 'R' + parseFloat(b.booking_fee).toFixed(2)
+                : '<span style="color:#aaa;">—</span>';
+            return '<tr>' +
+                '<td><a href="<?= BASE_URL ?>/modules/Bookings/view.php?id=' + b.id + '" style="text-decoration:none;">' + escapeHtml(b.trip_date) + '</a></td>' +
+                '<td>' + escapeHtml(b.start_time) + '</td>' +
+                '<td>' + escapeHtml(b.client_name) + '</td>' +
+                '<td>' + escapeHtml(b.pickup) + '</td>' +
+                '<td>' + escapeHtml(b.destination) + '</td>' +
+                '<td>R' + parseFloat(b.cost).toFixed(2) + '</td>' +
+                '<td>' + driverCell + '</td>' +
+                '<td>' + feeCell + '</td>' +
+                '</tr>';
+        }).join('');
+        return '<table style="width:100%; border-collapse:collapse; font-size:0.85em;">' +
+            '<thead><tr style="background:#f5f5f5;">' +
+            '<th style="text-align:left; padding:4px 8px;">Date</th>' +
+            '<th style="text-align:left; padding:4px 8px;">Time</th>' +
+            '<th style="text-align:left; padding:4px 8px;">Client</th>' +
+            '<th style="text-align:left; padding:4px 8px;">Pickup</th>' +
+            '<th style="text-align:left; padding:4px 8px;">Destination</th>' +
+            '<th style="text-align:right; padding:4px 8px;">Cost</th>' +
+            '<th style="text-align:left; padding:4px 8px;">Driver</th>' +
+            '<th style="text-align:right; padding:4px 8px;">Booking Fee</th>' +
+            '</tr></thead>' +
+            '<tbody>' + rows + '</tbody>' +
+            '</table>';
+    }
+
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str || ''));
+        return div.innerHTML;
+    }
+
     $(document).ready(function () {
         let currentlyOpenContainer = null;
+        let currentlyOpenBookingsContainer = null;
+
+        $(document).on('click', '.toggle-bookings-btn', function () {
+            const button    = $(this);
+            const year      = button.data('year');
+            const month     = button.data('month');
+            const container = button.next('.bookings-detail-container');
+
+            if (currentlyOpenBookingsContainer && currentlyOpenBookingsContainer !== container[0]) {
+                $(currentlyOpenBookingsContainer).addClass('hidden').empty();
+                $(currentlyOpenBookingsContainer).prev('.toggle-bookings-btn').text('📋 View Bookings');
+            }
+
+            if (container.hasClass('hidden')) {
+                if (container.is(':empty')) {
+                    container.html('<div style="text-align:center; padding:10px;">Loading bookings…</div>');
+                    $.ajax({
+                        url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                        method: 'GET',
+                        data: { action: 'monthly_bookings_list', year: year, month: month },
+                        dataType: 'json',
+                        success: function (response) {
+                            container.empty();
+                            if (response.success) {
+                                container.html(buildBookingsTable(response.bookings));
+                            } else {
+                                container.html('<div class="error-message">⚠️ ' + (response.message || 'Failed to load') + '</div>');
+                            }
+                        },
+                        error: function (xhr, status, err) {
+                            container.html('<div class="error-message">⚠️ Network error: ' + err + '</div>');
+                        }
+                    });
+                }
+                container.removeClass('hidden');
+                button.text('📋 Hide Bookings');
+                currentlyOpenBookingsContainer = container[0];
+            } else {
+                container.addClass('hidden');
+                button.text('📋 View Bookings');
+                currentlyOpenBookingsContainer = null;
+            }
+        });
 
         $(document).on('click', '.toggle-weeks-btn', function () {
             const button    = $(this);
