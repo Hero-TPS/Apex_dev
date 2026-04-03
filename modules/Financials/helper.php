@@ -49,7 +49,7 @@ function getWeeklyMetrics(PDO $pdo, int $startUnix, int $endUnix): array
 
     // === BOOKINGS ===
     $stmt = $pdo->prepare(
-        "SELECT COALESCE(SUM(cost), 0) AS income, COUNT(*) AS trips
+        "SELECT COALESCE(SUM(COALESCE(booking_fee, cost)), 0) AS income, COUNT(*) AS trips
          FROM bookings WHERE trip_date BETWEEN ? AND ?"
     );
     $stmt->execute([$startDateStr, $endDateStr]);
@@ -154,7 +154,7 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
 
     // === BOOKINGS ===
     $stmt = $pdo->prepare(
-        "SELECT COALESCE(SUM(cost), 0) AS income, COUNT(*) AS trips
+        "SELECT COALESCE(SUM(COALESCE(booking_fee, cost)), 0) AS income, COUNT(*) AS trips
          FROM bookings WHERE trip_date BETWEEN ? AND ?"
     );
     $stmt->execute([$startDateStr, $endDateStr]);
