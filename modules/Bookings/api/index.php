@@ -24,6 +24,8 @@ if (!$action) {
 }
 
 try {
+    ensureDriverSchema($pdo);
+
     switch ($action) {
         case 'get':
             handleGetBookings();
@@ -64,6 +66,12 @@ try {
         case 'weekly_bookings_by_month':
             handleWeeklyBookingsByMonth();
             break;
+        case 'get_drivers':
+            handleGetDrivers();
+            break;
+        case 'monthly_bookings_list':
+            handleMonthlyBookingsList();
+            break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action: ' . ($action ?? 'none')], 400);
     }
@@ -96,9 +104,12 @@ function handleGetBookings()
                 SELECT 
                     b.id, b.contact_id, b.trip_date, b.start_time, b.end_time, b.status,
                     b.original_pickup, b.original_destination, b.was_swapped, b.cost,
-                    c.name AS client_name, c.phone AS client_phone
+                    b.driver_id, b.booking_fee,
+                    c.name AS client_name, c.phone AS client_phone,
+                    d.name AS driver_name
                 FROM bookings b
                 JOIN contacts c ON b.contact_id = c.id
+                LEFT JOIN drivers d ON b.driver_id = d.id
                 ORDER BY b.trip_date DESC, b.start_time DESC
                 LIMIT 100
             ";
@@ -111,9 +122,12 @@ function handleGetBookings()
                 SELECT 
                     b.id, b.contact_id, b.trip_date, b.start_time, b.end_time, b.status,
                     b.original_pickup, b.original_destination, b.was_swapped, b.cost,
-                    c.name AS client_name, c.phone AS client_phone
+                    b.driver_id, b.booking_fee,
+                    c.name AS client_name, c.phone AS client_phone,
+                    d.name AS driver_name
                 FROM bookings b
                 JOIN contacts c ON b.contact_id = c.id
+                LEFT JOIN drivers d ON b.driver_id = d.id
                 WHERE b.trip_date >= ? AND b.status != 'completed'
                 ORDER BY b.trip_date ASC, b.start_time ASC
                 LIMIT 100
@@ -149,7 +163,8 @@ function handleGetBookings()
                 'destination' => $destination,
                 'cost' => 'R' . number_format((float) $row['cost'], 2),
                 'client_name' => $row['client_name'],
-                'client_phone' => formatPhoneNumberForWhatsApp($row['client_phone'] ?? '')
+                'client_phone' => formatPhoneNumberForWhatsApp($row['client_phone'] ?? ''),
+                'driver_name' => $row['driver_name'] ?? null,
             ];
         }
 
@@ -211,6 +226,7 @@ function handleAddBooking()
 
         $flight_number = $_POST['flight_number'] ?? '';
         $description = $_POST['description'] ?? '';
+        $driver_id = intval($_POST['driver_id'] ?? 0) ?: null;
 
         // Validate
         if (empty($contact_id))
@@ -247,13 +263,23 @@ function handleAddBooking()
             }
         }
 
+        // Calculate booking fee if driver is allocated
+        $booking_fee = null;
+        if ($driver_id !== null) {
+            $pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
+            $fee = calculateBookingFee((float) $cost, $pct);
+            if ($fee > 0) {
+                $booking_fee = $fee;
+            }
+        }
+
         // Insert booking
         $stmt = $pdo->prepare("
             INSERT INTO bookings (
                 contact_id, trip_date, start_time, end_time,
                 original_pickup, original_destination, was_swapped, cost, payment_method,
-                flight_number, description
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                flight_number, description, driver_id, booking_fee
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -267,7 +293,9 @@ function handleAddBooking()
             $cost,
             $payment_method,
             $flight_number,
-            $description
+            $description,
+            $driver_id,
+            $booking_fee
         ]);
 
         $booking_id = $pdo->lastInsertId();
@@ -380,6 +408,7 @@ function handleUpdateBooking()
             $description_input = trim($_REQUEST['description'] ?? '');
             $payment_method = trim($_REQUEST['payment_method'] ?? 'cash');
             $swap_locations = isset($_REQUEST['swap_locations']);
+            $driver_id = intval($_REQUEST['driver_id'] ?? 0) ?: null;
 
             // Handle "Other" fields
             if ($pickup_location === 'other') {
@@ -402,6 +431,16 @@ function handleUpdateBooking()
 
             if (empty($original_pickup) || empty($original_destination) || $final_cost <= 0) {
                 throw new Exception('Invalid booking data');
+            }
+
+            // Recalculate booking fee
+            $booking_fee = null;
+            if ($driver_id !== null) {
+                $pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
+                $fee = calculateBookingFee($final_cost, $pct);
+                if ($fee > 0) {
+                    $booking_fee = $fee;
+                }
             }
 
             $start_datetime = new DateTime($trip_date . ' ' . $start_time, new DateTimeZone(TIME_ZONE));
@@ -429,6 +468,7 @@ function handleUpdateBooking()
                 contact_id = ?, trip_date = ?, start_time = ?, end_time = ?,
                 original_pickup = ?, original_destination = ?, was_swapped = ?,
                 cost = ?, flight_number = ?, description = ?, payment_method = ?,
+                driver_id = ?, booking_fee = ?,
                 last_confirmed_at = NULL,
                 updated_at = NOW()
             WHERE id = ?";
@@ -446,11 +486,20 @@ function handleUpdateBooking()
                 $flight_number,
                 $description_to_save,
                 $payment_method,
+                $driver_id,
+                $booking_fee,
                 $booking_id
             ]);
 
-            // Fetch updated booking
-            $stmt = $pdo->prepare("SELECT b.*, c.name AS client_name, c.phone AS client_phone FROM bookings b JOIN contacts c ON b.contact_id = c.id WHERE b.id = ?");
+            // Fetch updated booking (with driver info)
+            $stmt = $pdo->prepare("
+                SELECT b.*, c.name AS client_name, c.phone AS client_phone,
+                       d.name AS driver_name, d.phone AS driver_phone
+                FROM bookings b
+                JOIN contacts c ON b.contact_id = c.id
+                LEFT JOIN drivers d ON b.driver_id = d.id
+                WHERE b.id = ?
+            ");
             $stmt->execute([$booking_id]);
             $bookingDetails = $stmt->fetch();
 
@@ -920,6 +969,80 @@ function handleGetWhatsAppLog()
 
     } catch (PDOException $e) {
         logError('BOOKING_API', 'Failed to fetch WhatsApp log', ['error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
+// ========== DRIVERS ==========
+
+function handleGetDrivers()
+{
+    global $pdo;
+
+    try {
+        $stmt = $pdo->query("SELECT id, name, phone FROM drivers WHERE active = 1 ORDER BY name ASC");
+        $drivers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        jsonResponse(['success' => true, 'drivers' => $drivers]);
+    } catch (PDOException $e) {
+        logError('BOOKING_API', 'Failed to fetch drivers', ['error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
+// ========== REPORTS: MONTHLY BOOKINGS LIST ==========
+
+function handleMonthlyBookingsList()
+{
+    global $pdo;
+
+    $year  = $_GET['year']  ?? null;
+    $month = $_GET['month'] ?? null;
+
+    if (!$year || !$month || !checkdate((int) $month, 1, (int) $year)) {
+        jsonResponse(['success' => false, 'message' => 'Invalid date'], 400);
+        return;
+    }
+
+    try {
+        $startDate = (new DateTime(sprintf('%04d-%02d-01', (int) $year, (int) $month)))->format('Y-m-d');
+        $endDate   = (new DateTime(sprintf('%04d-%02d-01', (int) $year, (int) $month)))
+            ->modify('last day of this month')->format('Y-m-d');
+
+        $stmt = $pdo->prepare("
+            SELECT b.id, b.trip_date, b.start_time, b.original_pickup, b.original_destination,
+                   b.was_swapped, b.cost, b.booking_fee, b.payment_method,
+                   c.name AS client_name,
+                   d.name AS driver_name
+            FROM bookings b
+            JOIN contacts c ON b.contact_id = c.id
+            LEFT JOIN drivers d ON b.driver_id = d.id
+            WHERE b.trip_date BETWEEN ? AND ?
+            ORDER BY b.trip_date ASC, b.start_time ASC
+        ");
+        $stmt->execute([$startDate, $endDate]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $bookings = [];
+        foreach ($rows as $row) {
+            $pickup      = $row['was_swapped'] ? $row['original_destination'] : $row['original_pickup'];
+            $destination = $row['was_swapped'] ? $row['original_pickup']      : $row['original_destination'];
+            $bookings[] = [
+                'id'          => (int) $row['id'],
+                'trip_date'   => date('d/m/y', strtotime($row['trip_date'])),
+                'start_time'  => date('H:i', strtotime($row['start_time'])),
+                'client_name' => $row['client_name'],
+                'pickup'      => $pickup,
+                'destination' => $destination,
+                'cost'        => (float) $row['cost'],
+                'booking_fee' => $row['booking_fee'] !== null ? (float) $row['booking_fee'] : null,
+                'driver_name' => $row['driver_name'] ?? null,
+            ];
+        }
+
+        jsonResponse(['success' => true, 'bookings' => $bookings]);
+
+    } catch (PDOException $e) {
+        logError('BOOKING_REPORT', 'Monthly bookings list failed', ['error' => $e->getMessage()]);
         jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
     }
 }

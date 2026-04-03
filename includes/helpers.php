@@ -128,7 +128,8 @@ function buildWhatsAppUrl(string $phone, string $message): string
  * Used by: modules/Bookings/api/index.php (tomorrows_bookings, mark_confirmed)
  *
  * @param array $bookingDetails  Must contain: client_name, trip_date, start_time,
- *                               pickup_location, destination
+ *                               pickup_location, destination.
+ *                               Optional: driver_name, driver_phone
  */
 function createEveningConfirmationMessage(array $bookingDetails): string
 {
@@ -137,13 +138,23 @@ function createEveningConfirmationMessage(array $bookingDetails): string
     $forDate  = $start->format('d/m/y');
     $forTime  = $start->format('H:i');
 
+    $driverLine = '';
+    if (!empty($bookingDetails['driver_name'])) {
+        $driverLine = "\n🚗 Driver: " . $bookingDetails['driver_name'];
+        if (!empty($bookingDetails['driver_phone'])) {
+            $driverLine .= " | " . $bookingDetails['driver_phone'];
+        }
+        $driverLine .= "\n";
+    }
+
     return "Good evening " . $bookingDetails['client_name'] . "! 👋\n\n" .
            "Just confirming your booking for tomorrow:\n\n" .
            "📅 Date: " . $forDate . "\n" .
            "🕐 Pickup Time: " . $forTime . "\n" .
            "📍 From: " . $bookingDetails['pickup_location'] . "\n" .
-           "🎯 To: " . $bookingDetails['destination'] . "\n\n" .
-           "See you tomorrow! 🚗";
+           "🎯 To: " . $bookingDetails['destination'] . "\n" .
+           $driverLine .
+           "\nSee you tomorrow! 🚗";
 }
 
 /**
@@ -153,7 +164,8 @@ function createEveningConfirmationMessage(array $bookingDetails): string
  *
  * @param array $bookingDetails  Must contain: trip_date, start_time, client_name,
  *                               pickup_location, destination, cost, and optionally
- *                               flight_number, description, updated_at, date_created
+ *                               flight_number, description, updated_at, date_created,
+ *                               driver_name, driver_phone
  */
 function createWhatsAppMessage(array $bookingDetails): string
 {
@@ -169,6 +181,15 @@ function createWhatsAppMessage(array $bookingDetails): string
         ? "💰 Cost: R" . number_format($bookingDetails['cost'], 2) . "\n" : '';
     $notesInfo = !empty($bookingDetails['description'])
         ? "📝 Notes: " . $bookingDetails['description'] . "\n" : '';
+
+    $driverInfo = '';
+    if (!empty($bookingDetails['driver_name'])) {
+        $driverInfo = "🚗 Driver: " . $bookingDetails['driver_name'];
+        if (!empty($bookingDetails['driver_phone'])) {
+            $driverInfo .= " | " . $bookingDetails['driver_phone'];
+        }
+        $driverInfo .= "\n";
+    }
 
     $isUpdate = !empty($bookingDetails['updated_at']);
     $title    = $isUpdate ? "*BOOKING UPDATED AND CONFIRMED* ✅\n\n" : "*BOOKING CONFIRMED* ✅\n\n";
@@ -191,6 +212,7 @@ function createWhatsAppMessage(array $bookingDetails): string
            $costInfo .
            $flightInfo .
            $notesInfo .
+           $driverInfo .
            $timestampInfo .
            "\n🚗 Looking forward to being of service to you. 👍\n\n" .
            "Regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
@@ -206,6 +228,7 @@ function createWhatsAppMessage(array $bookingDetails): string
 const SYSTEM_VARIABLES = [
     'car_rental_price'      => ['label' => 'Car Rental Price (R)',       'type' => 'number', 'default' => 2600],
     'financial_months_back' => ['label' => 'Financial History (months)', 'type' => 'number', 'default' => 6],
+    'apex_booking_fee_pct'  => ['label' => 'Apex Booking Fee (%)',       'type' => 'number', 'default' => 0],
 ];
 
 /**
@@ -223,6 +246,100 @@ function getSystemVariable(PDO $pdo, string $name): mixed
     $stmt->execute([$name]);
     $result = $stmt->fetchColumn();
     return ($result !== false) ? $result : (SYSTEM_VARIABLES[$name]['default'] ?? null);
+}
+
+/**
+ * Ensure the drivers table and driver-related booking columns exist.
+ * Safe to call on every request; uses IF NOT EXISTS guards.
+ * Used by: modules/Bookings/api/index.php, modules/Bookings/add.php,
+ *          modules/Bookings/edit.php, modules/Bookings/view.php,
+ *          maintenance/index.php
+ */
+function ensureDriverSchema(PDO $pdo): void
+{
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS drivers (
+                id         INT AUTO_INCREMENT PRIMARY KEY,
+                name       VARCHAR(255) NOT NULL,
+                phone      VARCHAR(50)  NOT NULL DEFAULT '',
+                active     TINYINT(1)   NOT NULL DEFAULT 1,
+                created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        ");
+    } catch (PDOException $e) {
+        // Table already exists — ignore
+    }
+    try {
+        $pdo->exec("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS driver_id INT NULL DEFAULT NULL");
+    } catch (PDOException $e) {
+        // Column already exists — ignore
+    }
+    try {
+        $pdo->exec("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_fee DECIMAL(10,2) NULL DEFAULT NULL");
+    } catch (PDOException $e) {
+        // Column already exists — ignore
+    }
+}
+
+/**
+ * Calculate the Apex booking fee from a trip cost and fee percentage.
+ * Returns 0.0 if cost or pct is zero/negative.
+ * Used by: modules/Bookings/api/index.php
+ */
+function calculateBookingFee(float $cost, float $pct): float
+{
+    if ($cost <= 0 || $pct <= 0) {
+        return 0.0;
+    }
+    return round($cost * $pct / 100, 2);
+}
+
+/**
+ * Build the WhatsApp message to send to an allocated driver about a booking.
+ * Used by: modules/Bookings/view.php
+ *
+ * @param array $bookingDetails  Must contain: trip_date, start_time, client_name,
+ *                               pickup_location, destination, cost, payment_method,
+ *                               driver_name, and optionally booking_fee
+ */
+function createDriverBookingMessage(array $bookingDetails): string
+{
+    $timezone = new DateTimeZone(TIME_ZONE);
+    $start    = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time'], $timezone);
+    $forDate  = $start->format('d/m/y');
+    $forTime  = $start->format('H:i');
+
+    $driverName = $bookingDetails['driver_name'] ?? 'Driver';
+    $cost       = (float) ($bookingDetails['cost'] ?? 0);
+    $isEft      = ($bookingDetails['payment_method'] === 'eft');
+    $bookingFee = isset($bookingDetails['booking_fee']) && $bookingDetails['booking_fee'] !== null
+        ? (float) $bookingDetails['booking_fee']
+        : null;
+
+    $msg  = "Good day " . $driverName . "! 🚗\n\n";
+    $msg .= "You have a booking allocated to you:\n\n";
+    $msg .= "📅 Date: " . $forDate . " at " . $forTime . "\n";
+    $msg .= "👤 Client: " . ($bookingDetails['client_name'] ?? '') . "\n";
+    $msg .= "📍 Pickup: " . ($bookingDetails['pickup_location'] ?? '') . "\n";
+    $msg .= "🎯 Destination: " . ($bookingDetails['destination'] ?? '') . "\n";
+    $msg .= "💰 Trip Cost: R" . number_format($cost, 2) . "\n";
+
+    if ($bookingFee !== null && $bookingFee > 0) {
+        $msg .= "💼 Apex Booking Fee: R" . number_format($bookingFee, 2) . "\n";
+        if ($isEft) {
+            $msg .= "\n📲 This is an EFT booking. Apex will pay you after deducting the booking fee.\n";
+        } else {
+            $msg .= "\n💵 This is a cash booking. Please pay Apex the booking fee of R" . number_format($bookingFee, 2) . ".\n";
+        }
+    } elseif ($isEft) {
+        $msg .= "\n📲 This is an EFT booking.\n";
+    } else {
+        $msg .= "\n💵 This is a cash booking.\n";
+    }
+
+    $msg .= "\nThank you! 🙏";
+    return $msg;
 }
 
 

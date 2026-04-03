@@ -8,7 +8,7 @@
  */
 
 /**
- * Fetch a full booking record by ID (with contact info)
+ * Fetch a full booking record by ID (with contact info and allocated driver)
  */
 function getBookingById(PDO $pdo, int $id): ?array
 {
@@ -20,9 +20,12 @@ function getBookingById(PDO $pdo, int $id): ?array
         SELECT 
             b.*, 
             c.name AS client_name,
-            c.phone AS client_phone
+            c.phone AS client_phone,
+            d.name AS driver_name,
+            d.phone AS driver_phone
         FROM bookings b
         JOIN contacts c ON b.contact_id = c.id
+        LEFT JOIN drivers d ON b.driver_id = d.id
         WHERE b.id = ?
         LIMIT 1
     ";
@@ -223,6 +226,16 @@ function createEventDescription(array $bookingData): string
     }
     if (!empty($bookingData['flight_number'])) {
         $description .= "✈️ Flight: " . $bookingData['flight_number'] . "\n";
+    }
+    if (!empty($bookingData['driver_name'])) {
+        $description .= "🚗 Driver: " . $bookingData['driver_name'];
+        if (!empty($bookingData['driver_phone'])) {
+            $description .= " | " . $bookingData['driver_phone'];
+        }
+        $description .= "\n";
+        if (!empty($bookingData['booking_fee'])) {
+            $description .= "💼 Booking Fee: R" . number_format((float) $bookingData['booking_fee'], 2) . "\n";
+        }
     }
     if (!empty($bookingData['description'])) {
         $description .= "\n📝 Notes: " . $bookingData['description'] . "\n";
