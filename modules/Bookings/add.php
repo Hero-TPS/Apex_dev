@@ -14,8 +14,6 @@ $breadcrumb = buildBreadcrumb([
 ]);
 include ROOT_DIR . '/includes/header.php';
 
-ensureDriverSchema($pdo);
-
 // Fetch data
 $contacts = fetchData($pdo, 'contacts', 'name ASC');
 $destinations = fetchData($pdo, 'destinations', 'name ASC');

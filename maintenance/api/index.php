@@ -8,8 +8,6 @@ $response = ['success' => false, 'message' => 'Invalid action.'];
 $action = $_GET['action'] ?? '';
 
 try {
-    ensureDriverSchema($pdo);
-
     if ($action === 'update_lists' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $messages = [];
 
@@ -205,7 +203,6 @@ try {
         ]);
 
     } elseif ($action === 'mark_overdue_complete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        // ✅ NEW: Mark all past non-completed bookings as completed
         $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
 
         $stmt = $pdo->prepare("

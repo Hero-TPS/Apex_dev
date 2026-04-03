@@ -14,8 +14,6 @@ $breadcrumb = buildBreadcrumb([
 ]);
 include ROOT_DIR . '/includes/header.php';
 
-ensureDriverSchema($pdo);
-
 $booking = null;
 $error_message = '';
 
