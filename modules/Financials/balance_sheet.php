@@ -88,7 +88,7 @@ include ROOT_DIR . '/includes/header.php';
 
         // === BOOKINGS ===
         $stmt = $pdo->prepare(
-            "SELECT b.trip_date, b.start_time, b.cost, b.payment_method
+            "SELECT b.trip_date, b.start_time, b.cost, b.payment_method, b.driver_id, b.booking_fee
              FROM bookings b
              WHERE b.trip_date BETWEEN ? AND ?
              ORDER BY b.trip_date ASC, b.start_time ASC"
@@ -304,14 +304,18 @@ include ROOT_DIR . '/includes/header.php';
             </thead>
             <tbody>
                 <?php foreach ($bookings as $b):
-                    $method = strtoupper($b['payment_method'] ?? 'cash');
-                    $desc   = 'Booked trip';
+                    $method  = strtoupper($b['payment_method'] ?? 'cash');
+                    $hasDriver = !empty($b['driver_id']);
+                    $desc    = $hasDriver ? 'Driver booking fee' : 'Booked trip';
+                    $amount  = $hasDriver && isset($b['booking_fee']) && $b['booking_fee'] !== null
+                                   ? (float) $b['booking_fee']
+                                   : (float) $b['cost'];
                 ?>
                 <tr>
                     <td><?= htmlspecialchars(date('d M Y', strtotime($b['trip_date']))) ?></td>
                     <td><?= htmlspecialchars($desc) ?></td>
                     <td class="bs-method <?= $method === 'EFT' ? 'bs-eft' : 'bs-cash' ?>"><?= $method ?></td>
-                    <td class="bs-amt"><?= number_format((float) $b['cost'], 2) ?></td>
+                    <td class="bs-amt"><?= number_format($amount, 2) ?></td>
                 </tr>
                 <?php endforeach; ?>
 

@@ -140,14 +140,13 @@ function createEveningConfirmationMessage(array $bookingDetails): string
 
     $driverLine = '';
     if (!empty($bookingDetails['driver_name'])) {
-        $driverLine = "\n🚗 Driver: " . $bookingDetails['driver_name'];
+        $driverLine = "\n🚗 Your driver will be: " . $bookingDetails['driver_name'] . "\n";
         if (!empty($bookingDetails['driver_phone'])) {
-            $driverLine .= " | " . $bookingDetails['driver_phone'];
+            $driverLine .= "📱 Driver phone: " . $bookingDetails['driver_phone'] . "\n";
         }
-        $driverLine .= "\n";
     }
 
-    return "Good evening " . $bookingDetails['client_name'] . "! 👋\n\n" .
+    return "Good day " . $bookingDetails['client_name'] . "! 👋\n\n" .
            "Just confirming your booking for tomorrow:\n\n" .
            "📅 Date: " . $forDate . "\n" .
            "🕐 Pickup Time: " . $forTime . "\n" .
@@ -184,11 +183,10 @@ function createWhatsAppMessage(array $bookingDetails): string
 
     $driverInfo = '';
     if (!empty($bookingDetails['driver_name'])) {
-        $driverInfo = "🚗 Driver: " . $bookingDetails['driver_name'];
+        $driverInfo = "🚗 Your driver will be: " . $bookingDetails['driver_name'] . "\n";
         if (!empty($bookingDetails['driver_phone'])) {
-            $driverInfo .= " | " . $bookingDetails['driver_phone'];
+            $driverInfo .= "📱 Driver phone: " . $bookingDetails['driver_phone'] . "\n";
         }
-        $driverInfo .= "\n";
     }
 
     $isUpdate = !empty($bookingDetails['updated_at']);
@@ -287,6 +285,9 @@ function createDriverBookingMessage(array $bookingDetails): string
     $msg .= "You have a booking allocated to you:\n\n";
     $msg .= "📅 Date: " . $forDate . " at " . $forTime . "\n";
     $msg .= "👤 Client: " . ($bookingDetails['client_name'] ?? '') . "\n";
+    if (!empty($bookingDetails['client_phone'])) {
+        $msg .= "📱 Client phone: " . $bookingDetails['client_phone'] . "\n";
+    }
     $msg .= "📍 Pickup: " . ($bookingDetails['pickup_location'] ?? '') . "\n";
     $msg .= "🎯 Destination: " . ($bookingDetails['destination'] ?? '') . "\n";
     $msg .= "💰 Trip Cost: R" . number_format($cost, 2) . "\n";
