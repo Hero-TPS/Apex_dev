@@ -11,7 +11,7 @@ Run in order. Check off each one after executing.
 > Extracted from `ensureDriverSchema()` in `includes/helpers.php` (function removed — DB changes must not run inline on every request).
 
 - [x] Done on dev
-- [ ] Done on live
+- [x] Done on live
 
 ```sql
 CREATE TABLE IF NOT EXISTS drivers (
