@@ -160,6 +160,32 @@ if (isset($_GET['id'])) {
         <?php endif; ?>
     </div>
 
+    <!-- Manage Driver -->
+    <div class="menu-section" style="margin-top:20px;">
+        <h3 class="menu-toggle" data-target="manage-driver-section" style="cursor:pointer;">🚗 Manage Driver</h3>
+        <div id="manage-driver-section" style="display:none; padding:10px 0;">
+            <div id="manage-driver-content">
+                <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-bottom:10px;">
+                    <div>
+                        <label for="driver-select" style="display:block; font-weight:bold; margin-bottom:4px;">Driver</label>
+                        <select id="driver-select" style="min-width:180px;">
+                            <option value="">Loading drivers…</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="booking-fee-input" style="display:block; font-weight:bold; margin-bottom:4px;">Booking Fee (R)</label>
+                        <input type="number" id="booking-fee-input" step="0.01" min="0"
+                            value="<?= number_format((float)($booking['booking_fee'] ?? 0), 2) ?>"
+                            style="width:110px;">
+                    </div>
+                    <button id="assign-driver-btn" class="page-action-btn save">✅ Assign Driver</button>
+                    <button id="remove-driver-btn" class="page-action-btn delete">❌ Remove Driver</button>
+                </div>
+                <div id="manage-driver-result"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Action Buttons -->
     <div class="invoice-actions">
         <?php if ($showStatusButton): ?>
@@ -319,6 +345,103 @@ if (isset($_GET['id'])) {
                     },
                     complete: function () {
                         btn.prop('disabled', false).text('💾 Save');
+                    }
+                });
+            });
+
+            // Manage Driver section toggle + load drivers
+            var driversLoaded = false;
+            $('.menu-toggle[data-target="manage-driver-section"]').on('click', function () {
+                var section = $('#manage-driver-section');
+                if (section.is(':hidden')) {
+                    section.slideDown(200);
+                    if (!driversLoaded) {
+                        driversLoaded = true;
+                        $.ajax({
+                            type: 'GET',
+                            url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                            data: { action: 'get_drivers' },
+                            dataType: 'json',
+                            success: function (res) {
+                                var sel = $('#driver-select');
+                                sel.empty().append('<option value="">— No driver —</option>');
+                                if (res.success && res.drivers.length > 0) {
+                                    $.each(res.drivers, function (i, d) {
+                                        var selected = (d.id == <?= (int)($booking['driver_id'] ?? 0) ?>) ? ' selected' : '';
+                                        sel.append('<option value="' + d.id + '"' + selected + '>' + escapeHtml(d.name) + '</option>');
+                                    });
+                                }
+                                // Auto-calculate booking fee when driver selection changes
+                                sel.on('change', autoCalcFee);
+                            },
+                            error: function () {
+                                $('#driver-select').html('<option value="">Failed to load drivers</option>');
+                            }
+                        });
+                    }
+                } else {
+                    section.slideUp(200);
+                }
+            });
+
+            var apexFeePct = <?= (float) getSystemVariable($pdo, 'apex_booking_fee_pct') ?>;
+            var bookingCost = <?= (float) $booking['cost'] ?>;
+
+            function autoCalcFee() {
+                if (apexFeePct > 0 && bookingCost > 0 && $('#driver-select').val()) {
+                    var fee = Math.round(bookingCost * apexFeePct / 100 * 100) / 100;
+                    $('#booking-fee-input').val(fee.toFixed(2));
+                } else if (!$('#driver-select').val()) {
+                    $('#booking-fee-input').val('0.00');
+                }
+            }
+
+            $('#assign-driver-btn').on('click', function () {
+                var driverId = $('#driver-select').val();
+                var fee = parseFloat($('#booking-fee-input').val()) || 0;
+                var resultArea = $('#manage-driver-result');
+
+                if (!driverId) {
+                    resultArea.html('<span class="error-message" style="font-size:0.9em;">Please select a driver first.</span>');
+                    return;
+                }
+
+                $.ajax({
+                    type: 'POST',
+                    url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                    data: { action: 'assign_driver', booking_id: bookingId, driver_id: driverId, booking_fee: fee },
+                    dataType: 'json',
+                    success: function (res) {
+                        if (res.success) {
+                            resultArea.html('<span class="success-message" style="font-size:0.9em;">✓ Driver assigned.</span>');
+                            setTimeout(function () { location.reload(); }, 1200);
+                        } else {
+                            resultArea.html('<span class="error-message" style="font-size:0.9em;">✗ ' + escapeHtml(res.message) + '</span>');
+                        }
+                    },
+                    error: function () {
+                        resultArea.html('<span class="error-message" style="font-size:0.9em;">✗ Request failed.</span>');
+                    }
+                });
+            });
+
+            $('#remove-driver-btn').on('click', function () {
+                var resultArea = $('#manage-driver-result');
+                $.ajax({
+                    type: 'POST',
+                    url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                    data: { action: 'assign_driver', booking_id: bookingId, driver_id: '', booking_fee: 0 },
+                    dataType: 'json',
+                    success: function (res) {
+                        if (res.success) {
+                            resultArea.html('<span class="success-message" style="font-size:0.9em;">✓ Driver removed.</span>');
+                            setTimeout(function () { location.reload(); }, 1200);
+                        } else {
+                            resultArea.html('<span class="error-message" style="font-size:0.9em;">✗ ' + escapeHtml(res.message) + '</span>');
+                        }
+                    },
+                    error: function () {
+                        resultArea.html('<span class="error-message" style="font-size:0.9em;">✗ Request failed.</span>');
                     }
                 });
             });

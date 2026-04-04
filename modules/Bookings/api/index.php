@@ -68,6 +68,9 @@ try {
         case 'get_drivers':
             handleGetDrivers();
             break;
+        case 'assign_driver':
+            handleAssignDriver();
+            break;
         case 'monthly_bookings_list':
             handleMonthlyBookingsList();
             break;
@@ -984,6 +987,48 @@ function handleGetDrivers()
         jsonResponse(['success' => true, 'drivers' => $drivers]);
     } catch (PDOException $e) {
         logError('BOOKING_API', 'Failed to fetch drivers', ['error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
+function handleAssignDriver()
+{
+    global $pdo;
+
+    $bookingId   = intval($_POST['booking_id'] ?? 0);
+    $driverIdRaw = trim($_POST['driver_id'] ?? '');
+    $driverIdInt = intval($driverIdRaw);
+    $driverId    = ($driverIdRaw !== '' && $driverIdInt > 0) ? $driverIdInt : null;
+    $bookingFee  = ($driverId !== null) ? (float) ($_POST['booking_fee'] ?? 0) : null;
+
+    if ($bookingId <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid booking ID.'], 400);
+        return;
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            "UPDATE bookings SET driver_id = ?, booking_fee = ? WHERE id = ?"
+        );
+        $stmt->execute([$driverId, $bookingFee, $bookingId]);
+
+        if ($stmt->rowCount() === 0) {
+            jsonResponse(['success' => false, 'message' => 'Booking not found.'], 404);
+            return;
+        }
+
+        logDebug('BOOKING_API', 'Driver assigned to booking', [
+            'booking_id' => $bookingId,
+            'driver_id'  => $driverId,
+            'fee'        => $bookingFee,
+        ]);
+        jsonResponse(['success' => true, 'message' => $driverId ? 'Driver assigned.' : 'Driver removed.']);
+
+    } catch (PDOException $e) {
+        logError('BOOKING_API', 'Failed to assign driver', [
+            'error'      => $e->getMessage(),
+            'booking_id' => $bookingId,
+        ]);
         jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
     }
 }

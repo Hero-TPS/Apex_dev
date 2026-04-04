@@ -123,6 +123,7 @@ function getWeeklyMetrics(PDO $pdo, int $startUnix, int $endUnix): array
         'uber_trips'            => $uberTrips,
         'uber_additional_costs' => $uberAdditionalCosts,
         'fuel_cost'             => $fuelCost,
+        'fuel_liters'           => $fuelLiters,
         'car_rental'            => $carRental,
         'total_expenses'        => $totalExpenses,
         'booking_trips'         => $bookingTrips,
@@ -230,6 +231,7 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
         'uber_trips'            => $uberTrips,
         'uber_additional_costs' => $uberAdditionalCosts,
         'fuel_cost'             => $fuelCost,
+        'fuel_liters'           => $fuelLiters,
         'car_rental'            => $carRental,
         'total_expenses'        => $totalExpenses,
         'booking_trips'         => $bookingTrips,
@@ -279,9 +281,10 @@ function getWeeklyBreakdownForMonth(PDO $pdo, int $year, int $month): array
         $endUnix   = $sunday->getTimestamp();
 
         $weekData               = getWeeklyMetrics($pdo, $startUnix, $endUnix);
-        $weekData['monday']     = $startUnix;
-        $weekData['sunday']     = $endUnix;
-        $weekData['in_progress'] = ($actualSunday > $today);
+        $weekData['monday']        = $startUnix;
+        $weekData['sunday']        = $endUnix;
+        $weekData['display_sunday'] = $actualSunday->getTimestamp();
+        $weekData['in_progress']   = ($actualSunday > $today);
         $weeks[]                = $weekData;
 
         $current->modify('+1 week');
