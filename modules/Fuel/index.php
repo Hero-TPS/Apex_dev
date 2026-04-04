@@ -85,6 +85,7 @@ include ROOT_DIR . '/includes/header.php';
 
             <div class="metric-row"><span>Fill-ups:</span>    <strong><?= (int) $row['fill_count'] ?></strong></div>
             <div class="metric-row"><span>Total km:</span>    <strong><?= number_format($totalKm, 1) ?> km</strong></div>
+            <div class="metric-row"><span>Total Litres:</span><strong><?= number_format($totalLiters, 2) ?> l</strong></div>
             <div class="metric-row"><span>Total Cost:</span>  <strong>R<?= number_format($totalCost, 2) ?></strong></div>
             <div class="metric-row"><span>Cost / km:</span>   <strong>R<?= number_format($costPerKm, 2) ?></strong></div>
             <div class="metric-row"><span>Efficiency:</span>  <strong><?= number_format($kmPerL, 2) ?> km/l (<?= number_format($lPer100Km, 2) ?> l/100km)</strong></div>
@@ -125,6 +126,7 @@ include ROOT_DIR . '/includes/header.php';
     function buildWeekBlock(week) {
         const totalKm   = parseFloat(week.total_km   || 0);
         const totalCost = parseFloat(week.total_cost || 0);
+        const totalLiters = parseFloat(week.total_liters || 0);
         const costPerKm = parseFloat(week.cost_per_km || 0);
         const kmPerL    = parseFloat(week.km_per_l    || 0);
         const lPer100Km = parseFloat(week.l_per_100km || 0);
@@ -139,6 +141,7 @@ include ROOT_DIR . '/includes/header.php';
                 </div>
                 <div class="metric-row"><span>Fill-ups:</span>   <strong>${week.fill_count}</strong></div>
                 <div class="metric-row"><span>Total km:</span>   <strong>${totalKm.toFixed(1)} km</strong></div>
+                <div class="metric-row"><span>Total Litres:</span><strong>${totalLiters.toFixed(2)} l</strong></div>
                 <div class="metric-row"><span>Total Cost:</span> <strong>R${totalCost.toFixed(2)}</strong></div>
                 <div class="metric-row"><span>Cost / km:</span>  <strong>R${costPerKm.toFixed(2)}</strong></div>
                 <div class="metric-row"><span>Efficiency:</span> <strong>${kmPerL.toFixed(2)} km/l (${lPer100Km.toFixed(2)} l/100km)</strong></div>

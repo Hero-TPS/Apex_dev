@@ -118,10 +118,9 @@ include ROOT_DIR . '/includes/header.php';
                     var badge = pending.length > 0 ? ' (' + pending.length + ')' : '';
                     $('#confirmations-badge').text(badge);
 
-                  //  if (res.bookings.length === 0 || pending.length === 0) {
-                        $('#confirmations-section').slideUp(200);
-                    //    return;
-                  //  }
+                    if (pending.length > 0) {
+                        $('#confirmations-section').slideDown(200);
+                    }
 
                     var html = '';
                     $.each(pending, function (i, b) {
@@ -153,9 +152,6 @@ include ROOT_DIR . '/includes/header.php';
         }
 
         loadTomorrowsConfirmations();
-
-        // Open the confirmations section by default if there are pending items
-        $('#confirmations-section').slideDown(200);
 
         // Delegated click for Confirm & Send buttons (avoids inline onclick with message content)
         $('#confirmations-list').on('click', '.confirm-send-btn', function (e) {

@@ -76,6 +76,7 @@ $currentWeekSunday->setTime(23, 59, 59);
 
             <!-- EXPENSES -->
             <div class="metric-row"><span>Fuel Cost:</span>            <span>R<?= number_format($metrics['fuel_cost'],             2) ?></span></div>
+            <div class="metric-row"><span>Fuel Litres:</span>          <span><?= number_format($metrics['fuel_liters'],            2) ?> l</span></div>
             <div class="metric-row"><span>Car Rental:</span>           <span>R<?= number_format($metrics['car_rental'],            2) ?></span></div>
             <div class="metric-row"><span>Vehicle Costs:</span>        <span>R<?= number_format($metrics['uber_additional_costs'], 2) ?></span></div>
             <div class="metric-row"><span>Total Expenses:</span>       <strong>R<?= number_format($metrics['total_expenses'],       2) ?></strong></div>
@@ -114,7 +115,7 @@ $currentWeekSunday->setTime(23, 59, 59);
 
     function buildWeekBlock(week) {
         const start       = new Date(week.monday * 1000);
-        const end         = new Date(week.sunday * 1000);
+        const end         = new Date((week.display_sunday ?? week.sunday) * 1000);
         const profitClass = parseFloat(week.net_profit) >= 0 ? 'profit' : 'loss';
         const inProgressBadge = week.in_progress
             ? '<span class="week-in-progress">⏳ In Progress</span>'
@@ -135,6 +136,7 @@ $currentWeekSunday->setTime(23, 59, 59);
                 <div class="metric-row"><span>Uber Payout:</span>        <strong>${fmtR(week.uber_payout)}</strong></div>
 
                 <div class="metric-row"><span>Fuel Cost:</span>            <span>${fmtR(week.fuel_cost)}</span></div>
+                <div class="metric-row"><span>Fuel Litres:</span>          <span>${parseFloat(week.fuel_liters || 0).toFixed(2)} l</span></div>
                 <div class="metric-row"><span>Car Rental:</span>           <span>${fmtR(week.car_rental)}</span></div>
                 <div class="metric-row"><span>Vehicle Costs:</span>        <span>${fmtR(week.uber_additional_costs)}</span></div>
                 <div class="metric-row"><span>Total Expenses:</span>       <strong>${fmtR(week.total_expenses)}</strong></div>
