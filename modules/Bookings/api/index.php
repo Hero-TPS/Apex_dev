@@ -24,7 +24,6 @@ if (!$action) {
 }
 
 try {
-    ensureDriverSchema($pdo);
 
     switch ($action) {
         case 'get':
