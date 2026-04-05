@@ -363,15 +363,12 @@ function handleWeeklyFuelByMonth()
         while ($current <= $lastDay) {
             $monday = clone $current;
             $monday->setTime(0, 0, 0);
+
+            // Use the real Mon–Sun range — no month-end cap — so the label and
+            // query always cover the full billing week (e.g. 30 Mar – 05 Apr).
             $sunday = clone $monday;
             $sunday->modify('+6 days');
             $sunday->setTime(23, 59, 59);
-
-            // Cap to last day of month so the last week never bleeds into next month
-            if ($sunday > $lastDay) {
-                $sunday = clone $lastDay;
-                $sunday->setTime(23, 59, 59);
-            }
 
             $startUnix = $monday->getTimestamp();
             $endUnix   = $sunday->getTimestamp();
