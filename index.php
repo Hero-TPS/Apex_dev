@@ -126,9 +126,8 @@ include ROOT_DIR . '/includes/header.php';
                     $.each(pending, function (i, b) {
                         var time = b.start_time ? b.start_time.substr(0, 5) : '';
                         var cost = 'R' + parseFloat(b.cost).toFixed(2);
-                        html += '<div class="confirmation-row" id="conf-row-' + b.id + '" style="' +
-                            'background:#fff; border:1px solid #e0e0e0; border-radius:6px; ' +
-                            'padding:10px 12px; margin-bottom:8px;" ' +
+                        var viewUrl = '<?= BASE_URL ?>/modules/Bookings/view.php?id=' + b.id;
+                        html += '<div class="confirmation-row" id="conf-row-' + b.id + '" ' +
                             'data-booking-id="' + b.id + '" ' +
                             'data-wa-url="' + escapeHtmlAttr(b.whatsapp_url) + '" ' +
                             'data-message="' + escapeHtmlAttr(b.message_content) + '">' +
@@ -137,9 +136,9 @@ include ROOT_DIR . '/includes/header.php';
                             ' &mdash; ' + escapeHtml(b.pickup_location) + ' → ' + escapeHtml(b.destination) +
                             ' &mdash; ' + escapeHtml(cost) +
                             '<br>' +
-                            '<a href="#" target="_blank" ' +
-                            '   class="page-action-btn whatsapp confirm-send-btn" style="margin-top:6px; display:inline-block;">' +
+                            '<a href="#" class="page-action-btn whatsapp confirm-send-btn">' +
                             '💬 Confirm &amp; Send</a>' +
+                            ' <a href="' + viewUrl + '" class="page-action-btn view">📋 View Booking</a>' +
                             '</div>';
                     });
                     $('#confirmations-list').html(html);
