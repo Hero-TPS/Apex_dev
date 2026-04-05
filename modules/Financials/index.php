@@ -5,6 +5,7 @@ require_once ROOT_DIR . '/includes/helpers.php';
 require_once ROOT_DIR . '/modules/Financials/helper.php';
 
 $page_title    = 'Financial Summary';
+$page_subtitle = 'Financial Summary';
 $show_breadcrumb = true;
 $breadcrumb    = buildBreadcrumb([['label' => 'Financials']]);
 
