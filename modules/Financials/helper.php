@@ -193,9 +193,11 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
     $uberAdditionalCosts = (float) $stmt->fetchColumn();
 
     // === FUEL: sum across billing weeks whose Monday falls in this month.
-    //     Each week's Sunday is capped to the last day of the month so that
-    //     logs dated in the next calendar month (tail of a 5-week month's
-    //     last week) are counted here and not double-counted in the next month.
+    //     The full Mon–Sun range is used for each week (no month-end cap) so
+    //     that logs dated in the next calendar month but belonging to a billing
+    //     week that started this month are correctly counted here.  There is no
+    //     double-counting risk because the next month's billing weeks start on
+    //     the Monday after the last Sunday of this month's last week.
     $fuelCost    = 0.0;
     $totalTripKm = 0.0;
     $fuelLiters  = 0.0;
@@ -213,12 +215,6 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
         $wSunday = clone $wMonday;
         $wSunday->modify('+6 days');
         $wSunday->setTime(23, 59, 59);
-
-        // Cap to last day of month so the last week never bleeds into next month
-        if ($wSunday > $fuelLastDay) {
-            $wSunday = clone $fuelLastDay;
-            $wSunday->setTime(23, 59, 59);
-        }
 
         $stmt = $pdo->prepare(
             "SELECT COALESCE(SUM(total_cost), 0) AS cost, COALESCE(SUM(trip_km), 0) AS km,
@@ -296,24 +292,22 @@ function getWeeklyBreakdownForMonth(PDO $pdo, int $year, int $month): array
         $monday = clone $current;
         $monday->setTime(0, 0, 0);
 
-        $actualSunday = clone $monday;
-        $actualSunday->modify('+6 days');
-
-        $sunday = clone $actualSunday;
-        if ($sunday > $lastDay) {
-            $sunday = clone $lastDay;
-        }
+        // Use the full billing week (Mon–Sun) — no month-end cap — so that
+        // metrics cover all days that belong to this week, including any tail
+        // days that fall in the next calendar month.
+        $sunday = clone $monday;
+        $sunday->modify('+6 days');
         $sunday->setTime(23, 59, 59);
 
         $startUnix = $monday->getTimestamp();
         $endUnix   = $sunday->getTimestamp();
 
-        $weekData               = getWeeklyMetrics($pdo, $startUnix, $endUnix);
-        $weekData['monday']        = $startUnix;
-        $weekData['sunday']        = $endUnix;
-        $weekData['display_sunday'] = $actualSunday->getTimestamp();
-        $weekData['in_progress']   = ($actualSunday > $today);
-        $weeks[]                = $weekData;
+        $weekData                   = getWeeklyMetrics($pdo, $startUnix, $endUnix);
+        $weekData['monday']         = $startUnix;
+        $weekData['sunday']         = $endUnix;
+        $weekData['display_sunday'] = $endUnix;
+        $weekData['in_progress']    = ($sunday > $today);
+        $weeks[]                    = $weekData;
 
         $current->modify('+1 week');
     }

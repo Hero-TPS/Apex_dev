@@ -53,9 +53,9 @@ include ROOT_DIR . '/includes/header.php';
         $monthEnd->modify('last day of this month');
 
         // === FUEL: sum across billing weeks whose Monday falls in this month.
-        //     Each week's Sunday is capped to the last day of the month so that
-        //     logs dated in the next calendar month (tail of a 5-week month's
-        //     last week) are counted here and not double-counted in the next month.
+        //     The full Mon–Sun range is used for each week (no month-end cap) so
+        //     that logs dated in the next calendar month but belonging to a billing
+        //     week that started this month are correctly counted here.
         $totalKm     = 0.0;
         $totalCost   = 0.0;
         $totalLiters = 0.0;
@@ -73,12 +73,6 @@ include ROOT_DIR . '/includes/header.php';
             $wSunday = clone $wMonday;
             $wSunday->modify('+6 days');
             $wSunday->setTime(23, 59, 59);
-
-            // Cap to last day of month so the last week never bleeds into next month
-            if ($wSunday > $monthEnd) {
-                $wSunday = clone $monthEnd;
-                $wSunday->setTime(23, 59, 59);
-            }
 
             $stmt = $pdo->prepare(
                 "SELECT COALESCE(COUNT(*), 0) AS fill_count,
