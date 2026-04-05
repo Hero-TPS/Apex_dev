@@ -263,19 +263,20 @@ function handleWeekly()
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $data = array_map(function ($row) {
-            $start  = new DateTime($row['week_start']);
-            $end    = new DateTime($row['week_end']);
-            $wKm    = (float) $row['total_km'];
-            $wCost  = (float) $row['total_cost'];
+            $start   = new DateTime($row['week_start']);
+            $end     = new DateTime($row['week_end']);
+            $wKm     = (float) $row['total_km'];
+            $wCost   = (float) $row['total_cost'];
             $wLiters = (float) ($row['total_liters'] ?? 0);
             return [
-                'week_label'  => $start->format('d M') . ' – ' . $end->format('d M Y'),
-                'fill_count'  => (int) $row['fill_count'],
-                'total_km'    => $wKm,
-                'total_cost'  => $wCost,
-                'cost_per_km' => ($wKm     > 0) ? ($wCost   / $wKm)        : 0.0,
-                'km_per_l'    => ($wLiters > 0) ? ($wKm     / $wLiters)    : 0.0,
-                'l_per_100km' => ($wKm     > 0) ? ($wLiters / $wKm * 100)  : 0.0,
+                'week_label'   => $start->format('d M') . ' – ' . $end->format('d M Y'),
+                'fill_count'   => (int) $row['fill_count'],
+                'total_km'     => $wKm,
+                'total_cost'   => $wCost,
+                'total_liters' => $wLiters,
+                'cost_per_km'  => ($wKm     > 0) ? ($wCost   / $wKm)       : 0.0,
+                'km_per_l'     => ($wLiters > 0) ? ($wKm     / $wLiters)   : 0.0,
+                'l_per_100km'  => ($wKm     > 0) ? ($wLiters / $wKm * 100) : 0.0,
             ];
         }, $rows);
 
@@ -312,17 +313,18 @@ function handleMonthly()
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $data = array_map(function ($row) {
-            $mKm    = (float) $row['total_km'];
-            $mCost  = (float) $row['total_cost'];
+            $mKm     = (float) $row['total_km'];
+            $mCost   = (float) $row['total_cost'];
             $mLiters = (float) ($row['total_liters'] ?? 0);
             return [
-                'month_label' => $row['month_name'] . ' ' . $row['year'],
-                'fill_count'  => (int) $row['fill_count'],
-                'total_km'    => $mKm,
-                'total_cost'  => $mCost,
-                'cost_per_km' => ($mKm     > 0) ? ($mCost   / $mKm)        : 0.0,
-                'km_per_l'    => ($mLiters > 0) ? ($mKm     / $mLiters)    : 0.0,
-                'l_per_100km' => ($mKm     > 0) ? ($mLiters / $mKm * 100)  : 0.0,
+                'month_label'  => $row['month_name'] . ' ' . $row['year'],
+                'fill_count'   => (int) $row['fill_count'],
+                'total_km'     => $mKm,
+                'total_cost'   => $mCost,
+                'total_liters' => $mLiters,
+                'cost_per_km'  => ($mKm     > 0) ? ($mCost   / $mKm)       : 0.0,
+                'km_per_l'     => ($mLiters > 0) ? ($mKm     / $mLiters)   : 0.0,
+                'l_per_100km'  => ($mKm     > 0) ? ($mLiters / $mKm * 100) : 0.0,
             ];
         }, $rows);
 
@@ -333,6 +335,7 @@ function handleMonthly()
         jsonResponse(['success' => false, 'message' => 'Database error'], 500);
     }
 }
+
 function handleWeeklyFuelByMonth()
 {
     global $pdo;
@@ -364,6 +367,12 @@ function handleWeeklyFuelByMonth()
             $sunday->modify('+6 days');
             $sunday->setTime(23, 59, 59);
 
+            // Cap to last day of month so the last week never bleeds into next month
+            if ($sunday > $lastDay) {
+                $sunday = clone $lastDay;
+                $sunday->setTime(23, 59, 59);
+            }
+
             $startUnix = $monday->getTimestamp();
             $endUnix   = $sunday->getTimestamp();
 
@@ -381,14 +390,15 @@ function handleWeeklyFuelByMonth()
             $wCost   = (float) $row['total_cost'];
             $wLiters = (float) $row['total_liters'];
             $data[] = [
-                'week_label'  => $monday->format('d M') . ' – ' . $sunday->format('d M Y'),
-                'fill_count'  => (int) $row['fill_count'],
-                'total_km'    => $wKm,
-                'total_cost'  => $wCost,
-                'cost_per_km' => ($wKm     > 0) ? ($wCost   / $wKm)        : 0.0,
-                'km_per_l'    => ($wLiters > 0) ? ($wKm     / $wLiters)    : 0.0,
-                'l_per_100km' => ($wKm     > 0) ? ($wLiters / $wKm * 100)  : 0.0,
-                'in_progress' => ($sunday > $today),
+                'week_label'   => $monday->format('d M') . ' – ' . $sunday->format('d M Y'),
+                'fill_count'   => (int) $row['fill_count'],
+                'total_km'     => $wKm,
+                'total_cost'   => $wCost,
+                'total_liters' => $wLiters,
+                'cost_per_km'  => ($wKm     > 0) ? ($wCost   / $wKm)       : 0.0,
+                'km_per_l'     => ($wLiters > 0) ? ($wKm     / $wLiters)   : 0.0,
+                'l_per_100km'  => ($wKm     > 0) ? ($wLiters / $wKm * 100) : 0.0,
+                'in_progress'  => ($sunday > $today),
             ];
 
             $current->modify('+1 week');
