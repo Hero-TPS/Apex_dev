@@ -47,34 +47,62 @@ include ROOT_DIR . '/includes/header.php';
     <h2>⛽ Fuel Reports (Last <?= htmlspecialchars($monthsBack) ?> Months)</h2>
 
     <?php foreach ($months as $m):
-        $startDate = new DateTime("{$m['year']}-{$m['month']}-01", $tz);
-        $endDate   = clone $startDate;
-        $endDate->modify('last day of this month');
-        $endDate->setTime(23, 59, 59);
-
-        $stmt = $pdo->prepare(
-            "SELECT COALESCE(COUNT(*), 0) AS fill_count,
-                    COALESCE(SUM(trip_km), 0) AS total_km,
-                    COALESCE(SUM(total_cost), 0) AS total_cost,
-                    COALESCE(SUM(total_cost / NULLIF(fuel_price, 0)), 0) AS total_liters
-             FROM fuel_logs WHERE log_timestamp BETWEEN ? AND ?"
-        );
-        $stmt->execute([$startDate->getTimestamp(), $endDate->getTimestamp()]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        $totalKm     = (float) $row['total_km'];
-        $totalCost   = (float) $row['total_cost'];
-        $totalLiters = (float) $row['total_liters'];
-        $costPerKm   = ($totalKm     > 0) ? ($totalCost   / $totalKm)          : 0.0;
-        $kmPerL      = ($totalLiters > 0) ? ($totalKm     / $totalLiters)       : 0.0;
-        $lPer100Km   = ($totalKm     > 0) ? ($totalLiters / $totalKm * 100)     : 0.0;
-
-        $monthLabel = date('F Y', mktime(0, 0, 0, $m['month'], 1, $m['year']));
-
+        $tz = new DateTimeZone(TIME_ZONE);
         $monthStart = new DateTime("{$m['year']}-{$m['month']}-01", $tz);
         $monthEnd   = clone $monthStart;
         $monthEnd->modify('last day of this month');
-        $monthEnd->setTime(23, 59, 59);
+
+        // === FUEL: sum across billing weeks whose Monday falls in this month.
+        //     Each week's Sunday is capped to the last day of the month so that
+        //     logs dated in the next calendar month (tail of a 5-week month's
+        //     last week) are counted here and not double-counted in the next month.
+        $totalKm     = 0.0;
+        $totalCost   = 0.0;
+        $totalLiters = 0.0;
+        $fillCount   = 0;
+
+        $fuelWeekCurrent = new DateTime("{$m['year']}-{$m['month']}-01", $tz);
+        if ($fuelWeekCurrent->format('N') !== '1') {
+            $fuelWeekCurrent->modify('next monday');
+        }
+
+        while ($fuelWeekCurrent <= $monthEnd) {
+            $wMonday = clone $fuelWeekCurrent;
+            $wMonday->setTime(0, 0, 0);
+
+            $wSunday = clone $wMonday;
+            $wSunday->modify('+6 days');
+            $wSunday->setTime(23, 59, 59);
+
+            // Cap to last day of month so the last week never bleeds into next month
+            if ($wSunday > $monthEnd) {
+                $wSunday = clone $monthEnd;
+                $wSunday->setTime(23, 59, 59);
+            }
+
+            $stmt = $pdo->prepare(
+                "SELECT COALESCE(COUNT(*), 0) AS fill_count,
+                        COALESCE(SUM(trip_km), 0) AS total_km,
+                        COALESCE(SUM(total_cost), 0) AS total_cost,
+                        COALESCE(SUM(total_cost / NULLIF(fuel_price, 0)), 0) AS total_liters
+                 FROM fuel_logs WHERE log_timestamp BETWEEN ? AND ?"
+            );
+            $stmt->execute([$wMonday->getTimestamp(), $wSunday->getTimestamp()]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $fillCount   += (int)   $row['fill_count'];
+            $totalKm     += (float) $row['total_km'];
+            $totalCost   += (float) $row['total_cost'];
+            $totalLiters += (float) $row['total_liters'];
+
+            $fuelWeekCurrent->modify('+1 week');
+        }
+
+        $costPerKm = ($totalKm     > 0) ? ($totalCost   / $totalKm)          : 0.0;
+        $kmPerL    = ($totalLiters > 0) ? ($totalKm     / $totalLiters)       : 0.0;
+        $lPer100Km = ($totalKm     > 0) ? ($totalLiters / $totalKm * 100)     : 0.0;
+
+        $monthLabel = date('F Y', mktime(0, 0, 0, $m['month'], 1, $m['year']));
         $isInProgressMonth = ($currentWeekMonday <= $monthEnd && $currentWeekSunday >= $monthStart);
     ?>
         <div class="financial-month-block<?= $isInProgressMonth ? ' week-in-progress-block' : '' ?>" data-year="<?= $m['year'] ?>" data-month="<?= $m['month'] ?>">
@@ -83,7 +111,7 @@ include ROOT_DIR . '/includes/header.php';
                 <span class="net-amount loss">R<?= number_format($totalCost, 2) ?></span>
             </div>
 
-            <div class="metric-row"><span>Fill-ups:</span>    <strong><?= (int) $row['fill_count'] ?></strong></div>
+            <div class="metric-row"><span>Fill-ups:</span>    <strong><?= $fillCount ?></strong></div>
             <div class="metric-row"><span>Total km:</span>    <strong><?= number_format($totalKm, 1) ?> km</strong></div>
             <div class="metric-row"><span>Total Litres:</span><strong><?= number_format($totalLiters, 2) ?> l</strong></div>
             <div class="metric-row"><span>Total Cost:</span>  <strong>R<?= number_format($totalCost, 2) ?></strong></div>

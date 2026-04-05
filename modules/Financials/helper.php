@@ -141,6 +141,9 @@ function getWeeklyMetrics(PDO $pdo, int $startUnix, int $endUnix): array
 
 /**
  * Get financial metrics for an entire calendar month (SAST).
+ * Fuel logs are attributed by billing week (Mon–Sun), capped to month end,
+ * so a log dated in the next calendar month but in a week that started this
+ * month is correctly counted here and not in the next month.
  */
 function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
 {
@@ -189,22 +192,47 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
     $stmt->execute([$startUnix, $endUnix]);
     $uberAdditionalCosts = (float) $stmt->fetchColumn();
 
-    // === FUEL: full SAST day range for the month ===
-    $endDateFull = clone $endDate;
-    $endDateFull->setTime(23, 59, 59);
-    $fuelStart = $startDate->getTimestamp();
-    $fuelEnd   = $endDateFull->getTimestamp();
+    // === FUEL: sum across billing weeks whose Monday falls in this month.
+    //     Each week's Sunday is capped to the last day of the month so that
+    //     logs dated in the next calendar month (tail of a 5-week month's
+    //     last week) are counted here and not double-counted in the next month.
+    $fuelCost    = 0.0;
+    $totalTripKm = 0.0;
+    $fuelLiters  = 0.0;
 
-    $stmt = $pdo->prepare(
-        "SELECT COALESCE(SUM(total_cost), 0) AS cost, COALESCE(SUM(trip_km), 0) AS km,
-                COALESCE(SUM(total_cost / NULLIF(fuel_price, 0)), 0) AS liters
-         FROM fuel_logs WHERE log_timestamp BETWEEN ? AND ?"
-    );
-    $stmt->execute([$fuelStart, $fuelEnd]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    $fuelCost    = (float) $row['cost'];
-    $totalTripKm = (float) $row['km'];
-    $fuelLiters  = (float) $row['liters'];
+    $fuelWeekCurrent = new DateTime("$year-$month-01", $tz);
+    if ($fuelWeekCurrent->format('N') !== '1') {
+        $fuelWeekCurrent->modify('next monday');
+    }
+    $fuelLastDay = clone $endDate;
+
+    while ($fuelWeekCurrent <= $fuelLastDay) {
+        $wMonday = clone $fuelWeekCurrent;
+        $wMonday->setTime(0, 0, 0);
+
+        $wSunday = clone $wMonday;
+        $wSunday->modify('+6 days');
+        $wSunday->setTime(23, 59, 59);
+
+        // Cap to last day of month so the last week never bleeds into next month
+        if ($wSunday > $fuelLastDay) {
+            $wSunday = clone $fuelLastDay;
+            $wSunday->setTime(23, 59, 59);
+        }
+
+        $stmt = $pdo->prepare(
+            "SELECT COALESCE(SUM(total_cost), 0) AS cost, COALESCE(SUM(trip_km), 0) AS km,
+                    COALESCE(SUM(total_cost / NULLIF(fuel_price, 0)), 0) AS liters
+             FROM fuel_logs WHERE log_timestamp BETWEEN ? AND ?"
+        );
+        $stmt->execute([$wMonday->getTimestamp(), $wSunday->getTimestamp()]);
+        $fRow = $stmt->fetch(PDO::FETCH_ASSOC);
+        $fuelCost    += (float) $fRow['cost'];
+        $totalTripKm += (float) $fRow['km'];
+        $fuelLiters  += (float) $fRow['liters'];
+
+        $fuelWeekCurrent->modify('+1 week');
+    }
 
     // === CAR RENTAL (weekly rate × number of billing weeks in month) ===
     $carRental = (float) getSystemVariable($pdo, 'car_rental_price') * getWeeksInMonth($year, $month);
