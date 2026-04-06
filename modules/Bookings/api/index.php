@@ -41,7 +41,7 @@ try {
         case 'delete':
             handleDeleteBooking();
             break;
-        case 'update_gate_code':         // ✅ NEW
+        case 'update_gate_code':
             handleUpdateGateCode();
             break;
         case 'tomorrows_bookings':

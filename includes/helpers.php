@@ -295,9 +295,9 @@ function createDriverBookingMessage(array $bookingDetails): string
     if ($bookingFee !== null && $bookingFee > 0) {
         $msg .= "💼 Apex Booking Fee: R" . number_format($bookingFee, 2) . "\n";
         if ($isEft) {
-            $msg .= "\n📲 This is an EFT booking. Apex will pay you after deducting the booking fee.\n";
+            $msg .= "\n📲 This is an EFT booking. Apex Transit will pay you after deducting the booking fee.\n";
         } else {
-            $msg .= "\n💵 This is a cash booking. Please pay Apex the booking fee of R" . number_format($bookingFee, 2) . ".\n";
+            $msg .= "\n💵 This is a cash booking. Please pay Apex Transit the booking fee of R" . number_format($bookingFee, 2) . ".\n";
         }
     } elseif ($isEft) {
         $msg .= "\n📲 This is an EFT booking.\n";
