@@ -330,6 +330,13 @@ function handleAddBooking()
             }
         }
 
+        // Mark prebooking as converted if this booking originated from one
+        $fromPrebooking = intval($_POST['from_prebooking'] ?? 0);
+        if ($fromPrebooking > 0) {
+            $markConverted = $pdo->prepare("UPDATE prebookings SET converted_booking_id = ? WHERE id = ? AND converted_booking_id IS NULL");
+            $markConverted->execute([$booking_id, $fromPrebooking]);
+        }
+
         jsonResponse([
             'success' => true,
             'message' => 'Booking created successfully',

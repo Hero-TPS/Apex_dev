@@ -20,6 +20,15 @@ include ROOT_DIR . '/includes/header.php';
         </div>
     </div>
 
+    <!-- Prebookings -->
+    <div class="menu-section">
+        <h3 class="menu-toggle" data-target="prebookings-section">📋 Prebookings</h3>
+        <div id="prebookings-section" class="menu-content">
+            <a href="modules/Prebookings/add.php" class="dashboard-button db-booking">Add Prebooking</a>
+            <a href="modules/Prebookings/" class="dashboard-button db-view">View Prebookings</a>
+        </div>
+    </div>
+
     <!-- Bookings -->
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="bookings-section">📅 Bookings</h3>

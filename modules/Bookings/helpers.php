@@ -211,6 +211,103 @@ function createBookingInGoogleCalendar(array $bookingData, DateTime $start, Date
     }
 }
 
+/**
+ * Create a Google Calendar event for a prebooking (yellow/tentative).
+ * Uses an all-day event if no start time is supplied, otherwise a 1-hour event.
+ * Returns the Google Calendar event ID on success, null on failure.
+ */
+function createPrebookingInGoogleCalendar(array $data): ?string
+{
+    $accessToken = getGoogleAccessToken();
+    if (!$accessToken) {
+        return null;
+    }
+
+    $tz      = new DateTimeZone(defined('TIME_ZONE') ? TIME_ZONE : 'UTC');
+    $summary = '📋 TENTATIVE: ' . $data['client_name'];
+    if (!empty($data['original_destination'])) {
+        $summary .= ' → ' . $data['original_destination'];
+    }
+
+    $description = "📋 Tentative / Pre-booking\n";
+    $description .= "👤 Client: " . $data['client_name'] . "\n";
+    if (!empty($data['client_phone'])) {
+        $description .= "📞 Phone: " . $data['client_phone'] . "\n";
+    }
+    if (!empty($data['original_destination'])) {
+        $description .= "🎯 Destination: " . $data['original_destination'] . "\n";
+    }
+    if (!empty($data['cost'])) {
+        $description .= "💰 Cost: R" . number_format((float) $data['cost'], 2) . "\n";
+    }
+    if (!empty($data['description'])) {
+        $description .= "\n📝 Notes: " . $data['description'] . "\n";
+    }
+    if (!empty($data['id'])) {
+        $description .= "\n🔗 " . BASE_URL . "/modules/Prebookings/?highlight=" . $data['id'];
+    }
+
+    if (!empty($data['start_time'])) {
+        $start = new DateTime($data['trip_date'] . ' ' . $data['start_time'], $tz);
+        $end   = clone $start;
+        $end->modify('+1 hour');
+        $eventData = [
+            'summary'     => $summary,
+            'description' => $description,
+            'colorId'     => '5',
+            'start'       => ['dateTime' => $start->format(DateTime::RFC3339), 'timeZone' => TIME_ZONE],
+            'end'         => ['dateTime' => $end->format(DateTime::RFC3339),   'timeZone' => TIME_ZONE],
+            'reminders'   => ['useDefault' => false, 'overrides' => [['method' => 'popup', 'minutes' => 60]]],
+        ];
+    } else {
+        $eventData = [
+            'summary'     => $summary,
+            'description' => $description,
+            'colorId'     => '5',
+            'start'       => ['date' => $data['trip_date']],
+            'end'         => ['date' => $data['trip_date']],
+            'reminders'   => ['useDefault' => false, 'overrides' => [['method' => 'popup', 'minutes' => 480]]],
+        ];
+    }
+
+    $url = 'https://www.googleapis.com/calendar/v3/calendars/' . urlencode(CUSTOM_CALENDAR_ID) . '/events';
+
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode($eventData),
+        CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $accessToken, 'Content-Type: application/json'],
+        CURLOPT_TIMEOUT        => 10,
+    ]);
+
+    $result   = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200) {
+        $response = json_decode($result, true);
+        return $response['id'] ?? null;
+    }
+
+    logError('CALENDAR', 'Failed to create prebooking calendar event', [
+        'http_code' => $httpCode,
+        'response'  => $result,
+        'client'    => $data['client_name'] ?? null,
+    ]);
+    return null;
+}
+
+/**
+ * Delete a prebooking Google Calendar event by event ID.
+ * Returns true on success (HTTP 204), false otherwise.
+ */
+function deletePrebookingFromGoogleCalendar(string $eventId): bool
+{
+    return deleteBookingFromGoogleCalendar($eventId);
+}
+
 function createEventDescription(array $bookingData): string
 {
     $pickup = $bookingData['was_swapped'] ? $bookingData['original_destination'] : $bookingData['original_pickup'];

@@ -35,10 +35,21 @@ if (isset($_GET['contact_id']) && isset($_GET['contact_name'])) {
     $prefill_contact_id = (int) $_GET['contact_id'];
     $prefill_contact_name = urldecode($_GET['contact_name']);
 }
+
+// Prefill other fields from prebooking conversion
+$prefill_trip_date    = isset($_GET['trip_date'])      ? htmlspecialchars(urldecode($_GET['trip_date']))      : '';
+$prefill_start_time   = isset($_GET['start_time'])     ? htmlspecialchars(urldecode($_GET['start_time']))     : '';
+$prefill_destination  = isset($_GET['destination'])    ? htmlspecialchars(urldecode($_GET['destination']))    : '';
+$prefill_cost         = isset($_GET['cost'])           ? htmlspecialchars(urldecode($_GET['cost']))           : '';
+$prefill_description  = isset($_GET['description'])    ? htmlspecialchars(urldecode($_GET['description']))    : '';
+$from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_prebooking'] : 0;
 ?>
 
 <div class="form-container">
     <form id="bookingForm">
+        <?php if ($from_prebooking > 0): ?>
+            <input type="hidden" name="from_prebooking" value="<?= $from_prebooking ?>">
+        <?php endif; ?>
         <div class="form-group">
             <label for="contactSearch">Select Contact <span class="required">*</span></label>
             <input type="text" id="contactSearch" placeholder="Search client..."
@@ -57,7 +68,8 @@ if (isset($_GET['contact_id']) && isset($_GET['contact_name'])) {
         <div class="form-row">
             <div class="form-group">
                 <label for="date">Trip Date <span class="required">*</span></label>
-                <input type="date" id="date" name="trip_date" required>
+                <input type="date" id="date" name="trip_date" required
+                    value="<?= $prefill_trip_date ?>">
             </div>
             <div class="form-group">
                 <label for="startTime">Start Time <span class="required">*</span></label>
@@ -164,7 +176,7 @@ if (isset($_GET['contact_id']) && isset($_GET['contact_name'])) {
 
         <div class="form-group">
             <label for="description">Additional Notes</label>
-            <textarea id="description" name="description" placeholder="Any special instructions..."></textarea>
+            <textarea id="description" name="description" placeholder="Any special instructions..."><?= $prefill_description ?></textarea>
         </div>
 
         <!-- Driver Allocation -->
@@ -201,6 +213,14 @@ if (isset($_GET['contact_id']) && isset($_GET['contact_name'])) {
     $(document).ready(function () {
         document.getElementById('date').min = new Date().toISOString().split('T')[0];
 
+        // Prefill from prebooking conversion
+        var prefillTime  = <?= json_encode($prefill_start_time) ?>;
+        var prefillDest  = <?= json_encode($prefill_destination) ?>;
+        var prefillCost  = <?= json_encode($prefill_cost) ?>;
+
+        if (prefillTime) {
+            $('#startTime').val(prefillTime);
+        }
         const contactSearch = $('#contactSearch');
         const suggestionsBox = $('#contactSuggestions');
         const contactIdInput = $('#contact_id');
@@ -369,6 +389,26 @@ if (isset($_GET['contact_id']) && isset($_GET['contact_name'])) {
         $('#pickup').trigger('change');
         $('#destination').trigger('change');
         $('#cost').trigger('change');
+
+        // Apply prebooking prefill for destination and cost after destinations list is populated
+        if (prefillDest) {
+            var destSelect = $('#destination');
+            if (destSelect.find('option[value="' + prefillDest + '"]').length) {
+                destSelect.val(prefillDest).trigger('change');
+            } else {
+                destSelect.val('other').trigger('change');
+                $('#otherDestination').val(prefillDest);
+            }
+        }
+        if (prefillCost) {
+            var costSelect = $('#cost');
+            if (costSelect.find('option[value="' + prefillCost + '"]').length) {
+                costSelect.val(prefillCost).trigger('change');
+            } else {
+                costSelect.val('other').trigger('change');
+                $('#otherCost').val(prefillCost);
+            }
+        }
 
         // Form submit
         $('#bookingForm').on('submit', function (e) {
