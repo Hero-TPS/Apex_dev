@@ -217,6 +217,49 @@ function createWhatsAppMessage(array $bookingDetails): string
 }
 
 
+/**
+ * Build a WhatsApp reminder message for a prebooking.
+ * Sent to the client to remind them about their tentative booking and request confirmation of details.
+ * Used by: modules/Prebookings/index.php
+ *
+ * @param array $prebookingDetails  Must contain: client_name, trip_date.
+ *                                  Optional: start_time, original_destination, cost, description
+ */
+function createPrebookingWhatsAppMessage(array $prebookingDetails): string
+{
+    $timezone = new DateTimeZone(TIME_ZONE);
+    $date     = new DateTime($prebookingDetails['trip_date'], $timezone);
+    $forDate  = $date->format('d/m/y');
+
+    $timeLine = !empty($prebookingDetails['start_time'])
+        ? "⏰ Time: " . (new DateTime($prebookingDetails['trip_date'] . ' ' . $prebookingDetails['start_time'], $timezone))->format('H:i') . "\n"
+        : "⏰ Time: TBC\n";
+
+    $destLine = !empty($prebookingDetails['original_destination'])
+        ? "🎯 Destination: " . $prebookingDetails['original_destination'] . "\n"
+        : "🎯 Destination: TBC\n";
+
+    $costLine = !empty($prebookingDetails['cost']) && (float) $prebookingDetails['cost'] > 0
+        ? "💰 Cost: R" . number_format((float) $prebookingDetails['cost'], 2) . "\n"
+        : '';
+
+    $notesLine = !empty($prebookingDetails['description'])
+        ? "📝 Notes: " . $prebookingDetails['description'] . "\n"
+        : '';
+
+    return "*BOOKING REMINDER* 📋\n\n" .
+           "Good day " . $prebookingDetails['client_name'] . ",\n\n" .
+           "We have a tentative booking on record for you:\n\n" .
+           "📅 Date: " . $forDate . "\n" .
+           $timeLine .
+           $destLine .
+           $costLine .
+           $notesLine .
+           "\nPlease reply to confirm or update the details so we can finalise your booking. 😊\n\n" .
+           "Regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
+}
+
+
 // --- SYSTEM VARIABLES ---
 
 /**

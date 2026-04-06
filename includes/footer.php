@@ -9,6 +9,8 @@
         <a href="<?= BASE_URL ?>/index.php" class="hamburger-item">🏠 Home</a>
         <a href="<?= BASE_URL ?>/modules/Bookings/add.php" class="hamburger-item">🚗 Add Booking</a>
         <a href="<?= BASE_URL ?>/modules/Bookings/" class="hamburger-item">📅 View Bookings</a>
+        <a href="<?= BASE_URL ?>/modules/Prebookings/add.php" class="hamburger-item">📋 Add Prebooking</a>
+        <a href="<?= BASE_URL ?>/modules/Prebookings/" class="hamburger-item">🗒️ View Prebookings</a>
         <a href="<?= BASE_URL ?>/modules/Clients/add.php" class="hamburger-item">👥 Add Client</a>
         <a href="<?= BASE_URL ?>/modules/Clients/" class="hamburger-item">📋 View Clients</a>
         <a href="<?= BASE_URL ?>/modules/Fuel/add.php" class="hamburger-item">⛽ Add Fuel Log</a>

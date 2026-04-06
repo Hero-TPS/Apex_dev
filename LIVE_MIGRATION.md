@@ -7,6 +7,28 @@ Run in order. Check off each one after executing.
 
 ## Pending
 
+### [prebookings] Create prebookings table
+
+- [ ] Done on dev
+- [ ] Done on live
+
+```sql
+CREATE TABLE IF NOT EXISTS prebookings (
+    id                       INT            AUTO_INCREMENT PRIMARY KEY,
+    contact_id               INT            NOT NULL,
+    trip_date                DATE           NOT NULL,
+    start_time               TIME           NULL DEFAULT NULL,
+    original_destination     VARCHAR(255)   NULL DEFAULT NULL,
+    cost                     DECIMAL(10,2)  NULL DEFAULT NULL,
+    description              TEXT           NULL DEFAULT NULL,
+    google_calendar_event_id VARCHAR(255)   NULL DEFAULT NULL,
+    converted_booking_id     INT            NULL DEFAULT NULL,
+    date_created             DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+---
+
 ### [drivers] Create drivers table & add booking columns
 > Extracted from `ensureDriverSchema()` in `includes/helpers.php` (function removed — DB changes must not run inline on every request).
 
