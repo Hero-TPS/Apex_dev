@@ -3,6 +3,7 @@
 
 require_once __DIR__ . '/../../../config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
+require_once ROOT_DIR . '/google-auth.php';
 require_once ROOT_DIR . '/modules/Bookings/helpers.php';
 
 $action = $_REQUEST['action'] ?? '';
