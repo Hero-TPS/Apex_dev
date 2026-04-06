@@ -9,7 +9,6 @@ require_once ROOT_DIR . '/includes/helpers.php';
 $breadcrumb = buildBreadcrumb([['label' => 'Prebookings']]);
 include ROOT_DIR . '/includes/header.php';
 
-// Fetch all unconverted prebookings with contact info
 $stmt = $pdo->query("
     SELECT p.*, c.name AS client_name, c.phone AS client_phone
     FROM prebookings p
@@ -70,6 +69,8 @@ $prebookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                target="_blank" rel="noopener"
                                class="action-btn whatsapp-btn">💬 Send Reminder</a>
                         <?php endif; ?>
+                        <a href="<?= BASE_URL ?>/modules/Prebookings/edit.php?id=<?= (int)$p['id'] ?>"
+                           class="action-btn edit-btn">✏️ Edit</a>
                         <button class="action-btn convert-btn" data-id="<?= (int)$p['id'] ?>">🚗 Convert</button>
                         <button class="action-btn delete-btn"  data-id="<?= (int)$p['id'] ?>">🗑️ Delete</button>
                     </div>
@@ -82,6 +83,7 @@ $prebookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <script>
     $(document).ready(function () {
+
         // Convert prebooking → full booking form
         $(document).on('click', '.convert-btn', function () {
             if (!confirm('This will delete the tentative calendar event and open the booking form with the details prefilled. Continue?')) {

@@ -219,7 +219,7 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
         var prefillCost  = <?= json_encode($prefill_cost) ?>;
 
         if (prefillTime) {
-            $('#startTime').val(prefillTime);
+            $('#startTime').val(prefillTime.substr(0, 5));
         }
         const contactSearch = $('#contactSearch');
         const suggestionsBox = $('#contactSuggestions');
