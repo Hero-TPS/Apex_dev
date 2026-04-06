@@ -223,10 +223,18 @@ function createPrebookingInGoogleCalendar(array $data): ?string
         return null;
     }
 
-    $tz      = new DateTimeZone(defined('TIME_ZONE') ? TIME_ZONE : 'UTC');
+    $tz          = new DateTimeZone(defined('TIME_ZONE') ? TIME_ZONE : 'UTC');
+    $wasSwapped  = !empty($data['was_swapped']);
+    $pickup      = $wasSwapped ? ($data['original_destination'] ?? '') : ($data['original_pickup'] ?? '');
+    $destination = $wasSwapped ? ($data['original_pickup'] ?? '') : ($data['original_destination'] ?? '');
+
     $summary = '📋 TENTATIVE: ' . $data['client_name'];
-    if (!empty($data['original_destination'])) {
-        $summary .= ' → ' . $data['original_destination'];
+    if ($pickup !== '' && $destination !== '') {
+        $summary .= ' ' . $pickup . ' → ' . $destination;
+    } elseif ($destination !== '') {
+        $summary .= ' → ' . $destination;
+    } elseif ($pickup !== '') {
+        $summary .= ' ' . $pickup . ' →';
     }
 
     $description = "📋 Tentative / Pre-booking\n";
@@ -234,8 +242,11 @@ function createPrebookingInGoogleCalendar(array $data): ?string
     if (!empty($data['client_phone'])) {
         $description .= "📞 Phone: " . $data['client_phone'] . "\n";
     }
-    if (!empty($data['original_destination'])) {
-        $description .= "🎯 Destination: " . $data['original_destination'] . "\n";
+    if ($pickup !== '') {
+        $description .= "📍 Pickup: " . $pickup . "\n";
+    }
+    if ($destination !== '') {
+        $description .= "🎯 Destination: " . $destination . "\n";
     }
     if (!empty($data['cost'])) {
         $description .= "💰 Cost: R" . number_format((float) $data['cost'], 2) . "\n";
@@ -253,6 +264,7 @@ function createPrebookingInGoogleCalendar(array $data): ?string
         $end->modify('+1 hour');
         $eventData = [
             'summary'     => $summary,
+            'location'    => $pickup !== '' ? $pickup : null,
             'description' => $description,
             'colorId'     => '5',
             'start'       => ['dateTime' => $start->format(DateTime::RFC3339), 'timeZone' => TIME_ZONE],
@@ -262,6 +274,7 @@ function createPrebookingInGoogleCalendar(array $data): ?string
     } else {
         $eventData = [
             'summary'     => $summary,
+            'location'    => $pickup !== '' ? $pickup : null,
             'description' => $description,
             'colorId'     => '5',
             'start'       => ['date' => $data['trip_date']],
@@ -269,6 +282,9 @@ function createPrebookingInGoogleCalendar(array $data): ?string
             'reminders'   => ['useDefault' => false, 'overrides' => [['method' => 'popup', 'minutes' => 480]]],
         ];
     }
+
+    // Remove null keys so Google Calendar API doesn't receive them
+    $eventData = array_filter($eventData, fn($v) => $v !== null);
 
     $url = 'https://www.googleapis.com/calendar/v3/calendars/' . urlencode(CUSTOM_CALENDAR_ID) . '/events';
 

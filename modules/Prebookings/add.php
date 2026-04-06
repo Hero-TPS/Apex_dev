@@ -45,6 +45,22 @@ $timeOptions  = generateTimeOptions();
         </div>
 
         <div class="form-group">
+            <label for="original_pickup">Pickup Location <small>(optional)</small></label>
+            <select id="original_pickup" name="original_pickup">
+                <option value="">— Not known yet —</option>
+                <?php foreach ($destinations as $dest): ?>
+                    <option value="<?= htmlspecialchars($dest['name']) ?>"><?= htmlspecialchars($dest['name']) ?></option>
+                <?php endforeach; ?>
+                <option value="other">Other (specify below)</option>
+            </select>
+        </div>
+
+        <div class="form-group hidden" id="otherPickupGroup">
+            <label for="otherPickup">Specify Other Pickup</label>
+            <input type="text" id="otherPickup" name="other_original_pickup" placeholder="Enter pickup address">
+        </div>
+
+        <div class="form-group">
             <label for="original_destination">Destination <small>(optional)</small></label>
             <select id="original_destination" name="original_destination">
                 <option value="">— Not known yet —</option>
@@ -58,6 +74,13 @@ $timeOptions  = generateTimeOptions();
         <div class="form-group hidden" id="otherDestinationGroup">
             <label for="otherDestination">Specify Other Destination</label>
             <input type="text" id="otherDestination" name="other_original_destination" placeholder="Enter destination">
+        </div>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="swapLocations" name="swap_locations">
+                🔄 Swap pickup and destination locations
+            </label>
         </div>
 
         <div class="form-group">
@@ -155,6 +178,16 @@ $timeOptions  = generateTimeOptions();
             if (e.key === 'Escape') { suggestionsBox.hide(); }
         });
 
+        // Other pickup toggle
+        $('#original_pickup').on('change', function () {
+            if ($(this).val() === 'other') {
+                $('#otherPickupGroup').removeClass('hidden');
+            } else {
+                $('#otherPickupGroup').addClass('hidden');
+                $('#otherPickup').val('');
+            }
+        });
+
         // Other destination toggle
         $('#original_destination').on('change', function () {
             if ($(this).val() === 'other') {
@@ -194,6 +227,10 @@ $timeOptions  = generateTimeOptions();
             var destSelect = $('#original_destination');
             var destVal    = destSelect.val() === 'other' ? $('#otherDestination').val().trim() : destSelect.val();
 
+            // Resolve pickup: if "other" use the typed value
+            var pickupSelect = $('#original_pickup');
+            var pickupVal    = pickupSelect.val() === 'other' ? $('#otherPickup').val().trim() : pickupSelect.val();
+
             // Resolve cost: if "other" use the typed value
             var costSelect = $('#cost');
             var costVal    = costSelect.val() === 'other' ? $('#otherCost').val().trim() : costSelect.val();
@@ -202,7 +239,9 @@ $timeOptions  = generateTimeOptions();
                 contact_id:           contactIdInput.val(),
                 trip_date:            $('#trip_date').val(),
                 start_time:           $('#start_time').val(),
+                original_pickup:      pickupVal,
                 original_destination: destVal,
+                swap_locations:       $('#swapLocations').is(':checked') ? '1' : '',
                 cost:                 costVal,
                 description:          $('#description').val().trim(),
             };

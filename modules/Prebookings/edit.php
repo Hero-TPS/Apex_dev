@@ -39,10 +39,13 @@ $destinations = fetchData($pdo, 'destinations', 'name ASC');
 $costs        = fetchData($pdo, 'costs', 'amount ASC');
 $timeOptions  = generateTimeOptions();
 
+$savedPickup   = $prebooking['original_pickup'] ?? '';
 $savedDest     = $prebooking['original_destination'] ?? '';
 $savedCost     = $prebooking['cost'] ?? '';
+$pickupInList  = $savedPickup !== '' && in_array($savedPickup, array_column($destinations, 'name'), true);
 $destInList    = in_array($savedDest, array_column($destinations, 'name'), true);
 $costInList    = $savedCost !== '' && in_array(number_format((float)$savedCost, 2), array_map(fn($c) => number_format((float)$c['amount'], 2), $costs), true);
+$showOtherPickup = $savedPickup !== '' && !$pickupInList;
 $showOtherDest = $savedDest !== '' && !$destInList;
 $showOtherCost = $savedCost !== '' && !$costInList;
 ?>
@@ -76,6 +79,26 @@ $showOtherCost = $savedCost !== '' && !$costInList;
         </div>
 
         <div class="form-group">
+            <label for="original_pickup">Pickup Location <small>(optional)</small></label>
+            <select id="original_pickup" name="original_pickup">
+                <option value="">— Not known yet —</option>
+                <?php foreach ($destinations as $dest):
+                    $sel = (!$showOtherPickup && $savedPickup === $dest['name']) ? 'selected' : '';
+                ?>
+                    <option value="<?= e($dest['name']) ?>" <?= $sel ?>><?= e($dest['name']) ?></option>
+                <?php endforeach; ?>
+                <option value="other" <?= $showOtherPickup ? 'selected' : '' ?>>Other (specify below)</option>
+            </select>
+        </div>
+
+        <div class="form-group <?= $showOtherPickup ? '' : 'hidden' ?>" id="otherPickupGroup">
+            <label for="otherPickup">Specify Other Pickup</label>
+            <input type="text" id="otherPickup" name="other_original_pickup"
+                   placeholder="Enter pickup address"
+                   value="<?= $showOtherPickup ? e($savedPickup) : '' ?>">
+        </div>
+
+        <div class="form-group">
             <label for="original_destination">Destination <small>(optional)</small></label>
             <select id="original_destination" name="original_destination">
                 <option value="">— Not known yet —</option>
@@ -93,6 +116,14 @@ $showOtherCost = $savedCost !== '' && !$costInList;
             <input type="text" id="otherDestination" name="other_original_destination"
                    placeholder="Enter destination"
                    value="<?= $showOtherDest ? e($savedDest) : '' ?>">
+        </div>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="swapLocations" name="swap_locations"
+                    <?php if ($prebooking['was_swapped']) echo 'checked'; ?>>
+                🔄 Swap pickup and destination locations
+            </label>
         </div>
 
         <div class="form-group">
@@ -132,6 +163,15 @@ $showOtherCost = $savedCost !== '' && !$costInList;
 <script>
     $(document).ready(function () {
 
+        $('#original_pickup').on('change', function () {
+            if ($(this).val() === 'other') {
+                $('#otherPickupGroup').removeClass('hidden');
+            } else {
+                $('#otherPickupGroup').addClass('hidden');
+                $('#otherPickup').val('');
+            }
+        });
+
         $('#original_destination').on('change', function () {
             if ($(this).val() === 'other') {
                 $('#otherDestinationGroup').removeClass('hidden');
@@ -162,6 +202,9 @@ $showOtherCost = $savedCost !== '' && !$costInList;
             var destSelect = $('#original_destination');
             var destVal    = destSelect.val() === 'other' ? $('#otherDestination').val().trim() : destSelect.val();
 
+            var pickupSelect = $('#original_pickup');
+            var pickupVal    = pickupSelect.val() === 'other' ? $('#otherPickup').val().trim() : pickupSelect.val();
+
             var costSelect = $('#cost');
             var costVal    = costSelect.val() === 'other' ? $('#otherCost').val().trim() : costSelect.val();
 
@@ -172,7 +215,9 @@ $showOtherCost = $savedCost !== '' && !$costInList;
                     id:                   $('#prebooking_id').val(),
                     trip_date:            $('#trip_date').val(),
                     start_time:           $('#start_time').val(),
+                    original_pickup:      pickupVal,
                     original_destination: destVal,
+                    swap_locations:       $('#swapLocations').is(':checked') ? '1' : '',
                     cost:                 costVal,
                     description:          $('#description').val().trim(),
                 },

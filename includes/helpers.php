@@ -235,8 +235,17 @@ function createPrebookingWhatsAppMessage(array $prebookingDetails): string
         ? "⏰ Time: " . (new DateTime($prebookingDetails['trip_date'] . ' ' . $prebookingDetails['start_time'], $timezone))->format('H:i') . "\n"
         : "⏰ Time: TBC\n";
 
-    $destLine = !empty($prebookingDetails['original_destination'])
-        ? "🎯 Destination: " . $prebookingDetails['original_destination'] . "\n"
+    $wasSwapped  = !empty($prebookingDetails['was_swapped']);
+    $effPickup   = $wasSwapped
+        ? ($prebookingDetails['original_destination'] ?? '')
+        : ($prebookingDetails['original_pickup'] ?? '');
+    $effDest     = $wasSwapped
+        ? ($prebookingDetails['original_pickup'] ?? '')
+        : ($prebookingDetails['original_destination'] ?? '');
+
+    $pickupLine = $effPickup !== '' ? "📍 Pickup: " . $effPickup . "\n" : '';
+    $destLine   = $effDest !== ''
+        ? "🎯 Destination: " . $effDest . "\n"
         : "🎯 Destination: TBC\n";
 
     $costLine = !empty($prebookingDetails['cost']) && (float) $prebookingDetails['cost'] > 0
@@ -252,6 +261,7 @@ function createPrebookingWhatsAppMessage(array $prebookingDetails): string
            "We have a tentative booking on record for you:\n\n" .
            "📅 Date: " . $forDate . "\n" .
            $timeLine .
+           $pickupLine .
            $destLine .
            $costLine .
            $notesLine .

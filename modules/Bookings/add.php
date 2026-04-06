@@ -39,7 +39,9 @@ if (isset($_GET['contact_id']) && isset($_GET['contact_name'])) {
 // Prefill other fields from prebooking conversion
 $prefill_trip_date    = isset($_GET['trip_date'])      ? htmlspecialchars(urldecode($_GET['trip_date']))      : '';
 $prefill_start_time   = isset($_GET['start_time'])     ? htmlspecialchars(urldecode($_GET['start_time']))     : '';
+$prefill_pickup       = isset($_GET['pickup'])         ? htmlspecialchars(urldecode($_GET['pickup']))         : '';
 $prefill_destination  = isset($_GET['destination'])    ? htmlspecialchars(urldecode($_GET['destination']))    : '';
+$prefill_swap         = isset($_GET['swap_locations']) && $_GET['swap_locations'] === '1';
 $prefill_cost         = isset($_GET['cost'])           ? htmlspecialchars(urldecode($_GET['cost']))           : '';
 $prefill_description  = isset($_GET['description'])    ? htmlspecialchars(urldecode($_GET['description']))    : '';
 $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_prebooking'] : 0;
@@ -137,7 +139,7 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
 
         <div class="form-group">
             <label>
-                <input type="checkbox" id="swapLocations" name="swap_locations">
+                <input type="checkbox" id="swapLocations" name="swap_locations" <?php if ($prefill_swap) echo 'checked'; ?>>
                 🔄 Swap pickup and destination locations
             </label>
         </div>
@@ -215,6 +217,7 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
 
         // Prefill from prebooking conversion
         var prefillTime  = <?= json_encode($prefill_start_time) ?>;
+        var prefillPickup = <?= json_encode($prefill_pickup) ?>;
         var prefillDest  = <?= json_encode($prefill_destination) ?>;
         var prefillCost  = <?= json_encode($prefill_cost) ?>;
 
@@ -391,6 +394,15 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
         $('#cost').trigger('change');
 
         // Apply prebooking prefill for destination and cost after destinations list is populated
+        if (prefillPickup) {
+            var pickupSel = $('#pickup');
+            if (pickupSel.find('option[value="' + prefillPickup + '"]').length) {
+                pickupSel.val(prefillPickup).trigger('change');
+            } else {
+                pickupSel.val('other').trigger('change');
+                $('#otherPickup').val(prefillPickup);
+            }
+        }
         if (prefillDest) {
             var destSelect = $('#destination');
             if (destSelect.find('option[value="' + prefillDest + '"]').length) {
