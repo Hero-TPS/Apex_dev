@@ -39,7 +39,6 @@ $destinations = fetchData($pdo, 'destinations', 'name ASC');
 $costs        = fetchData($pdo, 'costs', 'amount ASC');
 $timeOptions  = generateTimeOptions();
 
-// Determine if the saved destination/cost matches a dropdown option
 $savedDest     = $prebooking['original_destination'] ?? '';
 $savedCost     = $prebooking['cost'] ?? '';
 $destInList    = in_array($savedDest, array_column($destinations, 'name'), true);
@@ -50,7 +49,7 @@ $showOtherCost = $savedCost !== '' && !$costInList;
 
 <div class="form-container">
     <form id="editPrebookingForm">
-        <input type="hidden" name="id" value="<?= (int)$prebooking['id'] ?>">
+        <input type="hidden" id="prebooking_id" name="id" value="<?= (int)$prebooking['id'] ?>">
 
         <div class="form-group">
             <label>Client</label>
@@ -68,7 +67,8 @@ $showOtherCost = $savedCost !== '' && !$costInList;
             <select id="start_time" name="start_time">
                 <option value="">— Not known yet —</option>
                 <?php foreach ($timeOptions as $time):
-                    $sel = $prebooking['start_time'] && substr($prebooking['start_time'], 0, 5) === $time ? 'selected' : '';
+                    $savedHHMM = $prebooking['start_time'] ? substr($prebooking['start_time'], 0, 5) : '';
+                    $sel = ($savedHHMM === $time) ? 'selected' : '';
                 ?>
                     <option value="<?= e($time) ?>" <?= $sel ?>><?= e($time) ?></option>
                 <?php endforeach; ?>
@@ -132,7 +132,6 @@ $showOtherCost = $savedCost !== '' && !$costInList;
 <script>
     $(document).ready(function () {
 
-        // Other destination toggle
         $('#original_destination').on('change', function () {
             if ($(this).val() === 'other') {
                 $('#otherDestinationGroup').removeClass('hidden');
@@ -142,7 +141,6 @@ $showOtherCost = $savedCost !== '' && !$costInList;
             }
         });
 
-        // Other cost toggle
         $('#cost').on('change', function () {
             if ($(this).val() === 'other') {
                 $('#otherCostGroup').removeClass('hidden');
@@ -152,7 +150,6 @@ $showOtherCost = $savedCost !== '' && !$costInList;
             }
         });
 
-        // Form submit
         $('#editPrebookingForm').on('submit', function (e) {
             e.preventDefault();
 
@@ -162,27 +159,23 @@ $showOtherCost = $savedCost !== '' && !$costInList;
             loading.show();
             $('#result').html('');
 
-            // Resolve destination
             var destSelect = $('#original_destination');
             var destVal    = destSelect.val() === 'other' ? $('#otherDestination').val().trim() : destSelect.val();
 
-            // Resolve cost
             var costSelect = $('#cost');
             var costVal    = costSelect.val() === 'other' ? $('#otherCost').val().trim() : costSelect.val();
-
-            var data = {
-                id:                   $('input[name="id"]').val(),
-                trip_date:            $('#trip_date').val(),
-                start_time:           $('#start_time').val(),
-                original_destination: destVal,
-                cost:                 costVal,
-                description:          $('#description').val().trim(),
-            };
 
             $.ajax({
                 type:     'POST',
                 url:      '<?= BASE_URL ?>/modules/Prebookings/api/index.php?action=update',
-                data:     data,
+                data: {
+                    id:                   $('#prebooking_id').val(),
+                    trip_date:            $('#trip_date').val(),
+                    start_time:           $('#start_time').val(),
+                    original_destination: destVal,
+                    cost:                 costVal,
+                    description:          $('#description').val().trim(),
+                },
                 dataType: 'json',
                 success: function (res) {
                     loading.hide();

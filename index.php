@@ -20,15 +20,6 @@ include ROOT_DIR . '/includes/header.php';
         </div>
     </div>
 
-    <!-- Prebookings -->
-    <div class="menu-section">
-        <h3 class="menu-toggle" data-target="prebookings-section">📋 Prebookings</h3>
-        <div id="prebookings-section" class="menu-content">
-            <a href="modules/Prebookings/add.php" class="dashboard-button db-booking">Add Prebooking</a>
-            <a href="modules/Prebookings/" class="dashboard-button db-view">View Prebookings</a>
-        </div>
-    </div>
-
     <!-- Bookings -->
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="bookings-section">📅 Bookings</h3>
@@ -36,6 +27,15 @@ include ROOT_DIR . '/includes/header.php';
             <a href="modules/Bookings/" class="dashboard-button db-booking">View Bookings</a>
             <a href="modules/Bookings/add.php" class="dashboard-button db-view">Add Booking</a>
             <a href="modules/Bookings/reports.php" class="dashboard-button db-reports">Booking Reports</a>
+        </div>
+    </div>
+
+    <!-- Prebookings -->
+    <div class="menu-section">
+        <h3 class="menu-toggle" data-target="prebookings-section">📋 Prebookings</h3>
+        <div id="prebookings-section" class="menu-content">
+            <a href="modules/Prebookings/add.php" class="dashboard-button db-booking">Add Prebooking</a>
+            <a href="modules/Prebookings/" class="dashboard-button db-view">View Prebookings</a>
         </div>
     </div>
 
