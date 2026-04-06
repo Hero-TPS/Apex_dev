@@ -7,7 +7,7 @@
 - The user updates git manually via **GitHub Desktop** — do not suggest git commands, CLI steps, or automated commits/pushes.
 - Do not use agents or automated PR creation unless explicitly asked.
 - Do not assume what the next priority is — the user decides what to work on next.
-- Never put db update and create SQL code in files. Always use LIVE_MIGRATION.md. And notify me as such in chats and when using agents
+- Never put db update and create SQL code in files. Always use LIVE_MIGRATION.md. And notify me as such in chats and when using agents. 
 
 ## General
 - This is a PHP/MySQL project running on XAMPP (local) and a hosted server.
