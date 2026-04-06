@@ -13,6 +13,9 @@ try {
         case 'add':
             handleAdd();
             break;
+        case 'update':
+            handleUpdate();
+            break;
         case 'delete':
             handleDelete();
             break;
@@ -36,12 +39,12 @@ function handleAdd()
 {
     global $pdo;
 
-    $contactId          = intval($_POST['contact_id'] ?? 0);
-    $tripDate           = trim($_POST['trip_date'] ?? '');
-    $startTime          = trim($_POST['start_time'] ?? '');
-    $originalDest       = trim($_POST['original_destination'] ?? '');
-    $cost               = trim($_POST['cost'] ?? '');
-    $description        = trim($_POST['description'] ?? '');
+    $contactId    = intval($_POST['contact_id'] ?? 0);
+    $tripDate     = trim($_POST['trip_date'] ?? '');
+    $startTime    = trim($_POST['start_time'] ?? '');
+    $originalDest = trim($_POST['original_destination'] ?? '');
+    $cost         = trim($_POST['cost'] ?? '');
+    $description  = trim($_POST['description'] ?? '');
 
     if ($contactId <= 0) {
         jsonResponse(['success' => false, 'message' => 'Please select a client.'], 400);
@@ -50,14 +53,12 @@ function handleAdd()
         jsonResponse(['success' => false, 'message' => 'A valid date is required.'], 400);
     }
 
-    // Validate optional fields
     $startTimeVal = ($startTime && preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $startTime)) ? $startTime : null;
     $destVal      = $originalDest !== '' ? $originalDest : null;
     $costVal      = ($cost !== '' && is_numeric($cost) && (float)$cost > 0) ? (float)$cost : null;
     $descVal      = $description !== '' ? $description : null;
 
     try {
-        // Fetch client info for calendar event
         $stmt = $pdo->prepare("SELECT name, phone FROM contacts WHERE id = ? LIMIT 1");
         $stmt->execute([$contactId]);
         $contact = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -65,7 +66,6 @@ function handleAdd()
             jsonResponse(['success' => false, 'message' => 'Client not found.'], 404);
         }
 
-        // Insert prebooking
         $ins = $pdo->prepare("
             INSERT INTO prebookings (contact_id, trip_date, start_time, original_destination, cost, description)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -73,7 +73,6 @@ function handleAdd()
         $ins->execute([$contactId, $tripDate, $startTimeVal, $destVal, $costVal, $descVal]);
         $prebookingId = (int) $pdo->lastInsertId();
 
-        // Create Google Calendar event
         $calData = [
             'id'                   => $prebookingId,
             'client_name'          => $contact['name'],
@@ -91,10 +90,10 @@ function handleAdd()
         }
 
         logInfo('PREBOOKING', 'Prebooking created', [
-            'prebooking_id' => $prebookingId,
-            'contact_id'    => $contactId,
-            'trip_date'     => $tripDate,
-            'calendar_event'=> $eventId ?? 'none',
+            'prebooking_id'  => $prebookingId,
+            'contact_id'     => $contactId,
+            'trip_date'      => $tripDate,
+            'calendar_event' => $eventId ?? 'none',
         ]);
 
         jsonResponse(['success' => true, 'message' => 'Prebooking saved.', 'prebooking_id' => $prebookingId]);
@@ -102,6 +101,94 @@ function handleAdd()
     } catch (PDOException $e) {
         logError('PREBOOKING', 'Failed to create prebooking', ['error' => $e->getMessage()]);
         jsonResponse(['success' => false, 'message' => 'Failed to save prebooking.'], 500);
+    }
+}
+
+function handleUpdate()
+{
+    global $pdo;
+
+    $id           = intval($_POST['id'] ?? 0);
+    $tripDate     = trim($_POST['trip_date'] ?? '');
+    $startTime    = trim($_POST['start_time'] ?? '');
+    $originalDest = trim($_POST['original_destination'] ?? '');
+    $cost         = trim($_POST['cost'] ?? '');
+    $description  = trim($_POST['description'] ?? '');
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid prebooking ID.'], 400);
+    }
+    if (!$tripDate || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $tripDate)) {
+        jsonResponse(['success' => false, 'message' => 'A valid date is required.'], 400);
+    }
+
+    $startTimeVal = ($startTime && preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $startTime)) ? $startTime : null;
+    $destVal      = $originalDest !== '' ? $originalDest : null;
+    $costVal      = ($cost !== '' && is_numeric($cost) && (float)$cost > 0) ? (float)$cost : null;
+    $descVal      = $description !== '' ? $description : null;
+
+    try {
+        // Fetch existing record for calendar event ID and client info
+        $stmt = $pdo->prepare("
+            SELECT p.google_calendar_event_id, c.name AS client_name, c.phone AS client_phone
+            FROM prebookings p
+            JOIN contacts c ON p.contact_id = c.id
+            WHERE p.id = ? AND p.converted_booking_id IS NULL
+            LIMIT 1
+        ");
+        $stmt->execute([$id]);
+        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$existing) {
+            jsonResponse(['success' => false, 'message' => 'Prebooking not found.'], 404);
+        }
+
+        // Update the database record
+        $upd = $pdo->prepare("
+            UPDATE prebookings
+            SET trip_date = ?, start_time = ?, original_destination = ?, cost = ?, description = ?
+            WHERE id = ?
+        ");
+        $upd->execute([$tripDate, $startTimeVal, $destVal, $costVal, $descVal, $id]);
+
+        // Update Google Calendar event if one exists
+        $calData = [
+            'id'                   => $id,
+            'client_name'          => $existing['client_name'],
+            'client_phone'         => $existing['client_phone'] ?? '',
+            'trip_date'            => $tripDate,
+            'start_time'           => $startTimeVal,
+            'original_destination' => $destVal,
+            'cost'                 => $costVal,
+            'description'          => $descVal,
+        ];
+
+        if (!empty($existing['google_calendar_event_id'])) {
+            // Delete old event and create a fresh one (simpler than PATCH for all-day ↔ timed transitions)
+            deletePrebookingFromGoogleCalendar($existing['google_calendar_event_id']);
+            $newEventId = createPrebookingInGoogleCalendar($calData);
+            $updCal = $pdo->prepare("UPDATE prebookings SET google_calendar_event_id = ? WHERE id = ?");
+            $updCal->execute([$newEventId ?: null, $id]);
+        } else {
+            // No existing event — create one now
+            $newEventId = createPrebookingInGoogleCalendar($calData);
+            if ($newEventId) {
+                $updCal = $pdo->prepare("UPDATE prebookings SET google_calendar_event_id = ? WHERE id = ?");
+                $updCal->execute([$newEventId, $id]);
+            }
+        }
+
+        logInfo('PREBOOKING', 'Prebooking updated', [
+            'prebooking_id'  => $id,
+            'trip_date'      => $tripDate,
+            'calendar_event' => $newEventId ?? 'none',
+        ]);
+
+        jsonResponse(['success' => true, 'message' => 'Prebooking updated.']);
+
+    } catch (PDOException $e) {
+        logError('PREBOOKING', 'Failed to update prebooking', ['error' => $e->getMessage(), 'id' => $id]);
+        jsonResponse(['success' => false, 'message' => 'Failed to update prebooking.'], 500);
     }
 }
 
@@ -163,22 +250,20 @@ function handleConvert()
             jsonResponse(['success' => false, 'message' => 'Prebooking not found or already converted.'], 404);
         }
 
-        // Delete Google Calendar tentative event
         if (!empty($pre['google_calendar_event_id'])) {
             deletePrebookingFromGoogleCalendar($pre['google_calendar_event_id']);
             $upd = $pdo->prepare("UPDATE prebookings SET google_calendar_event_id = NULL WHERE id = ?");
             $upd->execute([$id]);
         }
 
-        // Build redirect URL for booking add form with prefilled values
         $params = http_build_query(array_filter([
-            'contact_id'    => $pre['contact_id'],
-            'contact_name'  => $pre['client_name'],
-            'trip_date'     => $pre['trip_date'],
-            'start_time'    => $pre['start_time'] ?? '',
-            'destination'   => $pre['original_destination'] ?? '',
-            'cost'          => $pre['cost'] ?? '',
-            'description'   => $pre['description'] ?? '',
+            'contact_id'      => $pre['contact_id'],
+            'contact_name'    => $pre['client_name'],
+            'trip_date'       => $pre['trip_date'],
+            'start_time'      => $pre['start_time'] ?? '',
+            'destination'     => $pre['original_destination'] ?? '',
+            'cost'            => $pre['cost'] ?? '',
+            'description'     => $pre['description'] ?? '',
             'from_prebooking' => $id,
         ], fn($v) => $v !== '' && $v !== null));
 

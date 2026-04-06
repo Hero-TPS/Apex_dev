@@ -177,6 +177,9 @@ textarea {
 .convert-btn { background-color: #e67e22; }
 .convert-btn:hover { background-color: #ca6f1e; }
 
+.convert-btn { background-color: #e67e22; }
+.convert-btn:hover { background-color: #ca6f1e; }
+
 /* Status Toggle */
 .status-toggle-btn {
   background-color: #f39c12;
