@@ -264,7 +264,7 @@ function createPrebookingWhatsAppMessage(array $prebookingDetails): string
            $destLine .
            $costLine .
            $notesLine .
-           "\nPlease reply to confirm or update the details so we can finalise your booking. 😊\n\n" .
+           "\nPlease let us know when you have all the details so we can finalise your booking. 😊\n\n" .
            "Regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
 }
 
