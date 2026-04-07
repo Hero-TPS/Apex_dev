@@ -7,6 +7,19 @@ Run in order. Check off each one after executing.
 
 ## Pending
 
+### [prebookings] Add `original_pickup` and `was_swapped` columns
+
+- [ ] Done on dev
+- [ ] Done on live
+
+```sql
+ALTER TABLE prebookings
+    ADD COLUMN IF NOT EXISTS original_pickup VARCHAR(255) NULL DEFAULT NULL,
+    ADD COLUMN IF NOT EXISTS was_swapped     TINYINT(1)  NOT NULL DEFAULT 0;
+```
+
+---
+
 ### [prebookings] Create prebookings table
 
 - [ ] Done on dev

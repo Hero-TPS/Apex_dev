@@ -42,6 +42,7 @@ function handleAdd()
     $contactId    = intval($_POST['contact_id'] ?? 0);
     $tripDate     = trim($_POST['trip_date'] ?? '');
     $startTime    = trim($_POST['start_time'] ?? '');
+    $originalPickup = trim($_POST['original_pickup'] ?? '');
     $originalDest = trim($_POST['original_destination'] ?? '');
     $cost         = trim($_POST['cost'] ?? '');
     $description  = trim($_POST['description'] ?? '');
@@ -54,9 +55,11 @@ function handleAdd()
     }
 
     $startTimeVal = ($startTime && preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $startTime)) ? $startTime : null;
+    $pickupVal    = $originalPickup !== '' ? $originalPickup : null;
     $destVal      = $originalDest !== '' ? $originalDest : null;
     $costVal      = ($cost !== '' && is_numeric($cost) && (float)$cost > 0) ? (float)$cost : null;
     $descVal      = $description !== '' ? $description : null;
+    $wasSwapped   = isset($_POST['swap_locations']) && $_POST['swap_locations'] === '1' ? 1 : 0;
 
     try {
         $stmt = $pdo->prepare("SELECT name, phone FROM contacts WHERE id = ? LIMIT 1");
@@ -67,10 +70,10 @@ function handleAdd()
         }
 
         $ins = $pdo->prepare("
-            INSERT INTO prebookings (contact_id, trip_date, start_time, original_destination, cost, description)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO prebookings (contact_id, trip_date, start_time, original_pickup, original_destination, was_swapped, cost, description)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $ins->execute([$contactId, $tripDate, $startTimeVal, $destVal, $costVal, $descVal]);
+        $ins->execute([$contactId, $tripDate, $startTimeVal, $pickupVal, $destVal, $wasSwapped, $costVal, $descVal]);
         $prebookingId = (int) $pdo->lastInsertId();
 
         $calData = [
@@ -79,7 +82,9 @@ function handleAdd()
             'client_phone'         => $contact['phone'] ?? '',
             'trip_date'            => $tripDate,
             'start_time'           => $startTimeVal,
+            'original_pickup'      => $pickupVal,
             'original_destination' => $destVal,
+            'was_swapped'          => $wasSwapped,
             'cost'                 => $costVal,
             'description'          => $descVal,
         ];
@@ -111,6 +116,7 @@ function handleUpdate()
     $id           = intval($_POST['id'] ?? 0);
     $tripDate     = trim($_POST['trip_date'] ?? '');
     $startTime    = trim($_POST['start_time'] ?? '');
+    $originalPickup = trim($_POST['original_pickup'] ?? '');
     $originalDest = trim($_POST['original_destination'] ?? '');
     $cost         = trim($_POST['cost'] ?? '');
     $description  = trim($_POST['description'] ?? '');
@@ -123,9 +129,11 @@ function handleUpdate()
     }
 
     $startTimeVal = ($startTime && preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $startTime)) ? $startTime : null;
+    $pickupVal    = $originalPickup !== '' ? $originalPickup : null;
     $destVal      = $originalDest !== '' ? $originalDest : null;
     $costVal      = ($cost !== '' && is_numeric($cost) && (float)$cost > 0) ? (float)$cost : null;
     $descVal      = $description !== '' ? $description : null;
+    $wasSwapped   = isset($_POST['swap_locations']) && $_POST['swap_locations'] === '1' ? 1 : 0;
 
     try {
         // Fetch existing record for calendar event ID and client info
@@ -146,10 +154,10 @@ function handleUpdate()
         // Update the database record
         $upd = $pdo->prepare("
             UPDATE prebookings
-            SET trip_date = ?, start_time = ?, original_destination = ?, cost = ?, description = ?
+            SET trip_date = ?, start_time = ?, original_pickup = ?, original_destination = ?, was_swapped = ?, cost = ?, description = ?
             WHERE id = ?
         ");
-        $upd->execute([$tripDate, $startTimeVal, $destVal, $costVal, $descVal, $id]);
+        $upd->execute([$tripDate, $startTimeVal, $pickupVal, $destVal, $wasSwapped, $costVal, $descVal, $id]);
 
         // Update Google Calendar event if one exists
         $calData = [
@@ -158,7 +166,9 @@ function handleUpdate()
             'client_phone'         => $existing['client_phone'] ?? '',
             'trip_date'            => $tripDate,
             'start_time'           => $startTimeVal,
+            'original_pickup'      => $pickupVal,
             'original_destination' => $destVal,
+            'was_swapped'          => $wasSwapped,
             'cost'                 => $costVal,
             'description'          => $descVal,
         ];
@@ -261,7 +271,9 @@ function handleConvert()
             'contact_name'    => $pre['client_name'],
             'trip_date'       => $pre['trip_date'],
             'start_time'      => $pre['start_time'] ?? '',
+            'pickup'          => $pre['original_pickup'] ?? '',
             'destination'     => $pre['original_destination'] ?? '',
+            'swap_locations'  => !empty($pre['was_swapped']) ? '1' : '',
             'cost'            => $pre['cost'] ?? '',
             'description'     => $pre['description'] ?? '',
             'from_prebooking' => $id,

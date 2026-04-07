@@ -32,6 +32,7 @@ $prebookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <th>Client</th>
                 <th>Date</th>
                 <th>Time</th>
+                <th>Pickup</th>
                 <th>Destination</th>
                 <th>Cost</th>
                 <th>Notes</th>
@@ -44,12 +45,21 @@ $prebookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $dateObj = new DateTime($p['trip_date'], $tz);
                 $isPast  = $dateObj < new DateTime('today', $tz);
 
+                $effPickup = !empty($p['was_swapped'])
+                    ? ($p['original_destination'] ?? '')
+                    : ($p['original_pickup'] ?? '');
+                $effDest   = !empty($p['was_swapped'])
+                    ? ($p['original_pickup'] ?? '')
+                    : ($p['original_destination'] ?? '');
+
                 $waPhone = formatPhoneNumberForWhatsApp($p['client_phone'] ?? '');
                 $waMsg   = createPrebookingWhatsAppMessage([
                     'client_name'          => $p['client_name'],
                     'trip_date'            => $p['trip_date'],
                     'start_time'           => $p['start_time'] ?? '',
+                    'original_pickup'      => $p['original_pickup'] ?? '',
                     'original_destination' => $p['original_destination'] ?? '',
+                    'was_swapped'          => $p['was_swapped'] ?? 0,
                     'cost'                 => $p['cost'] ?? '',
                     'description'          => $p['description'] ?? '',
                 ]);
@@ -59,7 +69,8 @@ $prebookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <td data-label="Client"><?= e($p['client_name']) ?></td>
                 <td data-label="Date"><?= e($dateObj->format('d/m/y')) ?></td>
                 <td data-label="Time"><?= $p['start_time'] ? e(substr($p['start_time'], 0, 5)) : '<em>TBC</em>' ?></td>
-                <td data-label="Destination"><?= $p['original_destination'] ? e($p['original_destination']) : '<em>TBC</em>' ?></td>
+                <td data-label="Pickup"><?= $effPickup !== '' ? e($effPickup) : '<em>TBC</em>' ?></td>
+                <td data-label="Destination"><?= $effDest !== '' ? e($effDest) : '<em>TBC</em>' ?></td>
                 <td data-label="Cost"><?= $p['cost'] ? 'R' . e(number_format((float)$p['cost'], 2)) : '<em>TBC</em>' ?></td>
                 <td data-label="Notes"><?= $p['description'] ? e($p['description']) : '' ?></td>
                 <td data-label="Actions">
