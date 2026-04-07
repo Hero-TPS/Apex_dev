@@ -223,7 +223,8 @@ function createWhatsAppMessage(array $bookingDetails): string
  * Used by: modules/Prebookings/index.php
  *
  * @param array $prebookingDetails  Must contain: client_name, trip_date.
- *                                  Optional: start_time, original_destination, cost, description
+ *                                  Optional: start_time, original_pickup, original_destination,
+ *                                            was_swapped, cost, description
  */
 function createPrebookingWhatsAppMessage(array $prebookingDetails): string
 {
@@ -235,22 +236,20 @@ function createPrebookingWhatsAppMessage(array $prebookingDetails): string
         ? "⏰ Time: " . (new DateTime($prebookingDetails['trip_date'] . ' ' . $prebookingDetails['start_time'], $timezone))->format('H:i') . "\n"
         : "⏰ Time: TBC\n";
 
-    $wasSwapped  = !empty($prebookingDetails['was_swapped']);
-    $effPickup   = $wasSwapped
-        ? ($prebookingDetails['original_destination'] ?? '')
-        : ($prebookingDetails['original_pickup'] ?? '');
-    $effDest     = $wasSwapped
-        ? ($prebookingDetails['original_pickup'] ?? '')
-        : ($prebookingDetails['original_destination'] ?? '');
+    $wasSwapped = !empty($prebookingDetails['was_swapped']);
+    $rawPickup  = $prebookingDetails['original_pickup'] ?? '';
+    $rawDest    = $prebookingDetails['original_destination'] ?? '';
 
-    $pickupLine = $effPickup !== '' ? "📍 Pickup: " . $effPickup . "\n" : '';
-    $destLine   = $effDest !== ''
-        ? "🎯 Destination: " . $effDest . "\n"
-        : "🎯 Destination: TBC\n";
+    $effPickup = $wasSwapped ? $rawDest   : $rawPickup;
+    $effDest   = $wasSwapped ? $rawPickup : $rawDest;
 
-    $costLine = !empty($prebookingDetails['cost']) && (float) $prebookingDetails['cost'] > 0
-        ? "💰 Cost: R" . number_format((float) $prebookingDetails['cost'], 2) . "\n"
-        : '';
+    $pickupLine = $effPickup !== '' ? "📍 Pickup: " . $effPickup . "\n" : "📍 Pickup: TBC\n";
+    $destLine   = $effDest   !== '' ? "🎯 Destination: " . $effDest . "\n" : "🎯 Destination: TBC\n";
+
+    $cost     = isset($prebookingDetails['cost']) ? (float) $prebookingDetails['cost'] : 0;
+    $costLine = $cost > 0
+        ? "💰 Cost: R" . number_format($cost, 2) . "\n"
+        : "💰 Cost: TBC\n";
 
     $notesLine = !empty($prebookingDetails['description'])
         ? "📝 Notes: " . $prebookingDetails['description'] . "\n"
