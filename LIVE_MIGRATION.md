@@ -9,7 +9,7 @@ Run in order. Check off each one after executing.
 
 ### [prebookings] Add `original_pickup` and `was_swapped` columns
 
-- [ ] Done on dev
+- [x] Done on dev
 - [ ] Done on live
 
 ```sql
@@ -22,8 +22,8 @@ ALTER TABLE prebookings
 
 ### [prebookings] Create prebookings table
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 ```sql
 CREATE TABLE IF NOT EXISTS prebookings (
