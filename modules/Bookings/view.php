@@ -214,13 +214,22 @@ if (isset($_GET['id'])) {
         <?php endif; ?>
         <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
             Edit Booking</a>
-        <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
-        <a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=<?= (int) $booking['contact_id'] ?>"
-            class="page-action-btn view-details-btn">📅 View All Client Bookings</a>
-        <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= (int) $booking['contact_id'] ?>&contact_name=<?= urlencode($booking['client_name']) ?>"
-            class="page-action-btn rebook"> ➕ Book again</a>
-        <a href="<?= BASE_URL ?>/modules/Bookings/invoice.php?id=<?= (int) $booking['id'] ?>" target="_blank"
-            class="page-action-btn invoice">📄 View Invoice</a>
+    </div>
+
+    <!-- More Actions (collapsible) -->
+    <div class="menu-section" style="margin-top:10px;">
+        <h3 class="menu-toggle" data-target="more-actions-section" style="cursor:pointer;">⚙️ More Actions</h3>
+        <div id="more-actions-section" style="display:none; padding:10px 15px;">
+            <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                <a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=<?= (int) $booking['contact_id'] ?>"
+                    class="page-action-btn view-details-btn">📅 All Client Bookings</a>
+                <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= (int) $booking['contact_id'] ?>&contact_name=<?= urlencode($booking['client_name']) ?>"
+                    class="page-action-btn rebook">➕ Book Again</a>
+                <a href="<?= BASE_URL ?>/modules/Bookings/invoice.php?id=<?= (int) $booking['id'] ?>" target="_blank"
+                    class="page-action-btn invoice">📄 View Invoice</a>
+                <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
+            </div>
+        </div>
     </div>
 
     <!-- Delete Confirmation Modal -->
@@ -347,6 +356,12 @@ if (isset($_GET['id'])) {
                         btn.prop('disabled', false).text('💾 Save');
                     }
                 });
+            });
+
+            // More Actions section toggle
+            $('.menu-toggle[data-target="more-actions-section"]').on('click', function () {
+                var section = $('#more-actions-section');
+                section.slideToggle(200);
             });
 
             // Manage Driver section toggle + load drivers

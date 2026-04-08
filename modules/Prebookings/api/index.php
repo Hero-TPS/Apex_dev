@@ -10,6 +10,9 @@ $action = $_REQUEST['action'] ?? '';
 
 try {
     switch ($action) {
+        case 'list':
+            handleList();
+            break;
         case 'add':
             handleAdd();
             break;
@@ -34,6 +37,75 @@ try {
 }
 
 // ========== HANDLERS ==========
+
+function handleList()
+{
+    global $pdo;
+
+    try {
+        $show = $_GET['show'] ?? 'upcoming';
+        $tz   = new DateTimeZone(TIME_ZONE);
+        $today = (new DateTime('now', $tz))->format('Y-m-d');
+
+        if ($show === 'all') {
+            $stmt = $pdo->query("
+                SELECT p.*, c.name AS client_name, c.phone AS client_phone
+                FROM prebookings p
+                JOIN contacts c ON p.contact_id = c.id
+                WHERE p.converted_booking_id IS NULL
+                ORDER BY p.trip_date ASC, p.start_time ASC
+                LIMIT 200
+            ");
+        } else {
+            $stmt = $pdo->prepare("
+                SELECT p.*, c.name AS client_name, c.phone AS client_phone
+                FROM prebookings p
+                JOIN contacts c ON p.contact_id = c.id
+                WHERE p.converted_booking_id IS NULL
+                  AND p.trip_date >= ?
+                ORDER BY p.trip_date ASC, p.start_time ASC
+                LIMIT 100
+            ");
+            $stmt->execute([$today]);
+        }
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $prebookings = [];
+        $todayObj = new DateTime('today', $tz);
+
+        foreach ($rows as $row) {
+            $dateObj  = new DateTime($row['trip_date'], $tz);
+            $isPast   = $dateObj < $todayObj;
+            $effPickup = !empty($row['was_swapped'])
+                ? ($row['original_destination'] ?? '')
+                : ($row['original_pickup'] ?? '');
+            $effDest   = !empty($row['was_swapped'])
+                ? ($row['original_pickup'] ?? '')
+                : ($row['original_destination'] ?? '');
+
+            $prebookings[] = [
+                'id'            => (int) $row['id'],
+                'contact_id'    => (int) $row['contact_id'],
+                'trip_date'     => $dateObj->format('d/m/y'),
+                'trip_date_raw' => $row['trip_date'],
+                'start_time'    => $row['start_time'] ? substr($row['start_time'], 0, 5) : '',
+                'client_name'   => $row['client_name'],
+                'client_phone'  => formatPhoneNumberForWhatsApp($row['client_phone'] ?? ''),
+                'pickup_location' => $effPickup,
+                'destination'   => $effDest,
+                'cost'          => $row['cost'] ? 'R' . number_format((float) $row['cost'], 2) : '',
+                'description'   => $row['description'] ?? '',
+                'is_past'       => $isPast,
+            ];
+        }
+
+        jsonResponse(['success' => true, 'prebookings' => $prebookings]);
+
+    } catch (PDOException $e) {
+        logError('PREBOOKING', 'Failed to list prebookings', ['error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Database error.'], 500);
+    }
+}
 
 function handleAdd()
 {

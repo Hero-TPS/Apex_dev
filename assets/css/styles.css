@@ -588,11 +588,11 @@ textarea {
   right: 20px;
   background: #3498db;
   color: white;
-  width: 50px;
-  height: 50px;
+  width: 62px;
+  height: 62px;
   border-radius: 50%;
   border: none;
-  font-size: 24px;
+  font-size: 30px;
   cursor: pointer;
   box-shadow: 0 4px 8px rgba(0,0,0,0.2);
   z-index: 1000;
@@ -842,6 +842,15 @@ body:not(.home-page) .floating-menu-toggle {
 
 .booking-overdue { background-color: #fff3cd !important; }
 .overdue-label { margin-top: 6px; font-size: 12px; color: #856404; font-weight: bold; text-align: center; }
+
+/* Prebooking rows in the bookings list */
+.prebooking-row-info { background-color: #e8f4fd !important; }
+.prebooking-label { margin-top: 4px; font-size: 12px; color: #1a5276; font-weight: bold; }
+.prebooking-separator td { background: #2980b9; color: white; font-weight: bold; text-align: center; padding: 6px 10px; font-size: 13px; }
+
+/* Confirmed confirmation rows */
+.confirmation-row.is-confirmed { opacity: 0.65; background: #f0fff0; }
+.confirmation-row.is-confirmed .confirm-send-btn { background: #27ae60; }
 
 .db-fuel { background: linear-gradient(135deg, #ff9a9e, #fad0c4); }
 .db-fuel-reports { background: linear-gradient(135deg, #a1887f, #795548); }
