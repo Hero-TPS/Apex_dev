@@ -127,16 +127,16 @@ include ROOT_DIR . '/includes/header.php';
                     var badge = pending.length > 0 ? ' (' + pending.length + ')' : '';
                     $('#confirmations-badge').text(badge);
 
-                    if (pending.length > 0) {
-                        $('#confirmations-section').slideDown(200);
-                    }
-
                     var html = '';
-                    $.each(pending, function (i, b) {
+                    $.each(res.bookings, function (i, b) {
                         var time = b.start_time ? b.start_time.substr(0, 5) : '';
                         var cost = 'R' + parseFloat(b.cost).toFixed(2);
                         var viewUrl = '<?= BASE_URL ?>/modules/Bookings/view.php?id=' + b.id;
-                        html += '<div class="confirmation-row" id="conf-row-' + b.id + '" ' +
+                        var confirmedClass = b.already_confirmed ? ' is-confirmed' : '';
+                        var confirmedBadge = b.already_confirmed
+                            ? '<span class="conf-confirmed-badge" style="color:#27ae60; font-size:0.85em;"> ✅ Confirmed</span>'
+                            : '<span class="conf-confirmed-badge"></span>';
+                        html += '<div class="confirmation-row' + confirmedClass + '" id="conf-row-' + b.id + '" ' +
                             'data-booking-id="' + b.id + '" ' +
                             'data-wa-url="' + escapeHtmlAttr(b.whatsapp_url) + '" ' +
                             'data-message="' + escapeHtmlAttr(b.message_content) + '">' +
@@ -144,9 +144,10 @@ include ROOT_DIR . '/includes/header.php';
                             ' &mdash; ' + escapeHtml(time) +
                             ' &mdash; ' + escapeHtml(b.pickup_location) + ' → ' + escapeHtml(b.destination) +
                             ' &mdash; ' + escapeHtml(cost) +
+                            confirmedBadge +
                             '<br>' +
                             '<a href="#" class="page-action-btn whatsapp confirm-send-btn">' +
-                            '💬 Confirm &amp; Send</a>' +
+                            (b.already_confirmed ? '🔁 Re-send' : '💬 Confirm &amp; Send') + '</a>' +
                             ' <a href="' + viewUrl + '" class="page-action-btn view">📋 View Booking</a>' +
                             '</div>';
                     });
@@ -181,21 +182,25 @@ include ROOT_DIR . '/includes/header.php';
             dataType: 'json',
             success: function (res) {
                 if (res.success) {
-                    $('#conf-row-' + bookingId).fadeOut(400, function () {
-                        $(this).remove();
-                        var remaining = $('.confirmation-row').length;
-                        if (remaining === 0) {
-                            $('#confirmations-section').slideUp(200);
-                            $('#confirmations-badge').text('');
+                    var row = $('#conf-row-' + bookingId);
+                    var wasAlreadyConfirmed = row.hasClass('is-confirmed');
+
+                    // Only decrement badge if this was a pending confirmation
+                    if (!wasAlreadyConfirmed) {
+                        var current = parseInt($('#confirmations-badge').text().replace(/\D/g, '')) || 0;
+                        if (current > 1) {
+                            $('#confirmations-badge').text(' (' + (current - 1) + ')');
                         } else {
-                            var current = parseInt($('#confirmations-badge').text().replace(/\D/g, '')) || 0;
-                            if (current > 1) {
-                                $('#confirmations-badge').text(' (' + (current - 1) + ')');
-                            } else {
-                                $('#confirmations-badge').text('');
-                            }
+                            $('#confirmations-badge').text('');
                         }
-                    });
+                    }
+
+                    // Mark row as confirmed in-place
+                    row.addClass('is-confirmed');
+                    row.find('.confirm-send-btn').html('🔁 Re-send');
+                    row.find('.conf-confirmed-badge')
+                        .html(' ✅ Confirmed')
+                        .css({ color: '#27ae60', fontSize: '0.85em' });
                 } else {
                     $('#conf-row-' + bookingId).find('.confirm-send-btn')
                         .after('<span style="color:#e74c3c; font-size:0.85em; margin-left:8px;">⚠️ Could not save. Run the DB migration.</span>');

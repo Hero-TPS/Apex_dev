@@ -188,12 +188,14 @@ include ROOT_DIR . '/includes/header.php';
         }
 
         loadBookings();
+        loadPrebookings();
 
         $('#toggleBookingsBtn').on('click', function () {
             showAll = !showAll;
             $(this).text(showAll ? 'Show Upcoming Only' : 'Show All Bookings');
             $('#bookings-heading').text(showAll ? 'All Bookings' : 'Upcoming Bookings');
             loadBookings();
+            loadPrebookings();
         });
 
         // Status toggle
@@ -340,6 +342,114 @@ include ROOT_DIR . '/includes/header.php';
                     modal.hide();
                     confirmBtn.text('Yes, Delete').prop('disabled', false);
                     bookingIdToDelete = null;
+                }
+            });
+        });
+
+        function loadPrebookings() {
+            // Remove any existing prebooking rows/separator
+            tableBody.find('.prebooking-separator, .prebooking-row-info').remove();
+
+            $.ajax({
+                type: 'GET',
+                url: '<?= BASE_URL ?>/modules/Prebookings/api/index.php',
+                data: { action: 'list', show: showAll ? 'all' : 'upcoming' },
+                dataType: 'json',
+                success: function (res) {
+                    if (!res.success || res.prebookings.length === 0) return;
+
+                    // Add separator row
+                    tableBody.append(
+                        '<tr class="prebooking-separator">' +
+                        '<td colspan="8">📋 Tentative / Prebookings</td>' +
+                        '</tr>'
+                    );
+
+                    $.each(res.prebookings, function (i, p) {
+                        var rowClass = 'prebooking-row-info' + (p.is_past ? ' booking-overdue' : '');
+                        var waLink = p.client_phone
+                            ? '<a href="https://wa.me/' + p.client_phone + '" target="_blank" class="action-btn whatsapp-btn">💬 WhatsApp</a>'
+                            : '';
+                        var row =
+                            '<tr id="pre-row-' + p.id + '" class="' + rowClass + '" data-date="' + escapeHtml(p.trip_date_raw) + '">' +
+                            '<td data-label="Date">' + escapeHtml(p.trip_date) + '</td>' +
+                            '<td data-label="Time">' + (p.start_time ? escapeHtml(p.start_time) : '<em>TBC</em>') + '</td>' +
+                            '<td data-label="Client">' + escapeHtml(p.client_name) + '</td>' +
+                            '<td data-label="Pickup">' + (p.pickup_location ? escapeHtml(p.pickup_location) : '<em>TBC</em>') + '</td>' +
+                            '<td data-label="Destination">' + (p.destination ? escapeHtml(p.destination) : '<em>TBC</em>') + '</td>' +
+                            '<td data-label="Cost">' + (p.cost ? escapeHtml(p.cost) : '<em>TBC</em>') + '</td>' +
+                            '<td data-label="Driver"><span style="color:#2980b9; font-size:0.8em;">Tentative</span>' +
+                            (p.description ? '<div style="font-size:0.8em;color:#666;">' + escapeHtml(p.description) + '</div>' : '') +
+                            '</td>' +
+                            '<td data-label="Actions">' +
+                            '<div class="actions-container">' +
+                            waLink +
+                            '<a href="<?= BASE_URL ?>/modules/Prebookings/edit.php?id=' + p.id + '" class="action-btn edit-btn">✏️ Edit</a>' +
+                            '<button class="action-btn convert-prebooking-btn" data-id="' + p.id + '">🚗 Convert</button>' +
+                            '<button class="action-btn delete-prebooking-btn" data-id="' + p.id + '">🗑️ Delete</button>' +
+                            '</div>' +
+                            '</td>' +
+                            '</tr>';
+                        tableBody.append(row);
+                    });
+
+                    $('.bookings-table').show();
+                    noBookingsMessage.hide();
+                }
+            });
+        }
+
+        // Convert prebooking to full booking
+        $(document).on('click', '.convert-prebooking-btn', function () {
+            if (!confirm('Convert this tentative booking? The calendar event will be removed and the booking form will open prefilled.')) return;
+            var id = $(this).data('id');
+            var btn = $(this);
+            btn.prop('disabled', true).text('Converting…');
+
+            $.ajax({
+                type: 'POST',
+                url: '<?= BASE_URL ?>/modules/Prebookings/api/index.php?action=convert',
+                data: { id: id },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.success && res.redirect_url) {
+                        window.location.href = res.redirect_url;
+                    } else {
+                        alert('❌ ' + (res.message || 'Could not convert prebooking.'));
+                        btn.prop('disabled', false).text('🚗 Convert');
+                    }
+                },
+                error: function () {
+                    alert('❌ Request failed. Please try again.');
+                    btn.prop('disabled', false).text('🚗 Convert');
+                }
+            });
+        });
+
+        // Delete prebooking from bookings list
+        $(document).on('click', '.delete-prebooking-btn', function () {
+            if (!confirm('Delete this tentative booking and remove it from Google Calendar?')) return;
+            var id = $(this).data('id');
+            var btn = $(this);
+            btn.prop('disabled', true).text('Deleting…');
+
+            $.ajax({
+                type: 'POST',
+                url: '<?= BASE_URL ?>/modules/Prebookings/api/index.php?action=delete',
+                data: { id: id },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.success) {
+                        $('#pre-row-' + id).fadeOut(400, function () { $(this).remove(); });
+                        showNotification('✓ Tentative booking deleted', 'success');
+                    } else {
+                        alert('❌ ' + (res.message || 'Could not delete.'));
+                        btn.prop('disabled', false).text('🗑️ Delete');
+                    }
+                },
+                error: function () {
+                    alert('❌ Request failed. Please try again.');
+                    btn.prop('disabled', false).text('🗑️ Delete');
                 }
             });
         });
