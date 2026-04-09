@@ -588,11 +588,11 @@ textarea {
   right: 20px;
   background: #3498db;
   color: white;
-  width: 62px;
-  height: 62px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   border: none;
-  font-size: 30px;
+  font-size: 24px;
   cursor: pointer;
   box-shadow: 0 4px 8px rgba(0,0,0,0.2);
   z-index: 1000;
