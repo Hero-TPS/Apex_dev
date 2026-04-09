@@ -4,7 +4,6 @@ require_once __DIR__ . '/config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 $page_title = 'Dashboard';
 include ROOT_DIR . '/includes/header.php';
-
 ?>
 
 <div class="dashboard-container">
@@ -15,7 +14,7 @@ include ROOT_DIR . '/includes/header.php';
         <h3 class="menu-toggle" data-target="confirmations-section">📲 Tomorrow's Confirmations <span
                 id="confirmations-badge"></span></h3>
         <div id="confirmations-section" class="menu-content" style="display:none;">
-            <div id="confirmations-loading" style="text-align:center; padding:10px; color:#666;">Loading...</div>
+            <div id="confirmations-loading" class="confirmations-loading">Loading...</div>
             <div id="confirmations-list"></div>
         </div>
     </div>
@@ -103,10 +102,7 @@ include ROOT_DIR . '/includes/header.php';
 <script>
     $(document).ready(function () {
         $('.menu-toggle').on('click', function () {
-            // Close all other sections
             $('.menu-content').not($(this).next()).slideUp(200);
-
-            // Toggle current section
             $(this).next().slideToggle(200);
         });
 
@@ -119,7 +115,7 @@ include ROOT_DIR . '/includes/header.php';
                 success: function (res) {
                     $('#confirmations-loading').hide();
                     if (!res.success) {
-                        $('#confirmations-list').html('<p style="color:#e74c3c;">Failed to load confirmations.</p>');
+                        $('#confirmations-list').html('<p class="error-message">Failed to load confirmations.</p>');
                         return;
                     }
 
@@ -134,7 +130,7 @@ include ROOT_DIR . '/includes/header.php';
                         var viewUrl = '<?= BASE_URL ?>/modules/Bookings/view.php?id=' + b.id;
                         var confirmedClass = b.already_confirmed ? ' is-confirmed' : '';
                         var confirmedBadge = b.already_confirmed
-                            ? '<span class="conf-confirmed-badge" style="color:#27ae60; font-size:0.85em;"> ✅ Confirmed</span>'
+                            ? '<span class="conf-confirmed-badge confirmed"> ✅ Confirmed</span>'
                             : '<span class="conf-confirmed-badge"></span>';
                         html += '<div class="confirmation-row' + confirmedClass + '" id="conf-row-' + b.id + '" ' +
                             'data-booking-id="' + b.id + '" ' +
@@ -155,14 +151,13 @@ include ROOT_DIR . '/includes/header.php';
                 },
                 error: function () {
                     $('#confirmations-loading').hide();
-                    $('#confirmations-list').html('<p style="color:#e74c3c;">Could not load tomorrow\'s bookings.</p>');
+                    $('#confirmations-list').html('<p class="error-message">Could not load tomorrow\'s bookings.</p>');
                 }
             });
         }
 
         loadTomorrowsConfirmations();
 
-        // Delegated click for Confirm & Send buttons (avoids inline onclick with message content)
         $('#confirmations-list').on('click', '.confirm-send-btn', function (e) {
             e.preventDefault();
             var row = $(this).closest('.confirmation-row');
@@ -185,7 +180,6 @@ include ROOT_DIR . '/includes/header.php';
                     var row = $('#conf-row-' + bookingId);
                     var wasAlreadyConfirmed = row.hasClass('is-confirmed');
 
-                    // Only decrement badge if this was a pending confirmation
                     if (!wasAlreadyConfirmed) {
                         var current = parseInt($('#confirmations-badge').text().replace(/\D/g, '')) || 0;
                         if (current > 1) {
@@ -195,20 +189,19 @@ include ROOT_DIR . '/includes/header.php';
                         }
                     }
 
-                    // Mark row as confirmed in-place
                     row.addClass('is-confirmed');
                     row.find('.confirm-send-btn').html('🔁 Re-send');
                     row.find('.conf-confirmed-badge')
                         .html(' ✅ Confirmed')
-                        .css({ color: '#27ae60', fontSize: '0.85em' });
+                        .addClass('confirmed');
                 } else {
                     $('#conf-row-' + bookingId).find('.confirm-send-btn')
-                        .after('<span style="color:#e74c3c; font-size:0.85em; margin-left:8px;">⚠️ Could not save. Run the DB migration.</span>');
+                        .after('<span class="inline-error">⚠️ Could not save. Run the DB migration.</span>');
                 }
             },
             error: function () {
                 $('#conf-row-' + bookingId).find('.confirm-send-btn')
-                    .after('<span style="color:#e74c3c; font-size:0.85em; margin-left:8px;">⚠️ Request failed.</span>');
+                    .after('<span class="inline-error">⚠️ Request failed.</span>');
             }
         });
     }
