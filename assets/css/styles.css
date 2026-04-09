@@ -873,6 +873,11 @@ body:not(.home-page) .floating-menu-toggle {
     border-radius: 4px;
     margin-bottom: 8px;
 }
+.prebooking-description {
+  font-size: 0.8em;
+  color: #666;
+  margin-top: 2px;
+}
 
 /* ========================
    Tomorrow's Confirmations Widget

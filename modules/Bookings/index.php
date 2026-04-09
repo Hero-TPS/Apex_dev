@@ -378,15 +378,16 @@ include ROOT_DIR . '/includes/header.php';
                             '<td data-label="Pickup">' + (p.pickup_location ? escapeHtml(p.pickup_location) : '<em>TBC</em>') + '</td>' +
                             '<td data-label="Destination">' + (p.destination ? escapeHtml(p.destination) : '<em>TBC</em>') + '</td>' +
                             '<td data-label="Cost">' + (p.cost ? escapeHtml(p.cost) : '<em>TBC</em>') + '</td>' +
-                            '<td data-label="Driver"><span style="color:#2980b9; font-size:0.8em;">Tentative</span>' +
-                            (p.description ? '<div style="font-size:0.8em;color:#666;">' + escapeHtml(p.description) + '</div>' : '') +
+                            '<td data-label="Driver">' +
+                            '<span class="prebooking-label">Tentative</span>' +
+                            (p.description ? '<div class="prebooking-description">' + escapeHtml(p.description) + '</div>' : '') +
                             '</td>' +
                             '<td data-label="Actions">' +
                             '<div class="actions-container">' +
                             waLink +
                             '<a href="<?= BASE_URL ?>/modules/Prebookings/edit.php?id=' + p.id + '" class="action-btn edit-btn">✏️ Edit</a>' +
-                            '<button class="action-btn convert-prebooking-btn" data-id="' + p.id + '">🚗 Convert</button>' +
-                            '<button class="action-btn delete-prebooking-btn" data-id="' + p.id + '">🗑️ Delete</button>' +
+                            '<button class="action-btn convert-btn convert-prebooking-btn" data-id="' + p.id + '">🚗 Convert</button>' +
+                            '<button class="action-btn delete-btn delete-prebooking-btn" data-id="' + p.id + '">🗑️ Delete</button>' +
                             '</div>' +
                             '</td>' +
                             '</tr>';
