@@ -852,6 +852,28 @@ body:not(.home-page) .floating-menu-toggle {
 .confirmation-row.is-confirmed { opacity: 0.65; background: #f0fff0; }
 .confirmation-row.is-confirmed .confirm-send-btn { background: #27ae60; }
 
+/* Confirmations widget — prebooking section */
+.confirmations-divider {
+    border: none;
+    border-top: 1px solid #e0e0e0;
+    margin: 12px 0;
+}
+.confirmations-section-label {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #2980b9;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.prebooking-reminder-row {
+    background: #eaf4fb;
+    border-left: 3px solid #2980b9;
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
 /* ========================
    Tomorrow's Confirmations Widget
 ======================== */

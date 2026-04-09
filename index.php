@@ -108,56 +108,109 @@ include ROOT_DIR . '/includes/header.php';
 
         // ========== Tomorrow's Confirmations Widget ==========
         function loadTomorrowsConfirmations() {
-            $.ajax({
-                type: 'GET',
-                url: '<?= BASE_URL ?>/modules/Bookings/api/index.php?action=tomorrows_bookings',
-                dataType: 'json',
-                success: function (res) {
-                    $('#confirmations-loading').hide();
-                    if (!res.success) {
-                        $('#confirmations-list').html('<p class="error-message">Failed to load confirmations.</p>');
-                        return;
+            var tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            var tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+            $.when(
+                $.ajax({
+                    type: 'GET',
+                    url: '<?= BASE_URL ?>/modules/Bookings/api/index.php?action=tomorrows_bookings',
+                    dataType: 'json'
+                }),
+                $.ajax({
+                    type: 'GET',
+                    url: '<?= BASE_URL ?>/modules/Prebookings/api/index.php?action=list&show=upcoming',
+                    dataType: 'json'
+                })
+            ).done(function (bookingsRes, prebookingsRes) {
+                $('#confirmations-loading').hide();
+
+                var res  = bookingsRes[0];
+                var pres = prebookingsRes[0];
+
+                if (!res.success) {
+                    $('#confirmations-list').html('<p class="error-message">Failed to load confirmations.</p>');
+                    return;
+                }
+
+                // Unconfirmed bookings + tomorrow's prebookings both count toward the badge
+                var pending = res.bookings.filter(function (b) { return !b.already_confirmed; });
+                var tomorrowPres = (pres.success && pres.prebookings)
+                    ? pres.prebookings.filter(function (p) { return p.trip_date_raw === tomorrowStr; })
+                    : [];
+
+                var totalBadge = pending.length + tomorrowPres.length;
+                $('#confirmations-badge').text(totalBadge > 0 ? ' (' + totalBadge + ')' : '');
+
+                var html = '';
+
+                // --- Confirmed bookings ---
+                $.each(res.bookings, function (i, b) {
+                    var time = b.start_time ? b.start_time.substr(0, 5) : '';
+                    var cost = 'R' + parseFloat(b.cost).toFixed(2);
+                    var viewUrl = '<?= BASE_URL ?>/modules/Bookings/view.php?id=' + b.id;
+                    var confirmedClass = b.already_confirmed ? ' is-confirmed' : '';
+                    var confirmedBadge = b.already_confirmed
+                        ? '<span class="conf-confirmed-badge confirmed"> ✅ Confirmed</span>'
+                        : '<span class="conf-confirmed-badge"></span>';
+                    html += '<div class="confirmation-row' + confirmedClass + '" id="conf-row-' + b.id + '" ' +
+                        'data-booking-id="' + b.id + '" ' +
+                        'data-wa-url="' + escapeHtmlAttr(b.whatsapp_url) + '" ' +
+                        'data-message="' + escapeHtmlAttr(b.message_content) + '">' +
+                        '<strong>' + escapeHtml(b.client_name) + '</strong>' +
+                        ' &mdash; ' + escapeHtml(time) +
+                        ' &mdash; ' + escapeHtml(b.pickup_location) + ' → ' + escapeHtml(b.destination) +
+                        ' &mdash; ' + escapeHtml(cost) +
+                        confirmedBadge +
+                        '<br>' +
+                        '<a href="#" class="page-action-btn whatsapp confirm-send-btn">' +
+                        (b.already_confirmed ? '🔁 Re-send' : '💬 Confirm &amp; Send') + '</a>' +
+                        ' <a href="' + viewUrl + '" class="page-action-btn view">📋 View Booking</a>' +
+                        '</div>';
+                });
+
+                // --- Tomorrow's prebookings ---
+                if (tomorrowPres.length > 0) {
+                    if (html !== '') {
+                        html += '<hr class="confirmations-divider">';
                     }
+                    html += '<div class="confirmations-section-label">📋 Tentative (Prebookings)</div>';
 
-                    var pending = res.bookings.filter(function (b) { return !b.already_confirmed; });
-                    var badge = pending.length > 0 ? ' (' + pending.length + ')' : '';
-                    $('#confirmations-badge').text(badge);
-
-                    var html = '';
-                    $.each(res.bookings, function (i, b) {
-                        var time = b.start_time ? b.start_time.substr(0, 5) : '';
-                        var cost = 'R' + parseFloat(b.cost).toFixed(2);
-                        var viewUrl = '<?= BASE_URL ?>/modules/Bookings/view.php?id=' + b.id;
-                        var confirmedClass = b.already_confirmed ? ' is-confirmed' : '';
-                        var confirmedBadge = b.already_confirmed
-                            ? '<span class="conf-confirmed-badge confirmed"> ✅ Confirmed</span>'
-                            : '<span class="conf-confirmed-badge"></span>';
-                        html += '<div class="confirmation-row' + confirmedClass + '" id="conf-row-' + b.id + '" ' +
-                            'data-booking-id="' + b.id + '" ' +
-                            'data-wa-url="' + escapeHtmlAttr(b.whatsapp_url) + '" ' +
-                            'data-message="' + escapeHtmlAttr(b.message_content) + '">' +
-                            '<strong>' + escapeHtml(b.client_name) + '</strong>' +
+                    $.each(tomorrowPres, function (i, p) {
+                        var time    = p.start_time || 'TBC';
+                        var pickup  = p.pickup_location || 'TBC';
+                        var dest    = p.destination || 'TBC';
+                        var cost    = p.cost || 'TBC';
+                        var editUrl = '<?= BASE_URL ?>/modules/Prebookings/edit.php?id=' + p.id;
+                        var waPhone = p.client_phone;
+                        var waMsg   = encodeURIComponent('Good day ' + p.client_name + ', just a reminder about your tentative booking tomorrow.');
+                        html += '<div class="confirmation-row prebooking-reminder-row" id="pre-conf-row-' + p.id + '">' +
+                            '<strong>' + escapeHtml(p.client_name) + '</strong> 📋' +
                             ' &mdash; ' + escapeHtml(time) +
-                            ' &mdash; ' + escapeHtml(b.pickup_location) + ' → ' + escapeHtml(b.destination) +
+                            ' &mdash; ' + escapeHtml(pickup) + ' → ' + escapeHtml(dest) +
                             ' &mdash; ' + escapeHtml(cost) +
-                            confirmedBadge +
                             '<br>' +
-                            '<a href="#" class="page-action-btn whatsapp confirm-send-btn">' +
-                            (b.already_confirmed ? '🔁 Re-send' : '💬 Confirm &amp; Send') + '</a>' +
-                            ' <a href="' + viewUrl + '" class="page-action-btn view">📋 View Booking</a>' +
+                            (waPhone
+                                ? '<a href="https://wa.me/' + escapeHtmlAttr(waPhone) + '?text=' + waMsg + '" target="_blank" rel="noopener" class="page-action-btn whatsapp">💬 Send Reminder</a> '
+                                : '') +
+                            '<a href="' + editUrl + '" class="page-action-btn edit">✏️ Edit</a> ' +
+                            '<button class="page-action-btn confirm convert-pre-btn" data-id="' + p.id + '">🚗 Convert</button>' +
                             '</div>';
                     });
-                    $('#confirmations-list').html(html);
-                },
-                error: function () {
-                    $('#confirmations-loading').hide();
-                    $('#confirmations-list').html('<p class="error-message">Could not load tomorrow\'s bookings.</p>');
                 }
+
+                $('#confirmations-list').html(html || '<p>No bookings or prebookings tomorrow.</p>');
+
+            }).fail(function () {
+                $('#confirmations-loading').hide();
+                $('#confirmations-list').html('<p class="error-message">Could not load tomorrow\'s bookings.</p>');
             });
         }
 
         loadTomorrowsConfirmations();
 
+        // Confirmed booking — send WA + mark confirmed
         $('#confirmations-list').on('click', '.confirm-send-btn', function (e) {
             e.preventDefault();
             var row = $(this).closest('.confirmation-row');
@@ -166,6 +219,33 @@ include ROOT_DIR . '/includes/header.php';
             var message = row.data('message');
             window.open(waUrl, '_blank');
             markConfirmed(id, message);
+        });
+
+        // Convert prebooking from dashboard
+        $('#confirmations-list').on('click', '.convert-pre-btn', function () {
+            if (!confirm('Convert this tentative booking? The calendar event will be removed and the booking form will open prefilled.')) return;
+            var id  = $(this).data('id');
+            var btn = $(this);
+            btn.prop('disabled', true).text('Converting…');
+
+            $.ajax({
+                type:     'POST',
+                url:      '<?= BASE_URL ?>/modules/Prebookings/api/index.php?action=convert',
+                data:     { id: id },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.success && res.redirect_url) {
+                        window.location.href = res.redirect_url;
+                    } else {
+                        alert('❌ ' + (res.message || 'Could not convert.'));
+                        btn.prop('disabled', false).text('🚗 Convert');
+                    }
+                },
+                error: function () {
+                    alert('❌ Request failed.');
+                    btn.prop('disabled', false).text('🚗 Convert');
+                }
+            });
         });
     });
 
