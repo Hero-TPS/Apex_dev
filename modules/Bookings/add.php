@@ -197,12 +197,26 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
         </div>
 
         <?php if ($booking_fee_pct > 0): ?>
-        <div class="form-group" id="bookingFeeGroup" style="display:none;">
+        <div class="form-group hidden" id="bookingFeeGroup">
             <label>Apex Booking Fee (<?= htmlspecialchars($booking_fee_pct) ?>%)</label>
-            <div id="bookingFeeDisplay" style="font-weight:bold; padding:6px 0;">R0.00</div>
+            <div id="bookingFeeDisplay">R0.00</div>
             <small>Calculated from cost × <?= htmlspecialchars($booking_fee_pct) ?>% — stored when booking is saved</small>
         </div>
         <?php endif; ?>
+
+        <!-- No Booking Fee -->
+        <div class="form-group hidden" id="noBookingFeeGroup">
+            <label>
+                <input type="checkbox" id="no_booking_fee" name="no_booking_fee" value="1">
+                No Booking Fee (full amount goes to driver)
+            </label>
+        </div>
+
+        <!-- Driver Notes -->
+        <div class="form-group hidden" id="driverNotesGroup">
+            <label for="driver_notes">Driver Notes</label>
+            <textarea id="driver_notes" name="driver_notes" placeholder="Instructions for the driver..."></textarea>
+        </div>
 
         <button type="submit" class="btn" id="submitBtn">🚗 Create Booking</button>
     </form>
@@ -373,17 +387,29 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
 
         $('#driver_id').on('change', function () {
             updateBookingFee();
+            updateDriverSections();
         });
+
+        $('#no_booking_fee').on('change', function () {
+            updateBookingFee();
+        });
+
+        function updateDriverSections() {
+            var driverSelected = $('#driver_id').val() !== '';
+            $('#noBookingFeeGroup').toggle(driverSelected);
+            $('#driverNotesGroup').toggle(driverSelected);
+        }
 
         var bookingFeePct = <?= (float) $booking_fee_pct ?>;
         function updateBookingFee() {
             var driverSelected = $('#driver_id').val() !== '';
+            var noFee = $('#no_booking_fee').is(':checked');
             var costVal = $('#cost').val() === 'other'
                 ? parseFloat($('#otherCost').val()) || 0
                 : parseFloat($('#cost').val()) || 0;
             var fee = parseFloat((costVal * bookingFeePct / 100).toFixed(2));
             if (bookingFeePct > 0) {
-                $('#bookingFeeGroup').toggle(driverSelected);
+                $('#bookingFeeGroup').toggle(driverSelected && !noFee);
                 $('#bookingFeeDisplay').text('R' + fee.toFixed(2));
             }
         }

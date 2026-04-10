@@ -7,6 +7,19 @@ Run in order. Check off each one after executing.
 
 ## Pending
 
+### [bookings] Add `no_booking_fee` and `driver_notes` columns
+
+- [ ] Done on dev
+- [ ] Done on live
+
+```sql
+ALTER TABLE bookings
+    ADD COLUMN IF NOT EXISTS no_booking_fee TINYINT(1) NOT NULL DEFAULT 0 AFTER booking_fee,
+    ADD COLUMN IF NOT EXISTS driver_notes   TEXT       NULL DEFAULT NULL   AFTER no_booking_fee;
+```
+
+---
+
 ### [prebookings] Add `original_pickup` and `was_swapped` columns
 
 - [x] Done on dev

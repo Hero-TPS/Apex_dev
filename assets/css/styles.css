@@ -1688,3 +1688,137 @@ body:not(.home-page) .floating-menu-toggle {
     font-size: 1em;
     line-height: 1.5;
 }
+
+/* ========================
+   Booking View / Edit / Add — Driver & Sections
+======================== */
+
+/* Gate code inline editor */
+.gate-code-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin-top: 4px;
+}
+
+.gate-code-textarea {
+    flex: 1;
+    resize: vertical;
+}
+
+#gate-code-result {
+    margin-top: 4px;
+}
+
+/* Collapsible section content panels */
+.section-content {
+    display: none;
+    padding: 10px 0;
+}
+
+.section-content--padded {
+    display: none;
+    padding: 10px 15px;
+}
+
+/* Modal overlay hidden by default */
+.modal-overlay {
+    display: none;
+}
+
+/* Message history */
+#msg-history-loading {
+    color: #666;
+}
+
+.msg-history-entry {
+    border-bottom: 1px solid #eee;
+    padding: 8px 0;
+}
+
+.msg-history-time {
+    color: #888;
+    font-size: 0.85em;
+}
+
+.msg-history-type {
+    background: #3498db;
+    color: #fff;
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: 0.8em;
+}
+
+.msg-history-preview {
+    margin-top: 4px;
+    font-size: 0.9em;
+}
+
+.msg-history-expand {
+    font-size: 0.8em;
+}
+
+.msg-history-empty {
+    color: #999;
+    font-style: italic;
+}
+
+.msg-history-error {
+    color: #e74c3c;
+}
+
+/* Manage Driver panel */
+.manage-driver-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-end;
+    margin-bottom: 10px;
+}
+
+.manage-driver-label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+#driver-select {
+    min-width: 180px;
+}
+
+#booking-fee-input {
+    width: 110px;
+}
+
+#driver-notes-input {
+    width: 100%;
+    resize: vertical;
+}
+
+.manage-driver-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Booking fee display (add / edit pages) */
+#bookingFeeDisplay {
+    font-weight: bold;
+    padding: 6px 0;
+}
+
+/* More Actions button row */
+.more-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* In-line result message sizes */
+.result-sm {
+    font-size: 0.85em;
+}
+
+.result-xs {
+    font-size: 0.9em;
+}

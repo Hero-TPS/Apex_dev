@@ -346,8 +346,13 @@ function createEventDescription(array $bookingData): string
             $description .= " | " . $bookingData['driver_phone'];
         }
         $description .= "\n";
-        if (!empty($bookingData['booking_fee'])) {
+        if (!empty($bookingData['no_booking_fee'])) {
+            $description .= "💼 Booking Fee: None (full amount to driver)\n";
+        } elseif (!empty($bookingData['booking_fee'])) {
             $description .= "💼 Booking Fee: R" . number_format((float) $bookingData['booking_fee'], 2) . "\n";
+        }
+        if (!empty($bookingData['driver_notes'])) {
+            $description .= "📝 Driver Notes: " . $bookingData['driver_notes'] . "\n";
         }
     }
     if (!empty($bookingData['description'])) {
