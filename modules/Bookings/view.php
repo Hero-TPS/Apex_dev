@@ -27,6 +27,11 @@ if (isset($_GET['id'])) {
             if ($booking) {
                 $booking['pickup_location'] = $booking['was_swapped'] ? $booking['original_destination'] : $booking['original_pickup'];
                 $booking['destination'] = $booking['was_swapped'] ? $booking['original_pickup'] : $booking['original_destination'];
+
+                // Fetch drivers and booking fee for the Manage Driver section
+                $driversStmt = $pdo->query("SELECT id, name, phone FROM drivers WHERE active = 1 ORDER BY name ASC");
+                $drivers = $driversStmt->fetchAll(PDO::FETCH_ASSOC);
+                $booking_fee_pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
             } else {
                 $error_message = "Booking not found.";
             }
@@ -143,42 +148,25 @@ if (isset($_GET['id'])) {
             </div>
             <div id="gate-code-result"></div>
         </div>
-
-        <!-- Driver Allocation (internal only) -->
-        <?php if (!empty($booking['driver_name'])): ?>
-        <div class="detail-item">
-            <strong>Driver:</strong> <?= htmlspecialchars($booking['driver_name']) ?>
-            <?php if (!empty($booking['driver_phone'])): ?>
-                — <?= htmlspecialchars($booking['driver_phone']) ?>
-            <?php endif; ?>
-        </div>
-        <?php if (!empty($booking['no_booking_fee'])): ?>
-        <div class="detail-item">
-            <strong>Booking Fee (Apex):</strong> No fee — full amount to driver
-        </div>
-        <?php elseif (!empty($booking['booking_fee'])): ?>
-        <div class="detail-item">
-            <strong>Booking Fee (Apex):</strong> R <?= number_format((float) $booking['booking_fee'], 2) ?>
-        </div>
-        <?php endif; ?>
-        <?php if (!empty($booking['driver_notes'])): ?>
-        <div class="detail-item full-width">
-            <strong>Driver Notes:</strong> <?= htmlspecialchars($booking['driver_notes']) ?>
-        </div>
-        <?php endif; ?>
-        <?php endif; ?>
     </div>
 
     <!-- Manage Driver -->
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="manage-driver-section">🚗 Manage Driver</h3>
-        <div id="manage-driver-section" class="section-content">
+        <div id="manage-driver-section" class="section-body">
             <div id="manage-driver-content">
                 <div class="manage-driver-fields">
                     <div>
                         <label for="driver-select" class="manage-driver-label">Driver</label>
                         <select id="driver-select">
-                            <option value="">Loading drivers…</option>
+                            <option value="">— No driver —</option>
+                            <?php foreach ($drivers as $driver): ?>
+                                <option value="<?= htmlspecialchars($driver['id']) ?>"
+                                    <?= ((int)$booking['driver_id'] === (int)$driver['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($driver['name']) ?>
+                                    <?= $driver['phone'] ? ' (' . htmlspecialchars($driver['phone']) . ')' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div>
@@ -386,43 +374,15 @@ if (isset($_GET['id'])) {
                 section.slideToggle(200);
             });
 
-            // Manage Driver section toggle + load drivers
-            var driversLoaded = false;
+            // Manage Driver section toggle
             $('.menu-toggle[data-target="manage-driver-section"]').on('click', function () {
-                var section = $('#manage-driver-section');
-                if (section.is(':hidden')) {
-                    section.slideDown(200);
-                    if (!driversLoaded) {
-                        driversLoaded = true;
-                        $.ajax({
-                            type: 'GET',
-                            url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
-                            data: { action: 'get_drivers' },
-                            dataType: 'json',
-                            success: function (res) {
-                                var sel = $('#driver-select');
-                                sel.empty().append('<option value="">— No driver —</option>');
-                                if (res.success && res.drivers.length > 0) {
-                                    $.each(res.drivers, function (i, d) {
-                                        var selected = (d.id == <?= (int)($booking['driver_id'] ?? 0) ?>) ? ' selected' : '';
-                                        sel.append('<option value="' + d.id + '"' + selected + '>' + escapeHtml(d.name) + '</option>');
-                                    });
-                                }
-                                // Auto-calculate booking fee when driver selection changes
-                                sel.on('change', autoCalcFee);
-                            },
-                            error: function () {
-                                $('#driver-select').html('<option value="">Failed to load drivers</option>');
-                            }
-                        });
-                    }
-                } else {
-                    section.slideUp(200);
-                }
+                $('#manage-driver-section').slideToggle(200);
             });
 
-            var apexFeePct = <?= (float) getSystemVariable($pdo, 'apex_booking_fee_pct') ?>;
+            var apexFeePct = <?= (float) $booking_fee_pct ?>;
             var bookingCost = <?= (float) $booking['cost'] ?>;
+
+            $('#driver-select').on('change', autoCalcFee);
 
             function autoCalcFee() {
                 var noFee = $('#no-booking-fee-check').is(':checked');
