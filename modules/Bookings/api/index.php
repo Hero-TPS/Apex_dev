@@ -418,6 +418,8 @@ function handleUpdateBooking()
             $payment_method = trim($_REQUEST['payment_method'] ?? 'cash');
             $swap_locations = isset($_REQUEST['swap_locations']);
             $driver_id = intval($_REQUEST['driver_id'] ?? 0) ?: null;
+            $no_booking_fee = isset($_REQUEST['no_booking_fee']) ? 1 : 0;
+            $driver_notes = trim($_REQUEST['driver_notes'] ?? '');
 
             // Handle "Other" fields
             if ($pickup_location === 'other') {
@@ -442,9 +444,9 @@ function handleUpdateBooking()
                 throw new Exception('Invalid booking data');
             }
 
-            // Recalculate booking fee
+            // Recalculate booking fee (waived if no_booking_fee is set)
             $booking_fee = null;
-            if ($driver_id !== null) {
+            if ($driver_id !== null && !$no_booking_fee) {
                 $pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
                 $fee = calculateBookingFee($final_cost, $pct);
                 if ($fee > 0) {
@@ -477,7 +479,7 @@ function handleUpdateBooking()
                 contact_id = ?, trip_date = ?, start_time = ?, end_time = ?,
                 original_pickup = ?, original_destination = ?, was_swapped = ?,
                 cost = ?, flight_number = ?, description = ?, payment_method = ?,
-                driver_id = ?, booking_fee = ?,
+                driver_id = ?, booking_fee = ?, no_booking_fee = ?, driver_notes = ?,
                 last_confirmed_at = NULL,
                 updated_at = NOW()
             WHERE id = ?";
@@ -497,6 +499,8 @@ function handleUpdateBooking()
                 $payment_method,
                 $driver_id,
                 $booking_fee,
+                $no_booking_fee,
+                $driver_notes ?: null,
                 $booking_id
             ]);
 
@@ -1006,7 +1010,9 @@ function handleAssignDriver()
     $driverIdRaw = trim($_POST['driver_id'] ?? '');
     $driverIdInt = intval($driverIdRaw);
     $driverId    = ($driverIdRaw !== '' && $driverIdInt > 0) ? $driverIdInt : null;
-    $bookingFee  = ($driverId !== null) ? (float) ($_POST['booking_fee'] ?? 0) : null;
+    $noBookingFee = isset($_POST['no_booking_fee']) ? 1 : 0;
+    $driverNotes  = trim($_POST['driver_notes'] ?? '') ?: null;
+    $bookingFee  = ($driverId !== null && !$noBookingFee) ? (float) ($_POST['booking_fee'] ?? 0) : null;
 
     if ($bookingId <= 0) {
         jsonResponse(['success' => false, 'message' => 'Invalid booking ID.'], 400);
