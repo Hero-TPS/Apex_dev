@@ -418,6 +418,8 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
         $('#pickup').trigger('change');
         $('#destination').trigger('change');
         $('#cost').trigger('change');
+        updateDriverSections();
+        updateBookingFee();
 
         // Apply prebooking prefill for destination and cost after destinations list is populated
         if (prefillPickup) {

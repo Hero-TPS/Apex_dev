@@ -336,6 +336,10 @@ $(document).ready(function () {
         var driverSelected = $('#driver_id').val() !== '';
         $('#noBookingFeeGroup').toggle(driverSelected);
         $('#driverNotesGroup').toggle(driverSelected);
+        if (!driverSelected) {
+            $('#driver_notes').val('');
+            $('#no_booking_fee').prop('checked', false);
+        }
     }
 
     var bookingFeePct = <?= (float) ($booking_fee_pct ?? 0) ?>;

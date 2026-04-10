@@ -188,7 +188,7 @@ if (isset($_GET['id'])) {
                         placeholder="Instructions for the driver..."><?= htmlspecialchars($booking['driver_notes'] ?? '') ?></textarea>
                 </div>
                 <div class="manage-driver-actions">
-                    <button id="assign-driver-btn" class="page-action-btn save">✅ Assign Driver</button>
+                    <button id="assign-driver-btn" class="page-action-btn save"><?= !empty($booking['driver_id']) ? '🔄 Update Driver' : '✅ Assign Driver' ?></button>
                     <button id="remove-driver-btn" class="page-action-btn delete">❌ Remove Driver</button>
                 </div>
                 <div id="manage-driver-result"></div>
@@ -268,6 +268,7 @@ if (isset($_GET['id'])) {
     <script>
         $(document).ready(function () {
             var bookingId = <?= (int) $booking['id'] ?>;
+            var hasDriver = <?= !empty($booking['driver_id']) ? 'true' : 'false' ?>;
             var modal = $('#deleteConfirmationModal');
 
             $('#deleteBookingBtn').on('click', function () {
@@ -400,38 +401,7 @@ if (isset($_GET['id'])) {
             $('#no-booking-fee-check').on('change', autoCalcFee);
             autoCalcFee();
 
-            $('#assign-driver-btn').on('click', function () {
-                var driverId = $('#driver-select').val();
-                var fee = parseFloat($('#booking-fee-input').val()) || 0;
-                var noFee = $('#no-booking-fee-check').is(':checked') ? 1 : 0;
-                var driverNotes = $('#driver-notes-input').val();
-                var resultArea = $('#manage-driver-result');
-
-                if (!driverId) {
-                    resultArea.html('<span class="error-message result-xs">Please select a driver first.</span>');
-                    return;
-                }
-
-                $.ajax({
-                    type: 'POST',
-                    url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
-                    data: { action: 'assign_driver', booking_id: bookingId, driver_id: driverId, booking_fee: fee, no_booking_fee: noFee, driver_notes: driverNotes },
-                    dataType: 'json',
-                    success: function (res) {
-                        if (res.success) {
-                            resultArea.html('<span class="success-message result-xs">✓ Driver assigned.</span>');
-                            setTimeout(function () { location.reload(); }, 1200);
-                        } else {
-                            resultArea.html('<span class="error-message result-xs">✗ ' + escapeHtml(res.message) + '</span>');
-                        }
-                    },
-                    error: function () {
-                        resultArea.html('<span class="error-message result-xs">✗ Request failed.</span>');
-                    }
-                });
-            });
-
-            $('#remove-driver-btn').on('click', function () {
+            function doRemoveDriver() {
                 var resultArea = $('#manage-driver-result');
                 $.ajax({
                     type: 'POST',
@@ -450,6 +420,48 @@ if (isset($_GET['id'])) {
                         resultArea.html('<span class="error-message result-xs">✗ Request failed.</span>');
                     }
                 });
+            }
+
+            $('#assign-driver-btn').on('click', function () {
+                var driverId = $('#driver-select').val();
+                var fee = parseFloat($('#booking-fee-input').val()) || 0;
+                var noFee = $('#no-booking-fee-check').is(':checked') ? 1 : 0;
+                var driverNotes = $('#driver-notes-input').val();
+                var resultArea = $('#manage-driver-result');
+
+                if (!driverId) {
+                    if (!confirm('No driver selected — this will remove the currently assigned driver. Continue?')) {
+                        return;
+                    }
+                    doRemoveDriver();
+                    return;
+                }
+
+                $.ajax({
+                    type: 'POST',
+                    url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                    data: { action: 'assign_driver', booking_id: bookingId, driver_id: driverId, booking_fee: fee, no_booking_fee: noFee, driver_notes: driverNotes },
+                    dataType: 'json',
+                    success: function (res) {
+                        if (res.success) {
+                            var msg = hasDriver ? '✓ Driver updated.' : '✓ Driver assigned.';
+                            resultArea.html('<span class="success-message result-xs">' + msg + '</span>');
+                            setTimeout(function () { location.reload(); }, 1200);
+                        } else {
+                            resultArea.html('<span class="error-message result-xs">✗ ' + escapeHtml(res.message) + '</span>');
+                        }
+                    },
+                    error: function () {
+                        resultArea.html('<span class="error-message result-xs">✗ Request failed.</span>');
+                    }
+                });
+            });
+
+            $('#remove-driver-btn').on('click', function () {
+                if (!confirm('Remove the currently assigned driver from this booking?')) {
+                    return;
+                }
+                doRemoveDriver();
             });
 
             // Message history section toggle

@@ -449,12 +449,19 @@ function handleUpdateBooking()
             }
 
             // Recalculate booking fee (waived if no_booking_fee is set)
-            $booking_fee = null;
-            if ($driver_id !== null && !$no_booking_fee) {
-                $pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
-                $fee = calculateBookingFee($final_cost, $pct);
-                if ($fee > 0) {
-                    $booking_fee = $fee;
+            // Null out all driver fields when no driver is selected
+            if ($driver_id === null) {
+                $booking_fee = null;
+                $no_booking_fee = 0;
+                $driver_notes = null;
+            } else {
+                $booking_fee = null;
+                if (!$no_booking_fee) {
+                    $pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
+                    $fee = calculateBookingFee($final_cost, $pct);
+                    if ($fee > 0) {
+                        $booking_fee = $fee;
+                    }
                 }
             }
 
@@ -1025,7 +1032,7 @@ function handleAssignDriver()
 
     try {
         $stmt = $pdo->prepare(
-            "UPDATE bookings SET driver_id = ?, booking_fee = ?, no_booking_fee = ?, driver_notes = ? WHERE id = ?"
+            "UPDATE bookings SET driver_id = ?, booking_fee = ?, no_booking_fee = ?, driver_notes = ?, updated_at = NOW() WHERE id = ?"
         );
         $stmt->execute([$driver_id, $booking_fee, $no_booking_fee, $driver_notes, $bookingId]);
 
