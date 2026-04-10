@@ -204,6 +204,20 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
         </div>
         <?php endif; ?>
 
+        <!-- No Booking Fee -->
+        <div class="form-group" id="noBookingFeeGroup" style="display:none;">
+            <label>
+                <input type="checkbox" id="no_booking_fee" name="no_booking_fee" value="1">
+                No Booking Fee (full amount goes to driver)
+            </label>
+        </div>
+
+        <!-- Driver Notes -->
+        <div class="form-group" id="driverNotesGroup" style="display:none;">
+            <label for="driver_notes">Driver Notes</label>
+            <textarea id="driver_notes" name="driver_notes" placeholder="Instructions for the driver..."></textarea>
+        </div>
+
         <button type="submit" class="btn" id="submitBtn">🚗 Create Booking</button>
     </form>
 
@@ -373,17 +387,29 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
 
         $('#driver_id').on('change', function () {
             updateBookingFee();
+            updateDriverSections();
         });
+
+        $('#no_booking_fee').on('change', function () {
+            updateBookingFee();
+        });
+
+        function updateDriverSections() {
+            var driverSelected = $('#driver_id').val() !== '';
+            $('#noBookingFeeGroup').toggle(driverSelected);
+            $('#driverNotesGroup').toggle(driverSelected);
+        }
 
         var bookingFeePct = <?= (float) $booking_fee_pct ?>;
         function updateBookingFee() {
             var driverSelected = $('#driver_id').val() !== '';
+            var noFee = $('#no_booking_fee').is(':checked');
             var costVal = $('#cost').val() === 'other'
                 ? parseFloat($('#otherCost').val()) || 0
                 : parseFloat($('#cost').val()) || 0;
             var fee = parseFloat((costVal * bookingFeePct / 100).toFixed(2));
             if (bookingFeePct > 0) {
-                $('#bookingFeeGroup').toggle(driverSelected);
+                $('#bookingFeeGroup').toggle(driverSelected && !noFee);
                 $('#bookingFeeDisplay').text('R' + fee.toFixed(2));
             }
         }

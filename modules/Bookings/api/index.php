@@ -229,6 +229,8 @@ function handleAddBooking()
         $flight_number = $_POST['flight_number'] ?? '';
         $description = $_POST['description'] ?? '';
         $driver_id = intval($_POST['driver_id'] ?? 0) ?: null;
+        $no_booking_fee = isset($_POST['no_booking_fee']) ? 1 : 0;
+        $driver_notes = trim($_POST['driver_notes'] ?? '') ?: null;
 
         // Validate
         if (empty($contact_id))
@@ -265,9 +267,9 @@ function handleAddBooking()
             }
         }
 
-        // Calculate booking fee if driver is allocated
+        // Calculate booking fee if driver is allocated (waived if no_booking_fee is set)
         $booking_fee = null;
-        if ($driver_id !== null) {
+        if ($driver_id !== null && !$no_booking_fee) {
             $pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
             $fee = calculateBookingFee((float) $cost, $pct);
             if ($fee > 0) {
@@ -280,8 +282,8 @@ function handleAddBooking()
             INSERT INTO bookings (
                 contact_id, trip_date, start_time, end_time,
                 original_pickup, original_destination, was_swapped, cost, payment_method,
-                flight_number, description, driver_id, booking_fee
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                flight_number, description, driver_id, booking_fee, no_booking_fee, driver_notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -291,13 +293,15 @@ function handleAddBooking()
             $end_time,
             $original_pickup,
             $original_destination,
-            $was_swapped,           // ✅ FIX
+            $was_swapped,
             $cost,
             $payment_method,
             $flight_number,
             $description,
             $driver_id,
-            $booking_fee
+            $booking_fee,
+            $no_booking_fee,
+            $driver_notes
         ]);
 
         $booking_id = $pdo->lastInsertId();
@@ -1008,11 +1012,11 @@ function handleAssignDriver()
 
     $bookingId   = intval($_POST['booking_id'] ?? 0);
     $driverIdRaw = trim($_POST['driver_id'] ?? '');
-    $driverIdInt = intval($driverIdRaw);
-    $driverId    = ($driverIdRaw !== '' && $driverIdInt > 0) ? $driverIdInt : null;
-    $noBookingFee = isset($_POST['no_booking_fee']) ? 1 : 0;
-    $driverNotes  = trim($_POST['driver_notes'] ?? '') ?: null;
-    $bookingFee  = ($driverId !== null && !$noBookingFee) ? (float) ($_POST['booking_fee'] ?? 0) : null;
+    $driverIdInt  = intval($driverIdRaw);
+    $driver_id    = ($driverIdRaw !== '' && $driverIdInt > 0) ? $driverIdInt : null;
+    $no_booking_fee = isset($_POST['no_booking_fee']) ? 1 : 0;
+    $driver_notes   = trim($_POST['driver_notes'] ?? '') ?: null;
+    $booking_fee    = ($driver_id !== null && !$no_booking_fee) ? (float) ($_POST['booking_fee'] ?? 0) : null;
 
     if ($bookingId <= 0) {
         jsonResponse(['success' => false, 'message' => 'Invalid booking ID.'], 400);
@@ -1021,9 +1025,9 @@ function handleAssignDriver()
 
     try {
         $stmt = $pdo->prepare(
-            "UPDATE bookings SET driver_id = ?, booking_fee = ? WHERE id = ?"
+            "UPDATE bookings SET driver_id = ?, booking_fee = ?, no_booking_fee = ?, driver_notes = ? WHERE id = ?"
         );
-        $stmt->execute([$driverId, $bookingFee, $bookingId]);
+        $stmt->execute([$driver_id, $booking_fee, $no_booking_fee, $driver_notes, $bookingId]);
 
         if ($stmt->rowCount() === 0) {
             jsonResponse(['success' => false, 'message' => 'Booking not found.'], 404);
@@ -1031,11 +1035,12 @@ function handleAssignDriver()
         }
 
         logDebug('BOOKING_API', 'Driver assigned to booking', [
-            'booking_id' => $bookingId,
-            'driver_id'  => $driverId,
-            'fee'        => $bookingFee,
+            'booking_id'     => $bookingId,
+            'driver_id'      => $driver_id,
+            'fee'            => $booking_fee,
+            'no_booking_fee' => $no_booking_fee,
         ]);
-        jsonResponse(['success' => true, 'message' => $driverId ? 'Driver assigned.' : 'Driver removed.']);
+        jsonResponse(['success' => true, 'message' => $driver_id ? 'Driver assigned.' : 'Driver removed.']);
 
     } catch (PDOException $e) {
         logError('BOOKING_API', 'Failed to assign driver', [

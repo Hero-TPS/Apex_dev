@@ -152,9 +152,18 @@ if (isset($_GET['id'])) {
                 — <?= htmlspecialchars($booking['driver_phone']) ?>
             <?php endif; ?>
         </div>
-        <?php if (!empty($booking['booking_fee'])): ?>
+        <?php if (!empty($booking['no_booking_fee'])): ?>
+        <div class="detail-item">
+            <strong>Booking Fee (Apex):</strong> No fee — full amount to driver
+        </div>
+        <?php elseif (!empty($booking['booking_fee'])): ?>
         <div class="detail-item">
             <strong>Booking Fee (Apex):</strong> R <?= number_format((float) $booking['booking_fee'], 2) ?>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($booking['driver_notes'])): ?>
+        <div class="detail-item full-width">
+            <strong>Driver Notes:</strong> <?= htmlspecialchars($booking['driver_notes']) ?>
         </div>
         <?php endif; ?>
         <?php endif; ?>
@@ -178,6 +187,20 @@ if (isset($_GET['id'])) {
                             value="<?= number_format((float)($booking['booking_fee'] ?? 0), 2) ?>"
                             style="width:110px;">
                     </div>
+                </div>
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label>
+                        <input type="checkbox" id="no-booking-fee-check"
+                            <?= !empty($booking['no_booking_fee']) ? 'checked' : '' ?>>
+                        No Booking Fee (full amount goes to driver)
+                    </label>
+                </div>
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label for="driver-notes-input" style="display:block; font-weight:bold; margin-bottom:4px;">Driver Notes</label>
+                    <textarea id="driver-notes-input" rows="3" style="width:100%; resize:vertical;"
+                        placeholder="Instructions for the driver..."><?= htmlspecialchars($booking['driver_notes'] ?? '') ?></textarea>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
                     <button id="assign-driver-btn" class="page-action-btn save">✅ Assign Driver</button>
                     <button id="remove-driver-btn" class="page-action-btn delete">❌ Remove Driver</button>
                 </div>
@@ -403,7 +426,11 @@ if (isset($_GET['id'])) {
             var bookingCost = <?= (float) $booking['cost'] ?>;
 
             function autoCalcFee() {
-                if (apexFeePct > 0 && bookingCost > 0 && $('#driver-select').val()) {
+                var noFee = $('#no-booking-fee-check').is(':checked');
+                $('#booking-fee-input').prop('disabled', noFee);
+                if (noFee) {
+                    $('#booking-fee-input').val('0.00');
+                } else if (apexFeePct > 0 && bookingCost > 0 && $('#driver-select').val()) {
                     var fee = Math.round(bookingCost * apexFeePct / 100 * 100) / 100;
                     $('#booking-fee-input').val(fee.toFixed(2));
                 } else if (!$('#driver-select').val()) {
@@ -411,9 +438,14 @@ if (isset($_GET['id'])) {
                 }
             }
 
+            $('#no-booking-fee-check').on('change', autoCalcFee);
+            autoCalcFee();
+
             $('#assign-driver-btn').on('click', function () {
                 var driverId = $('#driver-select').val();
                 var fee = parseFloat($('#booking-fee-input').val()) || 0;
+                var noFee = $('#no-booking-fee-check').is(':checked') ? 1 : 0;
+                var driverNotes = $('#driver-notes-input').val();
                 var resultArea = $('#manage-driver-result');
 
                 if (!driverId) {
@@ -424,7 +456,7 @@ if (isset($_GET['id'])) {
                 $.ajax({
                     type: 'POST',
                     url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
-                    data: { action: 'assign_driver', booking_id: bookingId, driver_id: driverId, booking_fee: fee },
+                    data: { action: 'assign_driver', booking_id: bookingId, driver_id: driverId, booking_fee: fee, no_booking_fee: noFee, driver_notes: driverNotes },
                     dataType: 'json',
                     success: function (res) {
                         if (res.success) {
@@ -445,7 +477,7 @@ if (isset($_GET['id'])) {
                 $.ajax({
                     type: 'POST',
                     url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
-                    data: { action: 'assign_driver', booking_id: bookingId, driver_id: '', booking_fee: 0 },
+                    data: { action: 'assign_driver', booking_id: bookingId, driver_id: '', booking_fee: 0, no_booking_fee: 0, driver_notes: '' },
                     dataType: 'json',
                     success: function (res) {
                         if (res.success) {

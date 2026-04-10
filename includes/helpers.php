@@ -326,10 +326,11 @@ function createDriverBookingMessage(array $bookingDetails): string
     $forDate  = $start->format('d/m/y');
     $forTime  = $start->format('H:i');
 
-    $driverName = $bookingDetails['driver_name'] ?? 'Driver';
-    $cost       = (float) ($bookingDetails['cost'] ?? 0);
-    $isEft      = ($bookingDetails['payment_method'] === 'eft');
-    $bookingFee = isset($bookingDetails['booking_fee']) && $bookingDetails['booking_fee'] !== null
+    $driverName   = $bookingDetails['driver_name'] ?? 'Driver';
+    $cost         = (float) ($bookingDetails['cost'] ?? 0);
+    $isEft        = ($bookingDetails['payment_method'] === 'eft');
+    $noBookingFee = !empty($bookingDetails['no_booking_fee']);
+    $bookingFee   = (!$noBookingFee && isset($bookingDetails['booking_fee']) && $bookingDetails['booking_fee'] !== null)
         ? (float) $bookingDetails['booking_fee']
         : null;
 
@@ -344,7 +345,14 @@ function createDriverBookingMessage(array $bookingDetails): string
     $msg .= "🎯 Destination: " . ($bookingDetails['destination'] ?? '') . "\n";
     $msg .= "💰 Trip Cost: R" . number_format($cost, 2) . "\n";
 
-    if ($bookingFee !== null && $bookingFee > 0) {
+    if ($noBookingFee) {
+        $msg .= "\n✅ No booking fee — full amount goes to you.\n";
+        if ($isEft) {
+            $msg .= "📲 This is an EFT booking.\n";
+        } else {
+            $msg .= "💵 This is a cash booking.\n";
+        }
+    } elseif ($bookingFee !== null && $bookingFee > 0) {
         $msg .= "💼 Apex Booking Fee: R" . number_format($bookingFee, 2) . "\n";
         if ($isEft) {
             $msg .= "\n📲 This is an EFT booking. Apex Transit will pay you after deducting the booking fee.\n";
@@ -355,6 +363,10 @@ function createDriverBookingMessage(array $bookingDetails): string
         $msg .= "\n📲 This is an EFT booking.\n";
     } else {
         $msg .= "\n💵 This is a cash booking.\n";
+    }
+
+    if (!empty($bookingDetails['driver_notes'])) {
+        $msg .= "\n📝 Notes: " . $bookingDetails['driver_notes'] . "\n";
     }
 
     $msg .= "\nThank you! 🙏";
