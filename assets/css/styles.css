@@ -1033,10 +1033,6 @@ body:not(.home-page) .floating-menu-toggle {
     background: #2980b9;
 }
 
-.hidden {
-    display: none !important;
-}
-
 .week-in-progress {
     font-size: 12px;
     font-weight: 600;
@@ -1718,6 +1714,11 @@ body:not(.home-page) .floating-menu-toggle {
 
 .section-content--padded {
     display: none;
+    padding: 10px 15px;
+}
+
+/* Always-visible section body (e.g. Manage Driver) */
+.section-body {
     padding: 10px 15px;
 }
 
