@@ -23,7 +23,7 @@ ALTER TABLE bookings
 ### [prebookings] Add `original_pickup` and `was_swapped` columns
 
 - [x] Done on dev
-- [ ] Done on live
+- [x] Done on live
 
 ```sql
 ALTER TABLE prebookings
