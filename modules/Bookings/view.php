@@ -134,14 +134,14 @@ if (isset($_GET['id'])) {
         <!-- Gate Code -->
         <div class="detail-item full-width">
             <strong>Gate Code:</strong>
-            <div style="display: flex; gap: 8px; align-items: flex-start; margin-top: 4px;">
+            <div class="gate-code-row">
                 <textarea id="gate_code" name="gate_code" rows="2"
-                    style="flex: 1; resize: vertical;"><?= htmlspecialchars($booking['gate_code'] ?? '') ?></textarea>
+                    class="gate-code-textarea"><?= htmlspecialchars($booking['gate_code'] ?? '') ?></textarea>
                 <button id="saveGateCodeBtn" class="page-action-btn save">
                     💾 Save
                 </button>
             </div>
-            <div id="gate-code-result" style="margin-top: 4px;"></div>
+            <div id="gate-code-result"></div>
         </div>
 
         <!-- Driver Allocation (internal only) -->
@@ -170,37 +170,36 @@ if (isset($_GET['id'])) {
     </div>
 
     <!-- Manage Driver -->
-    <div class="menu-section" style="margin-top:20px;">
-        <h3 class="menu-toggle" data-target="manage-driver-section" style="cursor:pointer;">🚗 Manage Driver</h3>
-        <div id="manage-driver-section" style="display:none; padding:10px 0;">
+    <div class="menu-section">
+        <h3 class="menu-toggle" data-target="manage-driver-section">🚗 Manage Driver</h3>
+        <div id="manage-driver-section" class="section-content">
             <div id="manage-driver-content">
-                <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-bottom:10px;">
+                <div class="manage-driver-fields">
                     <div>
-                        <label for="driver-select" style="display:block; font-weight:bold; margin-bottom:4px;">Driver</label>
-                        <select id="driver-select" style="min-width:180px;">
+                        <label for="driver-select" class="manage-driver-label">Driver</label>
+                        <select id="driver-select">
                             <option value="">Loading drivers…</option>
                         </select>
                     </div>
                     <div>
-                        <label for="booking-fee-input" style="display:block; font-weight:bold; margin-bottom:4px;">Booking Fee (R)</label>
+                        <label for="booking-fee-input" class="manage-driver-label">Booking Fee (R)</label>
                         <input type="number" id="booking-fee-input" step="0.01" min="0"
-                            value="<?= number_format((float)($booking['booking_fee'] ?? 0), 2) ?>"
-                            style="width:110px;">
+                            value="<?= number_format((float)($booking['booking_fee'] ?? 0), 2) ?>">
                     </div>
                 </div>
-                <div class="form-group" style="margin-bottom:10px;">
+                <div class="form-group">
                     <label>
                         <input type="checkbox" id="no-booking-fee-check"
                             <?= !empty($booking['no_booking_fee']) ? 'checked' : '' ?>>
                         No Booking Fee (full amount goes to driver)
                     </label>
                 </div>
-                <div class="form-group" style="margin-bottom:10px;">
-                    <label for="driver-notes-input" style="display:block; font-weight:bold; margin-bottom:4px;">Driver Notes</label>
-                    <textarea id="driver-notes-input" rows="3" style="width:100%; resize:vertical;"
+                <div class="form-group">
+                    <label for="driver-notes-input" class="manage-driver-label">Driver Notes</label>
+                    <textarea id="driver-notes-input" rows="3"
                         placeholder="Instructions for the driver..."><?= htmlspecialchars($booking['driver_notes'] ?? '') ?></textarea>
                 </div>
-                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <div class="manage-driver-actions">
                     <button id="assign-driver-btn" class="page-action-btn save">✅ Assign Driver</button>
                     <button id="remove-driver-btn" class="page-action-btn delete">❌ Remove Driver</button>
                 </div>
@@ -240,10 +239,10 @@ if (isset($_GET['id'])) {
     </div>
 
     <!-- More Actions (collapsible) -->
-    <div class="menu-section" style="margin-top:10px;">
-        <h3 class="menu-toggle" data-target="more-actions-section" style="cursor:pointer;">⚙️ More Actions</h3>
-        <div id="more-actions-section" style="display:none; padding:10px 15px;">
-            <div style="display:flex; flex-wrap:wrap; gap:10px;">
+    <div class="menu-section">
+        <h3 class="menu-toggle" data-target="more-actions-section">⚙️ More Actions</h3>
+        <div id="more-actions-section" class="section-content--padded">
+            <div class="more-actions-row">
                 <a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=<?= (int) $booking['contact_id'] ?>"
                     class="page-action-btn view-details-btn">📅 All Client Bookings</a>
                 <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= (int) $booking['contact_id'] ?>&contact_name=<?= urlencode($booking['client_name']) ?>"
@@ -256,7 +255,7 @@ if (isset($_GET['id'])) {
     </div>
 
     <!-- Delete Confirmation Modal -->
-    <div id="deleteConfirmationModal" class="modal-overlay" style="display: none;">
+    <div id="deleteConfirmationModal" class="modal-overlay">
         <div class="modal-content">
             <h3>Are you sure?</h3>
             <p>This will permanently delete the booking and its Google Calendar event. This action cannot be undone.</p>
@@ -270,10 +269,10 @@ if (isset($_GET['id'])) {
     <div id="notification-area"></div>
 
     <!-- Message History -->
-    <div class="menu-section" style="margin-top:20px;">
-        <h3 class="menu-toggle" data-target="msg-history-section" style="cursor:pointer;">📨 Message History</h3>
-        <div id="msg-history-section" style="display:none; padding:10px 0;">
-            <div id="msg-history-loading" style="color:#666;">Loading...</div>
+    <div class="menu-section">
+        <h3 class="menu-toggle" data-target="msg-history-section">📨 Message History</h3>
+        <div id="msg-history-section" class="section-content">
+            <div id="msg-history-loading">Loading...</div>
             <div id="msg-history-list"></div>
         </div>
     </div>
@@ -366,14 +365,14 @@ if (isset($_GET['id'])) {
                     dataType: 'json',
                     success: function (res) {
                         if (res.success) {
-                            resultArea.html('<span class="success-message" style="font-size:0.85em;">✓ Saved</span>');
+                            resultArea.html('<span class="success-message result-sm">✓ Saved</span>');
                         } else {
-                            resultArea.html('<span class="error-message" style="font-size:0.85em;">✗ ' + res.message + '</span>');
+                            resultArea.html('<span class="error-message result-sm">✗ ' + res.message + '</span>');
                         }
                         setTimeout(function () { resultArea.html(''); }, 3000);
                     },
                     error: function () {
-                        resultArea.html('<span class="error-message" style="font-size:0.85em;">✗ Failed to save</span>');
+                        resultArea.html('<span class="error-message result-sm">✗ Failed to save</span>');
                     },
                     complete: function () {
                         btn.prop('disabled', false).text('💾 Save');
@@ -449,7 +448,7 @@ if (isset($_GET['id'])) {
                 var resultArea = $('#manage-driver-result');
 
                 if (!driverId) {
-                    resultArea.html('<span class="error-message" style="font-size:0.9em;">Please select a driver first.</span>');
+                    resultArea.html('<span class="error-message result-xs">Please select a driver first.</span>');
                     return;
                 }
 
@@ -460,14 +459,14 @@ if (isset($_GET['id'])) {
                     dataType: 'json',
                     success: function (res) {
                         if (res.success) {
-                            resultArea.html('<span class="success-message" style="font-size:0.9em;">✓ Driver assigned.</span>');
+                            resultArea.html('<span class="success-message result-xs">✓ Driver assigned.</span>');
                             setTimeout(function () { location.reload(); }, 1200);
                         } else {
-                            resultArea.html('<span class="error-message" style="font-size:0.9em;">✗ ' + escapeHtml(res.message) + '</span>');
+                            resultArea.html('<span class="error-message result-xs">✗ ' + escapeHtml(res.message) + '</span>');
                         }
                     },
                     error: function () {
-                        resultArea.html('<span class="error-message" style="font-size:0.9em;">✗ Request failed.</span>');
+                        resultArea.html('<span class="error-message result-xs">✗ Request failed.</span>');
                     }
                 });
             });
@@ -481,14 +480,14 @@ if (isset($_GET['id'])) {
                     dataType: 'json',
                     success: function (res) {
                         if (res.success) {
-                            resultArea.html('<span class="success-message" style="font-size:0.9em;">✓ Driver removed.</span>');
+                            resultArea.html('<span class="success-message result-xs">✓ Driver removed.</span>');
                             setTimeout(function () { location.reload(); }, 1200);
                         } else {
-                            resultArea.html('<span class="error-message" style="font-size:0.9em;">✗ ' + escapeHtml(res.message) + '</span>');
+                            resultArea.html('<span class="error-message result-xs">✗ ' + escapeHtml(res.message) + '</span>');
                         }
                     },
                     error: function () {
-                        resultArea.html('<span class="error-message" style="font-size:0.9em;">✗ Request failed.</span>');
+                        resultArea.html('<span class="error-message result-xs">✗ Request failed.</span>');
                     }
                 });
             });
@@ -515,18 +514,18 @@ if (isset($_GET['id'])) {
                     success: function (res) {
                         $('#msg-history-loading').hide();
                         if (!res.success || res.logs.length === 0) {
-                            $('#msg-history-list').html('<p style="color:#999; font-style:italic;">No messages logged yet.</p>');
+                            $('#msg-history-list').html('<p class="msg-history-empty">No messages logged yet.</p>');
                             return;
                         }
                         var html = '';
                         $.each(res.logs, function (i, log) {
                             var preview = log.message_content.substring(0, 80) + (log.message_content.length > 80 ? '…' : '');
-                            html += '<div style="border-bottom:1px solid #eee; padding:8px 0;">' +
-                                '<span style="color:#888; font-size:0.85em;">' + escapeHtml(log.sent_at) + '</span> ' +
-                                '<span class="badge-type" style="background:#3498db; color:#fff; border-radius:3px; padding:1px 6px; font-size:0.8em;">' + escapeHtml(log.message_type) + '</span>' +
-                                '<div class="msg-preview" style="margin-top:4px; font-size:0.9em;">' + escapeHtml(preview) + '</div>' +
+                            html += '<div class="msg-history-entry">' +
+                                '<span class="msg-history-time">' + escapeHtml(log.sent_at) + '</span> ' +
+                                '<span class="msg-history-type">' + escapeHtml(log.message_type) + '</span>' +
+                                '<div class="msg-history-preview">' + escapeHtml(preview) + '</div>' +
                                 (log.message_content.length > 80
-                                    ? '<a href="#" class="view-full-msg" style="font-size:0.8em;" data-full="' + escapeHtmlAttr(log.message_content) + '">View Full ▼</a>'
+                                    ? '<a href="#" class="view-full-msg msg-history-expand" data-full="' + escapeHtmlAttr(log.message_content) + '">View Full ▼</a>'
                                     : '') +
                                 '</div>';
                         });
@@ -534,7 +533,7 @@ if (isset($_GET['id'])) {
                     },
                     error: function () {
                         $('#msg-history-loading').hide();
-                        $('#msg-history-list').html('<p style="color:#e74c3c;">Failed to load message history.</p>');
+                        $('#msg-history-list').html('<p class="msg-history-error">Failed to load message history.</p>');
                     }
                 });
             }

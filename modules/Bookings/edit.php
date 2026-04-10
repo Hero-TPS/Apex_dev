@@ -199,9 +199,9 @@ if (isset($_GET['id'])) {
             </div>
 
             <?php if ($booking_fee_pct > 0): ?>
-            <div class="form-group" id="bookingFeeGroup" <?= empty($booking['driver_id']) ? 'style="display:none;"' : '' ?>>
+            <div class="form-group<?= empty($booking['driver_id']) ? ' hidden' : '' ?>" id="bookingFeeGroup">
                 <label>Apex Booking Fee (<?= htmlspecialchars($booking_fee_pct) ?>%)</label>
-                <div id="bookingFeeDisplay" style="font-weight:bold; padding:6px 0;">
+                <div id="bookingFeeDisplay">
                     <?php
                     $currentFee = !empty($booking['booking_fee']) ? (float) $booking['booking_fee'] : calculateBookingFee((float) $booking['cost'], $booking_fee_pct);
                     echo 'R' . number_format($currentFee, 2);
@@ -212,7 +212,7 @@ if (isset($_GET['id'])) {
             <?php endif; ?>
 
             <!-- No Booking Fee -->
-            <div class="form-group" id="noBookingFeeGroup" <?= empty($booking['driver_id']) ? 'style="display:none;"' : '' ?>>
+            <div class="form-group<?= empty($booking['driver_id']) ? ' hidden' : '' ?>" id="noBookingFeeGroup">
                 <label>
                     <input type="checkbox" id="no_booking_fee" name="no_booking_fee" value="1"
                            <?= !empty($booking['no_booking_fee']) ? 'checked' : '' ?>>
@@ -221,7 +221,7 @@ if (isset($_GET['id'])) {
             </div>
 
             <!-- Driver Notes -->
-            <div class="form-group" id="driverNotesGroup" <?= empty($booking['driver_id']) ? 'style="display:none;"' : '' ?>>
+            <div class="form-group<?= empty($booking['driver_id']) ? ' hidden' : '' ?>" id="driverNotesGroup">
                 <label for="driver_notes">Driver Notes</label>
                 <textarea id="driver_notes" name="driver_notes" placeholder="Instructions for the driver..."><?= htmlspecialchars($booking['driver_notes'] ?? '') ?></textarea>
             </div>

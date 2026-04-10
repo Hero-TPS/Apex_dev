@@ -197,15 +197,15 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
         </div>
 
         <?php if ($booking_fee_pct > 0): ?>
-        <div class="form-group" id="bookingFeeGroup" style="display:none;">
+        <div class="form-group hidden" id="bookingFeeGroup">
             <label>Apex Booking Fee (<?= htmlspecialchars($booking_fee_pct) ?>%)</label>
-            <div id="bookingFeeDisplay" style="font-weight:bold; padding:6px 0;">R0.00</div>
+            <div id="bookingFeeDisplay">R0.00</div>
             <small>Calculated from cost × <?= htmlspecialchars($booking_fee_pct) ?>% — stored when booking is saved</small>
         </div>
         <?php endif; ?>
 
         <!-- No Booking Fee -->
-        <div class="form-group" id="noBookingFeeGroup" style="display:none;">
+        <div class="form-group hidden" id="noBookingFeeGroup">
             <label>
                 <input type="checkbox" id="no_booking_fee" name="no_booking_fee" value="1">
                 No Booking Fee (full amount goes to driver)
@@ -213,7 +213,7 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
         </div>
 
         <!-- Driver Notes -->
-        <div class="form-group" id="driverNotesGroup" style="display:none;">
+        <div class="form-group hidden" id="driverNotesGroup">
             <label for="driver_notes">Driver Notes</label>
             <textarea id="driver_notes" name="driver_notes" placeholder="Instructions for the driver..."></textarea>
         </div>
