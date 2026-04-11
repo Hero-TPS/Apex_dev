@@ -367,8 +367,8 @@ include ROOT_DIR . '/includes/header.php';
 
                     $.each(res.prebookings, function (i, p) {
                         var rowClass = 'prebooking-row-info' + (p.is_past ? ' booking-overdue' : '');
-                        var waLink = p.client_phone
-                            ? '<a href="https://wa.me/' + p.client_phone + '" target="_blank" class="action-btn whatsapp-btn">💬 WhatsApp</a>'
+                        var waLink = p.whatsapp_url && p.whatsapp_url !== '#'
+                            ? '<a href="' + escapeHtml(p.whatsapp_url) + '" target="_blank" class="action-btn whatsapp-btn">💬 WhatsApp</a>'
                             : '';
                         var row =
                             '<tr id="pre-row-' + p.id + '" class="' + rowClass + '" data-date="' + escapeHtml(p.trip_date_raw) + '">' +

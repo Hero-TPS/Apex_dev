@@ -183,16 +183,15 @@ include ROOT_DIR . '/includes/header.php';
                         var dest    = p.destination || 'TBC';
                         var cost    = p.cost || 'TBC';
                         var editUrl = '<?= BASE_URL ?>/modules/Prebookings/edit.php?id=' + p.id;
-                        var waPhone = p.client_phone;
-                        var waMsg   = encodeURIComponent('Good day ' + p.client_name + ', just a reminder about your tentative booking tomorrow.');
+                        var waUrl   = p.whatsapp_url;
                         html += '<div class="confirmation-row prebooking-reminder-row" id="pre-conf-row-' + p.id + '">' +
                             '<strong>' + escapeHtml(p.client_name) + '</strong> 📋' +
                             ' &mdash; ' + escapeHtml(time) +
                             ' &mdash; ' + escapeHtml(pickup) + ' → ' + escapeHtml(dest) +
                             ' &mdash; ' + escapeHtml(cost) +
                             '<br>' +
-                            (waPhone
-                                ? '<a href="https://wa.me/' + escapeHtmlAttr(waPhone) + '?text=' + waMsg + '" target="_blank" rel="noopener" class="page-action-btn whatsapp">💬 Send Reminder</a> '
+                            (waUrl && waUrl !== '#'
+                                ? '<a href="' + escapeHtmlAttr(waUrl) + '" target="_blank" rel="noopener" class="page-action-btn whatsapp">💬 Send Reminder</a> '
                                 : '') +
                             '<a href="' + editUrl + '" class="page-action-btn edit">✏️ Edit</a> ' +
                             '<button class="page-action-btn confirm convert-pre-btn" data-id="' + p.id + '">🚗 Convert</button>' +
