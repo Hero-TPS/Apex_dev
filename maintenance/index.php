@@ -110,7 +110,7 @@ $overdueCount = (int) $overdueStmt->fetchColumn();
 
     <div class="form-group">
         <label>Mark Past Overdue Bookings as Completed</label>
-        <p style="margin: 0.25rem 0 0.75rem;">
+        <p class="cleanup-info">
             <?php if ($overdueCount > 0): ?>
                 <strong><?= $overdueCount ?></strong> past booking<?= $overdueCount !== 1 ? 's are' : ' is' ?> still marked as <em>confirmed</em> but the trip date has passed.
             <?php else: ?>
@@ -269,32 +269,32 @@ $overdueCount = (int) $overdueStmt->fetchColumn();
     <h2>🚗 Drivers</h2>
 
     <?php if (!empty($allDrivers)): ?>
-    <table style="width:100%; border-collapse:collapse; margin-bottom:16px;">
+    <table class="bookings-table drivers-table">
         <thead>
-            <tr style="background:#f5f5f5;">
-                <th style="text-align:left; padding:6px 10px;">Name</th>
-                <th style="text-align:left; padding:6px 10px;">Phone</th>
-                <th style="text-align:center; padding:6px 10px;">Active</th>
-                <th style="text-align:center; padding:6px 10px;">Actions</th>
+            <tr>
+                <th class="driver-th">Name</th>
+                <th class="driver-th">Phone</th>
+                <th class="driver-td-center">Active</th>
+                <th class="driver-td-center">Actions</th>
             </tr>
         </thead>
         <tbody id="driversTableBody">
             <?php foreach ($allDrivers as $driver): ?>
             <tr id="driver-row-<?= (int) $driver['id'] ?>">
-                <td style="padding:6px 10px;"><?= htmlspecialchars($driver['name']) ?></td>
-                <td style="padding:6px 10px;"><?= htmlspecialchars($driver['phone']) ?></td>
-                <td style="text-align:center; padding:6px 10px;">
+                <td class="driver-td"><?= htmlspecialchars($driver['name']) ?></td>
+                <td class="driver-td"><?= htmlspecialchars($driver['phone']) ?></td>
+                <td class="driver-td-center">
                     <?= $driver['active'] ? '✅' : '❌' ?>
                 </td>
-                <td style="text-align:center; padding:6px 10px;">
-                    <button class="page-action-btn edit edit-driver-btn" style="padding:4px 10px; font-size:0.85em;"
+                <td class="driver-td-center">
+                    <button class="page-action-btn edit edit-driver-btn driver-action-btn"
                         data-id="<?= (int) $driver['id'] ?>"
                         data-name="<?= htmlspecialchars($driver['name'], ENT_QUOTES) ?>"
                         data-phone="<?= htmlspecialchars($driver['phone'], ENT_QUOTES) ?>"
                         data-active="<?= (int) $driver['active'] ?>">
                         ✏️ Edit
                     </button>
-                    <button class="page-action-btn delete delete-driver-btn" style="padding:4px 10px; font-size:0.85em;"
+                    <button class="page-action-btn delete delete-driver-btn driver-action-btn"
                         data-id="<?= (int) $driver['id'] ?>"
                         data-name="<?= htmlspecialchars($driver['name'], ENT_QUOTES) ?>">
                         🗑️ Delete
@@ -305,7 +305,7 @@ $overdueCount = (int) $overdueStmt->fetchColumn();
         </tbody>
     </table>
     <?php else: ?>
-    <p style="color:#999; font-style:italic; margin-bottom:16px;">No drivers added yet.</p>
+    <p class="empty-state-small">No drivers added yet.</p>
     <?php endif; ?>
 
     <h3>➕ Add Driver</h3>
@@ -350,7 +350,7 @@ $overdueCount = (int) $overdueStmt->fetchColumn();
                 <button type="button" id="cancelEditDriverBtn" class="modal-btn cancel-btn">Cancel</button>
             </div>
         </form>
-        <div id="editDriverResult" style="margin-top:8px;"></div>
+        <div id="editDriverResult" class="driver-edit-result"></div>
     </div>
 </div>
 

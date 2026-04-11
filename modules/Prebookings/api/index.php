@@ -96,6 +96,16 @@ function handleList()
                 'cost'          => $row['cost'] ? 'R' . number_format((float) $row['cost'], 2) : '',
                 'description'   => $row['description'] ?? '',
                 'is_past'       => $isPast,
+                'whatsapp_url'  => buildWhatsAppUrl($row['client_phone'] ?? '', createPrebookingWhatsAppMessage([
+                    'client_name'          => $row['client_name'],
+                    'trip_date'            => $row['trip_date'],
+                    'start_time'           => $row['start_time'] ?? '',
+                    'original_pickup'      => $row['original_pickup'] ?? '',
+                    'original_destination' => $row['original_destination'] ?? '',
+                    'was_swapped'          => $row['was_swapped'] ?? 0,
+                    'cost'                 => $row['cost'] ?? '',
+                    'description'          => $row['description'] ?? '',
+                ])),
             ];
         }
 
