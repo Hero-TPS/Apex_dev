@@ -1,0 +1,61 @@
+name: Deploy to Live
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Deploy note (e.g. what changed)'
+        required: false
+        default: 'Manual deploy from dev'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout dev repo
+        uses: actions/checkout@v4
+        with:
+          path: dev
+
+      - name: Prepare deploy files
+        run: |
+          rsync -av --progress dev/ deploy/ \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.gitignore' \
+            --exclude='.gitattributes' \
+            --exclude='*.md' \
+            --exclude='config.php' \
+            --exclude='TODO.md' \
+            --exclude='LIVE_MIGRATION.md' \
+            --exclude='BUSINESS_PLAN.md' \
+            --exclude='COPILOT.md' \
+            --exclude='APEX_TRANSIT_SHORT_PROPOSAL.md'
+
+      - name: Checkout live repo
+        uses: actions/checkout@v4
+        with:
+          repository: Hero-TPS/Apex_live
+          token: ${{ secrets.LIVE_REPO_PAT }}
+          path: live
+
+      - name: Sync files to live repo
+        run: |
+          rsync -av --delete --progress deploy/ live/ \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='config.php'
+
+      - name: Commit and push to Apex_live
+        run: |
+          cd live
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No changes to deploy."
+          else
+            git commit -m "Deploy: ${{ github.event.inputs.message }} (from ${{ github.sha }})"
+            git push
+          fi

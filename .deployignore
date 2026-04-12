@@ -1,0 +1,9 @@
+# Files excluded from live deployment
+# This is for reference only — exclusions are defined in .github/workflows/deploy-to-live.yml
+
+config.php          # Live has its own config — never overwrite
+*.md                # All markdown docs
+.git/
+.github/
+.gitignore
+.gitattributes
