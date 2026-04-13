@@ -31,7 +31,7 @@ jobs:
             --exclude='LIVE_MIGRATION.md' \
             --exclude='BUSINESS_PLAN.md' \
             --exclude='COPILOT.md' \
-            --exclude='APEX_TRANSIT_SHORT_PROPOSAL.md'
+            --exclude='APEX_TRANSIT_SHORT_PROPOSAL.md' \
             --exclude='.deployignore'
 
       - name: Checkout live repo
