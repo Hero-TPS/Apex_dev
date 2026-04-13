@@ -81,6 +81,12 @@ This will:
 
 ---
 
+## Notes to remember
+
+- Files that were deleted from live repo to live server will have to be manually deleted.
+
+---
+
 ## Something Went Wrong?
 
 - **Deploy workflow failed** → Check https://github.com/Hero-TPS/HPTS-XAMPP/actions for error details
