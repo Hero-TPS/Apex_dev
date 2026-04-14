@@ -134,9 +134,9 @@ function buildWhatsAppUrl(string $phone, string $message): string
 function createEveningConfirmationMessage(array $bookingDetails): string
 {
     $timezone = new DateTimeZone(TIME_ZONE);
-    $start    = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time'], $timezone);
-    $forDate  = $start->format('d/m/y');
-    $forTime  = $start->format('H:i');
+    $start = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time'], $timezone);
+    $forDate = $start->format('d/m/y');
+    $forTime = $start->format('H:i');
 
     $driverLine = '';
     if (!empty($bookingDetails['driver_name'])) {
@@ -147,13 +147,13 @@ function createEveningConfirmationMessage(array $bookingDetails): string
     }
 
     return "Good day " . $bookingDetails['client_name'] . "! 👋\n\n" .
-           "Just confirming your booking for tomorrow:\n\n" .
-           "📅 Date: " . $forDate . "\n" .
-           "🕐 Pickup Time: " . $forTime . "\n" .
-           "📍 From: " . $bookingDetails['pickup_location'] . "\n" .
-           "🎯 To: " . $bookingDetails['destination'] . "\n" .
-           $driverLine .
-           "\nSee you tomorrow! 🚗";
+        "Just confirming your booking for tomorrow:\n\n" .
+        "📅 Date: " . $forDate . "\n" .
+        "🕐 Pickup Time: " . $forTime . "\n" .
+        "📍 From: " . $bookingDetails['pickup_location'] . "\n" .
+        "🎯 To: " . $bookingDetails['destination'] . "\n" .
+        $driverLine .
+        "\nSee you tomorrow! 🚗";
 }
 
 /**
@@ -170,8 +170,8 @@ function createWhatsAppMessage(array $bookingDetails): string
 {
     $timezone = new DateTimeZone(TIME_ZONE);
 
-    $start     = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time'], $timezone);
-    $forDate   = $start->format('d/m/y');
+    $start = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time'], $timezone);
+    $forDate = $start->format('d/m/y');
     $startTime = $start->format('H:i');
 
     $flightInfo = !empty($bookingDetails['flight_number'])
@@ -190,30 +190,30 @@ function createWhatsAppMessage(array $bookingDetails): string
     }
 
     $isUpdate = !empty($bookingDetails['updated_at']);
-    $title    = $isUpdate ? "*BOOKING UPDATED AND CONFIRMED* ✅\n\n" : "*BOOKING CONFIRMED* ✅\n\n";
+    $title = $isUpdate ? "*BOOKING UPDATED AND CONFIRMED* ✅\n\n" : "*BOOKING CONFIRMED* ✅\n\n";
 
     // Timestamp line (value from DB is already SAST — no conversion needed)
     $timestampInfo = '';
     if ($isUpdate) {
-        $updatedDate   = new DateTime($bookingDetails['updated_at'], new DateTimeZone(TIME_ZONE));
+        $updatedDate = new DateTime($bookingDetails['updated_at'], new DateTimeZone(TIME_ZONE));
         $timestampInfo = "\n✏️ Updated: " . $updatedDate->format('d/m/y H:i') . "\n";
     } elseif (!empty($bookingDetails['date_created'])) {
-        $createdDate   = new DateTime($bookingDetails['date_created'], new DateTimeZone(TIME_ZONE));
+        $createdDate = new DateTime($bookingDetails['date_created'], new DateTimeZone(TIME_ZONE));
         $timestampInfo = "\n🕒 Created: " . $createdDate->format('d/m/y H:i') . "\n";
     }
 
     return $title .
-           "Good day " . $bookingDetails['client_name'] . ",\n\n" .
-           "📍 Pickup: " . $bookingDetails['pickup_location'] . "\n" .
-           "📅 Date: " . $forDate . " at " . $startTime . "\n" .
-           "🎯 Destination: " . $bookingDetails['destination'] . "\n" .
-           $costInfo .
-           $flightInfo .
-           $notesInfo .
-           $driverInfo .
-           $timestampInfo .
-           "\n🚗 Looking forward to being of service to you. 👍\n\n" .
-           "Regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
+        "Good day " . $bookingDetails['client_name'] . ",\n\n" .
+        "📍 Pickup: " . $bookingDetails['pickup_location'] . "\n" .
+        "📅 Date: " . $forDate . " at " . $startTime . "\n" .
+        "🎯 Destination: " . $bookingDetails['destination'] . "\n" .
+        $costInfo .
+        $flightInfo .
+        $notesInfo .
+        $driverInfo .
+        $timestampInfo .
+        "\n🚗 Looking forward to being of service to you. 👍\n\n" .
+        "Regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
 }
 
 
@@ -229,24 +229,24 @@ function createWhatsAppMessage(array $bookingDetails): string
 function createPrebookingWhatsAppMessage(array $prebookingDetails): string
 {
     $timezone = new DateTimeZone(TIME_ZONE);
-    $date     = new DateTime($prebookingDetails['trip_date'], $timezone);
-    $forDate  = $date->format('d/m/y');
+    $date = new DateTime($prebookingDetails['trip_date'], $timezone);
+    $forDate = $date->format('d/m/y');
 
     $timeLine = !empty($prebookingDetails['start_time'])
         ? "⏰ Time: " . (new DateTime($prebookingDetails['trip_date'] . ' ' . $prebookingDetails['start_time'], $timezone))->format('H:i') . "\n"
         : "⏰ Time: TBC\n";
 
     $wasSwapped = !empty($prebookingDetails['was_swapped']);
-    $rawPickup  = $prebookingDetails['original_pickup'] ?? '';
-    $rawDest    = $prebookingDetails['original_destination'] ?? '';
+    $rawPickup = $prebookingDetails['original_pickup'] ?? '';
+    $rawDest = $prebookingDetails['original_destination'] ?? '';
 
-    $effPickup = $wasSwapped ? $rawDest   : $rawPickup;
-    $effDest   = $wasSwapped ? $rawPickup : $rawDest;
+    $effPickup = $wasSwapped ? $rawDest : $rawPickup;
+    $effDest = $wasSwapped ? $rawPickup : $rawDest;
 
     $pickupLine = $effPickup !== '' ? "📍 Pickup: " . $effPickup . "\n" : "📍 Pickup: TBC\n";
-    $destLine   = $effDest   !== '' ? "🎯 Destination: " . $effDest . "\n" : "🎯 Destination: TBC\n";
+    $destLine = $effDest !== '' ? "🎯 Destination: " . $effDest . "\n" : "🎯 Destination: TBC\n";
 
-    $cost     = isset($prebookingDetails['cost']) ? (float) $prebookingDetails['cost'] : 0;
+    $cost = isset($prebookingDetails['cost']) ? (float) $prebookingDetails['cost'] : 0;
     $costLine = $cost > 0
         ? "💰 Cost: R" . number_format($cost, 2) . "\n"
         : "💰 Cost: TBC\n";
@@ -256,16 +256,16 @@ function createPrebookingWhatsAppMessage(array $prebookingDetails): string
         : '';
 
     return "*BOOKING REMINDER* 📋\n\n" .
-           "Good day " . $prebookingDetails['client_name'] . ",\n\n" .
-           "We have a tentative booking on record for you:\n\n" .
-           "📅 Date: " . $forDate . "\n" .
-           $timeLine .
-           $pickupLine .
-           $destLine .
-           $costLine .
-           $notesLine .
-           "\nPlease let us know when you have all the details so we can finalise your booking. 😊\n\n" .
-           "Regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
+        "Good day " . $prebookingDetails['client_name'] . ",\n\n" .
+        "We have a tentative booking on record for you:\n\n" .
+        "📅 Date: " . $forDate . "\n" .
+        $timeLine .
+        $pickupLine .
+        $destLine .
+        $costLine .
+        $notesLine .
+        "\nPlease let us know when you have all the details so we can finalise your booking. 😊\n\n" .
+        "Regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
 }
 
 
@@ -276,9 +276,9 @@ function createPrebookingWhatsAppMessage(array $prebookingDetails): string
  * Managed via maintenance/index.php and stored in the system_variables table.
  */
 const SYSTEM_VARIABLES = [
-    'car_rental_price'      => ['label' => 'Car Rental Price (R)',       'type' => 'number', 'default' => 2600],
+    'car_rental_price' => ['label' => 'Car Rental Price (R)', 'type' => 'number', 'default' => 2600],
     'financial_months_back' => ['label' => 'Financial History (months)', 'type' => 'number', 'default' => 6],
-    'apex_booking_fee_pct'  => ['label' => 'Apex Booking Fee (%)',       'type' => 'number', 'default' => 0],
+    'apex_booking_fee_pct' => ['label' => 'Apex Booking Fee (%)', 'type' => 'number', 'default' => 0],
 ];
 
 /**
@@ -322,19 +322,19 @@ function calculateBookingFee(float $cost, float $pct): float
 function createDriverBookingMessage(array $bookingDetails): string
 {
     $timezone = new DateTimeZone(TIME_ZONE);
-    $start    = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time'], $timezone);
-    $forDate  = $start->format('d/m/y');
-    $forTime  = $start->format('H:i');
+    $start = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time'], $timezone);
+    $forDate = $start->format('d/m/y');
+    $forTime = $start->format('H:i');
 
-    $driverName   = $bookingDetails['driver_name'] ?? 'Driver';
-    $cost         = (float) ($bookingDetails['cost'] ?? 0);
-    $isEft        = ($bookingDetails['payment_method'] === 'eft');
+    $driverName = $bookingDetails['driver_name'] ?? 'Driver';
+    $cost = (float) ($bookingDetails['cost'] ?? 0);
+    $isEft = ($bookingDetails['payment_method'] === 'eft');
     $noBookingFee = !empty($bookingDetails['no_booking_fee']);
-    $bookingFee   = (!$noBookingFee && isset($bookingDetails['booking_fee']) && $bookingDetails['booking_fee'] !== null)
+    $bookingFee = (!$noBookingFee && isset($bookingDetails['booking_fee']) && $bookingDetails['booking_fee'] !== null)
         ? (float) $bookingDetails['booking_fee']
         : null;
 
-    $msg  = "Good day " . $driverName . "! 🚗\n\n";
+    $msg = "Good day " . $driverName . "! 🚗\n\n";
     $msg .= "You have a booking allocated to you:\n\n";
     $msg .= "📅 Date: " . $forDate . " at " . $forTime . "\n";
     $msg .= "👤 Client: " . ($bookingDetails['client_name'] ?? '') . "\n";
@@ -348,14 +348,14 @@ function createDriverBookingMessage(array $bookingDetails): string
     if ($noBookingFee) {
         $msg .= "\n✅ No booking fee — full amount goes to you.\n";
         if ($isEft) {
-            $msg .= "📲 This is an EFT booking.\n";
+            $msg .= "📲 This is an EFT booking with no booking fee. Apex Transit will pay you after payment received from client.\n";
         } else {
-            $msg .= "💵 This is a cash booking.\n";
+            $msg .= "💵 This is a cash booking with no booking fee. No payment due to Apex Transit\n";
         }
     } elseif ($bookingFee !== null && $bookingFee > 0) {
         $msg .= "💼 Apex Booking Fee: R" . number_format($bookingFee, 2) . "\n";
         if ($isEft) {
-            $msg .= "\n📲 This is an EFT booking. Apex Transit will pay you after deducting the booking fee.\n";
+            $msg .= "\n📲 This is an EFT booking. Apex Transit will pay you after deducting the booking fee and payment received from client.\n";
         } else {
             $msg .= "\n💵 This is a cash booking. Please pay Apex Transit the booking fee of R" . number_format($bookingFee, 2) . ".\n";
         }
@@ -401,7 +401,7 @@ function buildBreadcrumb(array $items): string
     foreach ($items as $item) {
         if (!empty($item['url'])) {
             $parts[] = '<a href="' . htmlspecialchars($item['url'], ENT_QUOTES, 'UTF-8') . '">'
-                     . htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') . '</a>';
+                . htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') . '</a>';
         } else {
             $parts[] = htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8');
         }
