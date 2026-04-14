@@ -1021,7 +1021,7 @@ function handleAssignDriver()
     $driverIdRaw = trim($_POST['driver_id'] ?? '');
     $driverIdInt  = intval($driverIdRaw);
     $driver_id    = ($driverIdRaw !== '' && $driverIdInt > 0) ? $driverIdInt : null;
-    $no_booking_fee = isset($_POST['no_booking_fee']) ? 1 : 0;
+    $no_booking_fee = !empty($_POST['no_booking_fee']) ? 1 : 0;
     $driver_notes   = trim($_POST['driver_notes'] ?? '') ?: null;
     $booking_fee    = ($driver_id !== null && !$no_booking_fee) ? (float) ($_POST['booking_fee'] ?? 0) : null;
 
