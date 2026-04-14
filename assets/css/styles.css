@@ -1803,6 +1803,18 @@ body:not(.home-page) .floating-menu-toggle {
     flex-wrap: wrap;
 }
 
+.driver-allocated-badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 12px;
+    padding: 1px 10px;
+    font-size: 0.82em;
+    font-weight: 600;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
 /* Booking fee display (add / edit pages) */
 #bookingFeeDisplay {
     font-weight: bold;
