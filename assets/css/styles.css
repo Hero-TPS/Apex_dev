@@ -471,8 +471,9 @@ textarea {
 }
 .invoice-actions {
   text-align: center;
-  margin-top: 30px;
-  padding-top: 20px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding-top: 0px;
   border-top: 1px solid #eee;
   display: flex;
   flex-wrap: wrap;
@@ -1697,6 +1698,9 @@ body:not(.home-page) .floating-menu-toggle {
 .gate-code-textarea {
     flex: 1;
     resize: vertical;
+    min-height: 30px;
+    padding: 1px;
+
 }
 
 #gate-code-result {
