@@ -150,52 +150,6 @@ if (isset($_GET['id'])) {
         </div>
     </div>
 
-    <!-- Manage Driver -->
-    <div class="menu-section">
-        <h3 class="menu-toggle" data-target="manage-driver-section">🚗 Manage Driver</h3>
-        <div id="manage-driver-section" class="section-body hidden">
-            <div id="manage-driver-content">
-                <div class="manage-driver-fields">
-                    <div>
-                        <label for="driver-select" class="manage-driver-label">Driver</label>
-                        <select id="driver-select">
-                            <option value="">— No driver —</option>
-                            <?php foreach ($drivers as $driver): ?>
-                                <option value="<?= htmlspecialchars($driver['id']) ?>"
-                                    <?= ((int)$booking['driver_id'] === (int)$driver['id']) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($driver['name']) ?>
-                                    <?= $driver['phone'] ? ' (' . htmlspecialchars($driver['phone']) . ')' : '' ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="booking-fee-input" class="manage-driver-label">Booking Fee (R)</label>
-                        <input type="number" id="booking-fee-input" step="0.01" min="0"
-                            value="<?= number_format((float)($booking['booking_fee'] ?? 0), 2) ?>">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="no-booking-fee-check"
-                            <?= !empty($booking['no_booking_fee']) ? 'checked' : '' ?>>
-                        No Booking Fee (full amount goes to driver)
-                    </label>
-                </div>
-                <div class="form-group">
-                    <label for="driver-notes-input" class="manage-driver-label">Driver Notes</label>
-                    <textarea id="driver-notes-input" rows="3"
-                        placeholder="Instructions for the driver..."><?= htmlspecialchars($booking['driver_notes'] ?? '') ?></textarea>
-                </div>
-                <div class="manage-driver-actions">
-                    <button id="assign-driver-btn" class="page-action-btn save"><?= !empty($booking['driver_id']) ? '🔄 Update Driver' : '✅ Assign Driver' ?></button>
-                    <button id="remove-driver-btn" class="page-action-btn delete">❌ Remove Driver</button>
-                </div>
-                <div id="manage-driver-result"></div>
-            </div>
-        </div>
-    </div>
-
     <!-- Action Buttons -->
     <div class="invoice-actions">
         <?php if ($showStatusButton): ?>
@@ -255,7 +209,52 @@ if (isset($_GET['id'])) {
     </div>
 
     <div id="notification-area"></div>
-
+    <!-- Manage Driver -->
+    <div class="menu-section">
+        <h3 class="menu-toggle" data-target="manage-driver-section">🚗 Manage Driver</h3>
+        <div id="manage-driver-section" class="section-body hidden">
+            <div id="manage-driver-content">
+                <div class="manage-driver-fields">
+                    <div>
+                        <label for="driver-select" class="manage-driver-label">Driver</label>
+                        <select id="driver-select">
+                            <option value="">— No driver —</option>
+                            <?php foreach ($drivers as $driver): ?>
+                                <option value="<?= htmlspecialchars($driver['id']) ?>"
+                                    <?= ((int)$booking['driver_id'] === (int)$driver['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($driver['name']) ?>
+                                    <?= $driver['phone'] ? ' (' . htmlspecialchars($driver['phone']) . ')' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="booking-fee-input" class="manage-driver-label">Booking Fee (R)</label>
+                        <input type="number" id="booking-fee-input" step="0.01" min="0"
+                            value="<?= number_format((float)($booking['booking_fee'] ?? 0), 2) ?>">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="no-booking-fee-check"
+                            <?= !empty($booking['no_booking_fee']) ? 'checked' : '' ?>>
+                        No Booking Fee (full amount goes to driver)
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="driver-notes-input" class="manage-driver-label">Driver Notes</label>
+                    <textarea id="driver-notes-input" rows="3"
+                        placeholder="Instructions for the driver..."><?= htmlspecialchars($booking['driver_notes'] ?? '') ?></textarea>
+                </div>
+                <div class="manage-driver-actions">
+                    <button id="assign-driver-btn" class="page-action-btn save"><?= !empty($booking['driver_id']) ? '🔄 Update Driver' : '✅ Assign Driver' ?></button>
+                    <button id="remove-driver-btn" class="page-action-btn delete">❌ Remove Driver</button>
+                </div>
+                <div id="manage-driver-result"></div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Message History -->
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="msg-history-section">📨 Message History</h3>
