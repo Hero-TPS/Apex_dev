@@ -119,6 +119,11 @@ if (isset($_GET['id'])) {
             <strong>Status:</strong>
             <?= $booking['status'] === 'completed' ? '✅ Completed' : '⏳ Confirmed' ?>
         </div>
+        <?php if (!empty($booking['driver_name'])): ?>
+        <div class="detail-item">
+            <strong>Driver:</strong> 🚗 <?= htmlspecialchars($booking['driver_name']) ?>
+        </div>
+        <?php endif; ?>
         <div class="detail-item">
             <strong>Created:</strong>
             <?php
@@ -166,16 +171,6 @@ if (isset($_GET['id'])) {
             target="_blank" class="page-action-btn whatsapp"
             onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= htmlspecialchars(json_encode('Hi ' . $booking['client_name']), ENT_QUOTES) ?>, 'message')">💬
             Send Message</a>
-        <?php if (!empty($booking['driver_name']) && !empty($booking['driver_phone'])): ?>
-        <?php
-            $driverMsg = createDriverBookingMessage($booking);
-            $driverPhone = formatPhoneNumberForWhatsApp($booking['driver_phone']);
-        ?>
-        <a href="https://wa.me/<?= $driverPhone ?>?text=<?= urlencode($driverMsg) ?>"
-            target="_blank" class="page-action-btn whatsapp"
-            onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= htmlspecialchars(json_encode($driverMsg), ENT_QUOTES) ?>, 'driver_notification')">🚗
-            Message Driver</a>
-        <?php endif; ?>
         <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
             Edit Booking</a>
     </div>
@@ -211,7 +206,9 @@ if (isset($_GET['id'])) {
     <div id="notification-area"></div>
     <!-- Manage Driver -->
     <div class="menu-section">
-        <h3 class="menu-toggle" data-target="manage-driver-section">🚗 Manage Driver</h3>
+        <h3 class="menu-toggle" data-target="manage-driver-section">🚗 Manage Driver<?php if (!empty($booking['driver_name'])): ?>
+            <span class="driver-allocated-badge"><?= htmlspecialchars($booking['driver_name']) ?></span>
+        <?php endif; ?></h3>
         <div id="manage-driver-section" class="section-body hidden">
             <div id="manage-driver-content">
                 <div class="manage-driver-fields">
@@ -249,6 +246,16 @@ if (isset($_GET['id'])) {
                 <div class="manage-driver-actions">
                     <button id="assign-driver-btn" class="page-action-btn save"><?= !empty($booking['driver_id']) ? '🔄 Update Driver' : '✅ Assign Driver' ?></button>
                     <button id="remove-driver-btn" class="page-action-btn delete">❌ Remove Driver</button>
+                    <?php if (!empty($booking['driver_name']) && !empty($booking['driver_phone'])): ?>
+                    <?php
+                        $driverMsg = createDriverBookingMessage($booking);
+                        $driverPhone = formatPhoneNumberForWhatsApp($booking['driver_phone']);
+                    ?>
+                    <a href="https://wa.me/<?= $driverPhone ?>?text=<?= urlencode($driverMsg) ?>"
+                        target="_blank" class="page-action-btn whatsapp"
+                        onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= htmlspecialchars(json_encode($driverMsg), ENT_QUOTES) ?>, 'driver_notification')">🚗
+                        Message Driver</a>
+                    <?php endif; ?>
                 </div>
                 <div id="manage-driver-result"></div>
             </div>
