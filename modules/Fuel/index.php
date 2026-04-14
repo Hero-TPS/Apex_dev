@@ -130,13 +130,14 @@ include ROOT_DIR . '/includes/header.php';
                 <th>Odometer (km)</th>
                 <th>Trip (km)</th>
                 <th>Price (R/l)</th>
+                <th>Litres (l)</th>
                 <th>Total Cost (R)</th>
                 <th>Payment</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody id="fuel-report-body">
-            <tr><td colspan="7" style="text-align:center;">Loading...</td></tr>
+            <tr><td colspan="8" style="text-align:center;">Loading...</td></tr>
         </tbody>
     </table>
     <div id="fuel-log-footer" style="text-align:center; margin-top: 0.75rem; display:none;">
@@ -235,11 +236,11 @@ include ROOT_DIR . '/includes/header.php';
                         $('#fuel-log-footer').show();
                     }
                 } else {
-                    $('#fuel-report-body').html('<tr><td colspan="7" class="error-message">No fuel logs found.</td></tr>');
+                    $('#fuel-report-body').html('<tr><td colspan="8" class="error-message">No fuel logs found.</td></tr>');
                 }
             },
             error: function () {
-                $('#fuel-report-body').html('<tr><td colspan="7" class="error-message">Failed to load fuel logs.</td></tr>');
+                $('#fuel-report-body').html('<tr><td colspan="8" class="error-message">Failed to load fuel logs.</td></tr>');
             }
         });
 
@@ -259,6 +260,7 @@ include ROOT_DIR . '/includes/header.php';
                         <td data-label="Odo">${parseFloat(log.odo_km).toFixed(1)}</td>
                         <td data-label="Trip">${parseFloat(log.trip_km).toFixed(1)}</td>
                         <td data-label="Price">R ${parseFloat(log.fuel_price).toFixed(2)}</td>
+                        <td data-label="Litres">${log.fuel_price > 0 ? (parseFloat(log.total_cost) / parseFloat(log.fuel_price)).toFixed(2) : '—'} l</td>
                         <td data-label="Cost">R ${parseFloat(log.total_cost).toFixed(2)}</td>
                         <td data-label="Payment">${paymentDisplay}</td>
                         <td data-label="Actions">
@@ -287,7 +289,7 @@ include ROOT_DIR . '/includes/header.php';
                         $('tr[data-log-id="' + id + '"]').fadeOut(function () {
                             $(this).remove();
                             if ($('#fuel-report-body tr').length === 0) {
-                                $('#fuel-report-body').html('<tr><td colspan="7" class="error-message">No fuel logs found.</td></tr>');
+                                $('#fuel-report-body').html('<tr><td colspan="8" class="error-message">No fuel logs found.</td></tr>');
                                 $('#fuel-log-footer').hide();
                             }
                         });

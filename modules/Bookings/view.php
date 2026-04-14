@@ -153,7 +153,7 @@ if (isset($_GET['id'])) {
     <!-- Manage Driver -->
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="manage-driver-section">🚗 Manage Driver</h3>
-        <div id="manage-driver-section" class="section-body">
+        <div id="manage-driver-section" class="section-body hidden">
             <div id="manage-driver-content">
                 <div class="manage-driver-fields">
                     <div>
