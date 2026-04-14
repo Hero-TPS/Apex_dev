@@ -370,6 +370,7 @@ function createDriverBookingMessage(array $bookingDetails): string
     }
 
     $msg .= "\nThank you! 🙏";
+    $msg .= "\nDrive safe! 🚗";
     return $msg;
 }
 
