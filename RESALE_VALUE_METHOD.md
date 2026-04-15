@@ -6,6 +6,40 @@ directly affects the monthly investor payment and must not be a guess.
 
 ---
 
+## Candidate Vehicles — Resale Methodology Confirmation
+
+The three vehicles currently under consideration for this investment are:
+
+| Candidate | Notes |
+|---|---|
+| **Kia Pegas 1.4 EX Auto** | Active model, 5yr/90,000 km service plan |
+| **Suzuki Ciaz 1.5 GLX Auto** | Reliable brand, service plan nearly expired at 50,000 km |
+| **VW Polo Sedan 1.6 Auto** | Strong resale brand, no remaining service plan at 50,000 km |
+
+For each of these vehicles, resale value **will not be an estimate**. It will be set using
+the 3-source conservative methodology described in this document: two independent listing
+sources (AutoTrader / Cars.co.za) plus at least one trade/instant-buy offer (WeBuyCars or
+dealer). The figure used in any investor agreement will be the lower of the trade offer or
+the 25th-percentile of comparable listings.
+
+Because resale directly affects the monthly investor payment, the sensitivity table below
+applies to all three candidates. Until a specific vehicle is selected and the three-source
+check is completed, the R60,000–R80,000 range is used as the conservative planning basis.
+
+### Monthly Payment Sensitivity — R250,000 Investment at 10% Return
+
+| Resale at Month 36 | Monthly Investor Payment | Monthly Saving vs Rental (R11,267) |
+|---:|---:|---:|
+| R120,000 (optimistic) | R4,306 | **+R2,708** after running costs |
+| R100,000 | R4,861 | **+R2,153** after running costs |
+| R80,000 (conservative) | R5,417 | **+R1,597** after running costs |
+| R60,000 (worst case) | R5,972 | **+R1,042** after running costs |
+
+> Formula: `(R275,000 − Resale) ÷ 36` where R275,000 = R250,000 × 1.10 (investment + 10% return). Running costs assumed at R4,253/month.
+> The deal remains cash-flow positive versus current rental at every scenario in this table.
+
+---
+
 ## Why Resale Value Matters
 
 The investment formula is:
