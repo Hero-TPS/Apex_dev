@@ -122,83 +122,107 @@ The Kia Pegas/Sonet 5yr/90,000 km service plan gives ~8 months of free services 
 
 ### Assumptions
 - Investment amount: **R250,000**
-- Resale at 36 months / ~180,000 km: **~R100,000** (conservative, high-mileage)
+- Resale at 36 months / projected km: **R60,000–R120,000 range** (finalised once a
+  specific vehicle is selected — see [RESALE_VALUE_METHOD.md](RESALE_VALUE_METHOD.md))
 - Investor receives 100% of resale proceeds
 - Owner receives 0 from resale (monthly cash flow priority chosen over lump sum at end)
 - Repayment period: **36 months**
 
 ### Why 100% Resale to Investor
 At month 36 the car is sold. Two options were considered:
-- **Investor gets 100% resale** → lower monthly payment, owner gets nothing at end but keeps +R1,353/month
-- **50/50 resale split** → monthly payment rises to near break-even, owner gets R50,000 at end
+- **Investor gets 100% resale** → lower monthly payment, owner gets nothing at end but keeps +R1,042–R2,708/month (depending on resale)
+- **50/50 resale split** → monthly payment rises toward break-even, owner gets ~R50,000 at end
 - **Decision: 100% to investor** — monthly cash flow was the priority
 
-### Chosen Structure — 10% Total Return
+### Chosen Structure — 10% Total Return (Example at R80,000 Resale)
 
 | Item | Calculation | Value |
 |---|---|---|
 | Total investor receives | R250,000 × 1.10 | R275,000 |
-| Less resale | −R100,000 | |
-| Via monthly payments | R175,000 | |
-| **Monthly investor payment** | R175,000 ÷ 36 | **R4,861/month** |
-| Monthly saving vs rental | R11,267 − R4,861 − R4,253 | **+R2,153** |
+| Less resale (example: R80,000) | −R80,000 | |
+| Via monthly payments | R195,000 | |
+| **Monthly investor payment** | R195,000 ÷ 36 | **R5,417/month** |
+| Monthly saving vs rental | R11,267 − R5,417 − R4,253 | **+R1,597** |
 
-> Note: Earlier sessions showed +R1,353 saving. The difference is due to using Feb-only data vs 3-month average rental (R11,267 vs R10,400). The 3-month average is the correct figure.
+> The R80,000 resale is used here as a conservative planning figure.
+> See [RESALE_VALUE_METHOD.md](RESALE_VALUE_METHOD.md) for how the final resale
+> is determined once a specific vehicle is selected.
+
+### Resale Sensitivity — Monthly Payment vs Resale Outcome (R250,000, 10%)
+
+| Resale Value | Monthly Payment | Monthly Saving vs Rental | Notes |
+|---|---|---|---|
+| R120,000 | R4,306 | +R2,708 | Optimistic — low mileage, strong model |
+| R100,000 | R4,861 | +R2,153 | Mid-range estimate |
+| R80,000 | R5,417 | +R1,597 | Conservative planning figure |
+| R60,000 | R5,972 | +R1,042 | Worst case — high mileage, weak model |
+
+> Monthly saving calculated after R4,253 running costs. Deal is cash-flow positive at all scenarios.
 
 ---
 
 ## Income Comparison — Rental vs Ownership (3-Month Average Basis)
 
+> The ownership column below uses the R80,000 conservative resale assumption
+> (monthly payment R5,417). Adjust the investor payment row for other scenarios
+> — see the sensitivity table above.
+
 | Item | Rental | Ownership | Difference |
 |---|---|---|---|
 | Total Income | R32,207.15 | R32,207.15 | — |
 | Fuel | R7,440.42 | R7,440.42 | — |
-| Car Rental / Vehicle Costs | R11,266.67 | R9,114.00 | **−R2,152.67** |
+| Car Rental / Vehicle Costs | R11,266.67 | R9,670.00 | **−R1,596.67** |
 | Uber Costs | R993.33 | R993.33 | — |
-| **Net Profit** | **R12,506.72** | **R13,859.40** | **+R1,352.68** |
-| **% of Income** | **38.8%** | **43.0%** | **+4.2%** |
+| **Net Profit** | **R12,506.72** | **R14,103.40** | **+R1,596.68** |
+| **% of Income** | **38.8%** | **43.8%** | **+5.0%** |
+
+> Vehicle Costs (ownership) = R5,417 investor payment + R4,253 running costs = R9,670.
+> At R100,000 resale: payment = R4,861, vehicle costs = R9,114, saving = +R2,153/month.
 
 ### Vehicle Cost as % of Income
-| | Rental | Ownership |
-|---|---|---|
-| Vehicle cost | 35.0% | 28.3% |
-| Net profit | 38.8% | **43.0%** |
+| | Rental | Ownership (R80k resale) | Ownership (R100k resale) |
+|---|---|---|---|
+| Vehicle cost | 35.0% | 30.0% | 28.3% |
+| Net profit | 38.8% | **43.8%** | **43.0%** |
 
 ---
 
 ## 36-Month Outcome
 
-| Item | Value |
-|---|---|
-| Extra per month during repayment | **+R1,353** |
-| Over 36 months total | **+R48,708** |
-| Position at month 37 | Car sold, investor paid, start again |
-| Long-term saving post-repayment | N/A — car sold at month 36 |
+| Item | R80k Resale | R100k Resale |
+|---|---|---|
+| Extra per month during repayment | **+R1,597** | **+R2,153** |
+| Over 36 months total | **+R57,492** | **+R77,508** |
+| Position at month 37 | Car sold, investor paid, start again | Car sold, investor paid, start again |
+| Long-term saving post-repayment | N/A — car sold at month 36 | N/A — car sold at month 36 |
 
-> **Important:** The "after repayment" permanent saving does not materialise because the vehicle must be sold at 36 months due to high mileage. The real benefit is +R48,708 over 3 years compared to staying on rental.
+> **Important:** The "after repayment" permanent saving does not materialise because the vehicle must be sold at 36 months due to high mileage. The real benefit is the monthly saving across the 36-month term — which ranges from +R1,042/month (R60k resale) to +R2,708/month (R120k resale). See the sensitivity table for all scenarios.
 
 ---
 
-## Investor ROI — Return % Comparison (R250,000, 100% resale, 36 months)
+## Investor ROI — Return % Comparison (R250,000, R80,000 resale assumed, 36 months)
+
+> Payments below use R80,000 as the conservative resale. "You Keep/Month" is after R4,253 running costs.
+> At R100,000 resale the payment is R4,861/month; see sensitivity table for full range.
 
 | Return % | Monthly Payment | You Keep/Month | Investor Rand Profit | Notes |
 |---|---|---|---|---|
-| 5% | R4,514 | +R1,569 | R12,500 | Low — family/friend only |
-| **10%** | **R4,861** | **+R1,222** | **R25,000** | ✅ Recommended |
-| 15% | R5,208 | +R875 | R37,500 | Investor-favoured |
-| 20% | R5,556 | +R527 | R50,000 | Too tight |
+| 5% | R5,069 | +R1,945 | R12,500 | Low — family/friend only |
+| **10%** | **R5,417** | **+R1,597** | **R25,000** | ✅ Recommended |
+| 15% | R5,764 | +R1,250 | R37,500 | Investor-favoured |
+| 20% | R6,111 | +R903 | R50,000 | Too tight |
 
 ---
 
 ## Investor One-Pager Summary
 
 **Investment:** R250,000  
-**Monthly repayment:** R4,861  
+**Monthly repayment:** R4,306–R5,972 (depends on resale — see [RESALE_VALUE_METHOD.md](RESALE_VALUE_METHOD.md))  
 **Period:** 36 months  
-**Resale at end:** ~R100,000 to investor  
+**Resale at end:** R60,000–R120,000 range — finalised once vehicle is selected  
 **Total investor receives:** R275,000  
 **Investor profit:** R25,000 (10%)  
-**Business improvement:** +R1,353/month from day one  
+**Business improvement:** +R1,042–R2,708/month from day one (depending on resale)  
 **Security:** Comprehensive insurance, full transaction records available
 
 ---
