@@ -46,6 +46,11 @@ if ($client_id <= 0) {
         <label for="additionalInfo">Additional Information</label>
         <textarea id="additionalInfo" name="additionalInfo" placeholder="Any special notes, preferences, or instructions"></textarea>
     </div>
+
+    <div class="form-group">
+        <label>Pickup GPS</label>
+        <div id="gps-status"></div>
+    </div>
     
     <div class="action-buttons">
         <button type="submit" class="btn" id="submitBtn">
@@ -83,6 +88,11 @@ $(document).ready(function() {
                 $('#email').val(client.email || '');
                 $('#address').val(client.address || '');
                 $('#additionalInfo').val(client.additional_info || '');
+                if (client.pickup_lat && client.pickup_lng) {
+                    $('#gps-status').html('<span class="success-message">✅ GPS Marked</span>');
+                } else {
+                    $('#gps-status').html('<span style="color:#888;">— Not set</span>');
+                }
                 form.show();
             } else {
                 result.html('<div class="error-message">Client not found</div>');

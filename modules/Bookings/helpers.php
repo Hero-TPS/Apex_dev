@@ -21,6 +21,8 @@ function getBookingById(PDO $pdo, int $id): ?array
             b.*, 
             c.name AS client_name,
             c.phone AS client_phone,
+            c.pickup_lat AS client_pickup_lat,
+            c.pickup_lng AS client_pickup_lng,
             d.name AS driver_name,
             d.phone AS driver_phone
         FROM bookings b

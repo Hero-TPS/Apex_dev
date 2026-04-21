@@ -28,6 +28,11 @@ if (isset($_GET['id'])) {
                 $booking['pickup_location'] = $booking['was_swapped'] ? $booking['original_destination'] : $booking['original_pickup'];
                 $booking['destination'] = $booking['was_swapped'] ? $booking['original_pickup'] : $booking['original_destination'];
 
+                // Determine if pickup is a standard destination (not 'Other')
+                $standardDestinations = fetchData($pdo, 'destinations', 'name ASC');
+                $standardDestinationNames = array_column($standardDestinations, 'name');
+                $pickupIsStandard = in_array($booking['pickup_location'], $standardDestinationNames, true);
+
                 // Fetch drivers and booking fee for the Manage Driver section
                 $driversStmt = $pdo->query("SELECT id, name, phone FROM drivers WHERE active = 1 ORDER BY name ASC");
                 $drivers = $driversStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -153,6 +158,19 @@ if (isset($_GET['id'])) {
             </div>
             <div id="gate-code-result"></div>
         </div>
+
+        <?php if ($pickupIsStandard): ?>
+        <!-- Pickup GPS -->
+        <div class="detail-item full-width">
+            <strong>Pickup GPS:</strong>
+            <div class="gate-code-row">
+                <button id="markGpsBtn" class="page-action-btn <?= (!empty($booking['client_pickup_lat']) && !empty($booking['client_pickup_lng'])) ? 'toggle' : 'save' ?>">
+                    📍 <?= (!empty($booking['client_pickup_lat']) && !empty($booking['client_pickup_lng'])) ? 'Update Pickup GPS' : 'Mark Pickup GPS' ?>
+                </button>
+            </div>
+            <div id="gps-result"></div>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- Action Buttons -->
@@ -373,6 +391,67 @@ if (isset($_GET['id'])) {
                         btn.prop('disabled', false).text('💾 Save');
                     }
                 });
+            });
+
+            // Mark / Update Pickup GPS
+            $('#markGpsBtn').on('click', function () {
+                var btn = $(this);
+                var resultArea = $('#gps-result');
+
+                if (!navigator.geolocation) {
+                    resultArea.html('<span class="error-message result-sm">✗ Geolocation not supported by this browser.</span>');
+                    return;
+                }
+
+                btn.prop('disabled', true).text('Getting GPS…');
+                resultArea.html('');
+
+                navigator.geolocation.getCurrentPosition(
+                    function (position) {
+                        var lat = position.coords.latitude;
+                        var lng = position.coords.longitude;
+
+                        $.ajax({
+                            url: '<?= BASE_URL ?>/modules/Clients/api/index.php',
+                            type: 'POST',
+                            data: {
+                                action: 'save_pickup_gps',
+                                id: <?= (int) $booking['contact_id'] ?>,
+                                lat: lat,
+                                lng: lng
+                            },
+                            dataType: 'json',
+                            success: function (res) {
+                                if (res.success) {
+                                    resultArea.html('<span class="success-message result-sm">✓ GPS saved</span>');
+                                    btn.text('📍 Update Pickup GPS').removeClass('save').addClass('toggle');
+                                } else {
+                                    resultArea.html('<span class="error-message result-sm">✗ ' + escapeHtml(res.message) + '</span>');
+                                }
+                                setTimeout(function () { resultArea.html(''); }, 3000);
+                            },
+                            error: function () {
+                                resultArea.html('<span class="error-message result-sm">✗ Failed to save GPS.</span>');
+                            },
+                            complete: function () {
+                                btn.prop('disabled', false);
+                            }
+                        });
+                    },
+                    function (error) {
+                        var msg = 'Could not get location.';
+                        if (error.code === error.PERMISSION_DENIED) {
+                            msg = 'Location permission denied.';
+                        } else if (error.code === error.POSITION_UNAVAILABLE) {
+                            msg = 'Location unavailable.';
+                        } else if (error.code === error.TIMEOUT) {
+                            msg = 'Location request timed out.';
+                        }
+                        resultArea.html('<span class="error-message result-sm">✗ ' + msg + '</span>');
+                        btn.prop('disabled', false).text(btn.hasClass('toggle') ? '📍 Update Pickup GPS' : '📍 Mark Pickup GPS');
+                    },
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
             });
 
             // More Actions section toggle
