@@ -7,6 +7,19 @@ Run in order. Check off each one after executing.
 
 ## Pending
 
+### [contacts] Add `pickup_lat` and `pickup_lng` columns for GPS location
+
+- [ ] Done on dev
+- [ ] Done on live
+
+```sql
+ALTER TABLE contacts
+    ADD COLUMN IF NOT EXISTS pickup_lat DOUBLE NULL DEFAULT NULL,
+    ADD COLUMN IF NOT EXISTS pickup_lng DOUBLE NULL DEFAULT NULL;
+```
+
+---
+
 ### [bookings] Add `no_booking_fee` and `driver_notes` columns
 
 - [x] Done on dev

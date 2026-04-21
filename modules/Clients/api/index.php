@@ -25,6 +25,9 @@ try {
         case 'delete':
             handleDeleteClient();
             break;
+        case 'save_pickup_gps':
+            handleSavePickupGps();
+            break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
     }
@@ -244,8 +247,7 @@ function handleUpdateClient()
 }
 
 function handleDeleteClient()
-{
-    global $pdo;
+{    global $pdo;
     
     $id = intval($_POST['id'] ?? 0);
     
@@ -295,5 +297,42 @@ function handleDeleteClient()
             'client_id' => $id
         ]);
         jsonResponse(['success' => false, 'message' => 'Failed to delete client'], 500);
+    }
+}
+
+function handleSavePickupGps()
+{
+    global $pdo;
+
+    $id  = intval($_POST['id'] ?? 0);
+    $lat = isset($_POST['lat']) ? (float) $_POST['lat'] : null;
+    $lng = isset($_POST['lng']) ? (float) $_POST['lng'] : null;
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid client ID.'], 400);
+    }
+
+    if ($lat === null || $lng === null || $lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
+        jsonResponse(['success' => false, 'message' => 'Invalid GPS coordinates.'], 400);
+    }
+
+    try {
+        $stmt = $pdo->prepare("UPDATE contacts SET pickup_lat = ?, pickup_lng = ? WHERE id = ?");
+        $stmt->execute([$lat, $lng, $id]);
+
+        logDebug('CLIENT', 'Pickup GPS saved', [
+            'client_id' => $id,
+            'lat' => $lat,
+            'lng' => $lng,
+        ]);
+
+        jsonResponse(['success' => true, 'message' => 'GPS location saved.']);
+
+    } catch (PDOException $e) {
+        logError('CLIENT', 'Failed to save pickup GPS', [
+            'error'     => $e->getMessage(),
+            'client_id' => $id,
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Failed to save GPS location.'], 500);
     }
 }
