@@ -9,8 +9,8 @@ Run in order. Check off each one after executing.
 
 ### [contacts] Add `pickup_lat` and `pickup_lng` columns for GPS location
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 ```sql
 ALTER TABLE contacts
