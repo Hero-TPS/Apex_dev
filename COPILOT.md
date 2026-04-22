@@ -18,3 +18,4 @@
 - API responses use `jsonResponse(['success' => bool, 'message' => string])`.
 - Logging via `logInfo()`, `logError()`, `logWarning()`, `logCritical()`.
 - WhatsApp links use `formatPhoneNumberForWhatsApp($phone)`.
+- Don't use JS alert. Show in HTML and log to watchdog
