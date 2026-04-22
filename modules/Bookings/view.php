@@ -28,10 +28,23 @@ if (isset($_GET['id'])) {
                 $booking['pickup_location'] = $booking['was_swapped'] ? $booking['original_destination'] : $booking['original_pickup'];
                 $booking['destination'] = $booking['was_swapped'] ? $booking['original_pickup'] : $booking['original_destination'];
 
-                // Determine if pickup is a standard destination (not 'Other')
+                // Determine if the original pickup is a standard destination (not 'Other').
+                // GPS is always stored against original_pickup, so we check that regardless of swap.
                 $standardDestinations = fetchData($pdo, 'destinations', 'name ASC');
                 $standardDestinationNames = array_column($standardDestinations, 'name');
-                $pickupIsStandard = in_array($booking['pickup_location'], $standardDestinationNames, true);
+                $pickupIsStandard = in_array($booking['original_pickup'], $standardDestinationNames, true);
+
+                // Build Waze URLs: use GPS coordinates when available, respecting swap state.
+                // client_pickup_lat/client_pickup_lng (aliased from contacts.pickup_lat/pickup_lng) always references original_pickup.
+                // When NOT swapped: GPS applies to the effective pickup display.
+                // When swapped:     GPS applies to the effective destination display.
+                $hasGps = !empty($booking['client_pickup_lat']) && !empty($booking['client_pickup_lng']);
+                $wazePickupUrl = (!$booking['was_swapped'] && $hasGps)
+                    ? 'https://waze.com/ul?ll=' . $booking['client_pickup_lat'] . ',' . $booking['client_pickup_lng'] . '&navigate=yes'
+                    : 'https://waze.com/ul?q=' . urlencode($booking['pickup_location']) . '&navigate=yes';
+                $wazeDestUrl = ($booking['was_swapped'] && $hasGps)
+                    ? 'https://waze.com/ul?ll=' . $booking['client_pickup_lat'] . ',' . $booking['client_pickup_lng'] . '&navigate=yes'
+                    : 'https://waze.com/ul?q=' . urlencode($booking['destination']) . '&navigate=yes';
 
                 // Fetch drivers and booking fee for the Manage Driver section
                 $driversStmt = $pdo->query("SELECT id, name, phone FROM drivers WHERE active = 1 ORDER BY name ASC");
@@ -91,12 +104,12 @@ if (isset($_GET['id'])) {
         </div>
         <div class="detail-item full-width">
             <strong>Pickup:</strong> <?= htmlspecialchars($booking['pickup_location']) ?>
-            <a href="https://waze.com/ul?q=<?= urlencode($booking['pickup_location']) ?>" target="_blank"
+            <a href="<?= htmlspecialchars($wazePickupUrl) ?>" target="_blank"
                 class="map-link">Waze</a>
         </div>
         <div class="detail-item full-width">
             <strong>Destination:</strong> <?= htmlspecialchars($booking['destination']) ?>
-            <a href="https://waze.com/ul?q=<?= urlencode($booking['destination']) ?>" target="_blank"
+            <a href="<?= htmlspecialchars($wazeDestUrl) ?>" target="_blank"
                 class="map-link">Waze</a>
         </div>
         <div class="detail-item">

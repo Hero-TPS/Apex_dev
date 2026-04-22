@@ -19,3 +19,13 @@
 - Logging via `logInfo()`, `logError()`, `logWarning()`, `logCritical()`.
 - WhatsApp links use `formatPhoneNumberForWhatsApp($phone)`.
 - Don't use JS alert. Show in HTML and log to watchdog
+
+## Waze Link Generation (Booking Detail View)
+- GPS coordinates are stored in `contacts.pickup_lat` / `contacts.pickup_lng` (aliased as `client_pickup_lat` / `client_pickup_lng` in the booking result array) and always reference the **original_pickup** location.
+- `$pickupIsStandard` must be derived from `$booking['original_pickup']` (not the effective post-swap pickup).
+- Waze link logic respects the `was_swapped` flag:
+  - **Not swapped, GPS present:** pickup Waze link uses `?ll=LAT,LNG&navigate=yes`; destination uses `?q=ENCODED_ADDRESS&navigate=yes`.
+  - **Swapped, GPS present:** destination Waze link uses `?ll=LAT,LNG&navigate=yes`; pickup uses `?q=ENCODED_ADDRESS&navigate=yes`.
+  - **No GPS:** both links fall back to `?q=ENCODED_ADDRESS&navigate=yes`.
+- The "Mark / Update Pickup GPS" button is visible whenever `$pickupIsStandard` is `true` (original_pickup is a named destination, regardless of swap state).
+- GPS save/update always targets the client record (`contacts.pickup_lat`, `contacts.pickup_lng`) via `Clients/api/index.php?action=save_pickup_gps`.
