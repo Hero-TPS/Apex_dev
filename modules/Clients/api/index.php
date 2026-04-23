@@ -28,6 +28,9 @@ try {
         case 'save_pickup_gps':
             handleSavePickupGps();
             break;
+        case 'clear_pickup_gps':
+            handleClearPickupGps();
+            break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
     }
@@ -334,5 +337,32 @@ function handleSavePickupGps()
             'client_id' => $id,
         ]);
         jsonResponse(['success' => false, 'message' => 'Failed to save GPS location.'], 500);
+    }
+}
+
+function handleClearPickupGps()
+{
+    global $pdo;
+
+    $id = intval($_POST['id'] ?? 0);
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid client ID.'], 400);
+    }
+
+    try {
+        $stmt = $pdo->prepare("UPDATE contacts SET pickup_lat = NULL, pickup_lng = NULL WHERE id = ?");
+        $stmt->execute([$id]);
+
+        logDebug('CLIENT', 'Pickup GPS cleared', ['client_id' => $id]);
+
+        jsonResponse(['success' => true, 'message' => 'GPS location cleared.']);
+
+    } catch (PDOException $e) {
+        logError('CLIENT', 'Failed to clear pickup GPS', [
+            'error'     => $e->getMessage(),
+            'client_id' => $id,
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Failed to clear GPS location.'], 500);
     }
 }
