@@ -215,6 +215,9 @@ function handleAddBooking()
         $payment_method = $_POST['payment_method'] ?? 'cash';
         $was_swapped = isset($_POST['swap_locations']) ? 1 : 0; // ✅ FIX
 
+        // Capture flag before resolving 'other'
+        $pickup_is_custom = ($original_pickup === 'other') ? 1 : 0;
+
         // Handle "Other" fields
         if ($original_pickup === 'other') {
             $original_pickup = $_POST['other_original_pickup'] ?? '';
@@ -282,8 +285,9 @@ function handleAddBooking()
             INSERT INTO bookings (
                 contact_id, trip_date, start_time, end_time,
                 original_pickup, original_destination, was_swapped, cost, payment_method,
-                flight_number, description, driver_id, booking_fee, no_booking_fee, driver_notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                flight_number, description, driver_id, booking_fee, no_booking_fee, driver_notes,
+                pickup_is_custom
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -301,7 +305,8 @@ function handleAddBooking()
             $driver_id,
             $booking_fee,
             $no_booking_fee,
-            $driver_notes
+            $driver_notes,
+            $pickup_is_custom
         ]);
 
         $booking_id = $pdo->lastInsertId();
@@ -425,6 +430,9 @@ function handleUpdateBooking()
             $no_booking_fee = isset($_REQUEST['no_booking_fee']) ? 1 : 0;
             $driver_notes = trim($_REQUEST['driver_notes'] ?? '');
 
+            // Capture flag before resolving 'other'
+            $pickup_is_custom = ($pickup_location === 'other') ? 1 : 0;
+
             // Handle "Other" fields
             if ($pickup_location === 'other') {
                 $original_pickup = $other_pickup_location;
@@ -491,6 +499,7 @@ function handleUpdateBooking()
                 original_pickup = ?, original_destination = ?, was_swapped = ?,
                 cost = ?, flight_number = ?, description = ?, payment_method = ?,
                 driver_id = ?, booking_fee = ?, no_booking_fee = ?, driver_notes = ?,
+                pickup_is_custom = ?,
                 last_confirmed_at = NULL,
                 updated_at = NOW()
             WHERE id = ?";
@@ -512,6 +521,7 @@ function handleUpdateBooking()
                 $booking_fee,
                 $no_booking_fee,
                 $driver_notes ?: null,
+                $pickup_is_custom,
                 $booking_id
             ]);
 

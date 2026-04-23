@@ -28,12 +28,7 @@ if (isset($_GET['id'])) {
                 $booking['pickup_location'] = $booking['was_swapped'] ? $booking['original_destination'] : $booking['original_pickup'];
                 $booking['destination'] = $booking['was_swapped'] ? $booking['original_pickup'] : $booking['original_destination'];
 
-                // Show the GPS button unless the relevant location was entered as 'other' free text.
-                // Not swapped: GPS marks original_pickup (client home). Hide if original_pickup is 'other'.
-                // Swapped:     GPS marks original_destination (return to client home). Hide if original_destination is 'other'.
-                $showGpsButton = $booking['was_swapped']
-                    ? ($booking['original_destination'] !== 'other')
-                    : ($booking['original_pickup'] !== 'other');
+                $showGpsButton = empty($booking['pickup_is_custom']);
 
                 // Build Waze URLs: GPS coordinates always belong to the client's home address location.
                 // Not swapped: GPS applies to the pickup side. Swapped: GPS applies to the destination side.
@@ -41,13 +36,11 @@ if (isset($_GET['id'])) {
                 $gpsUrl = 'https://waze.com/ul?ll=' . $booking['client_pickup_lat'] . ',' . $booking['client_pickup_lng'] . '&navigate=yes';
 
                 if (!$booking['was_swapped']) {
-                    // GPS belongs to the pickup side
-                    $wazePickupUrl = $hasGps ? $gpsUrl : 'https://waze.com/ul?q=' . urlencode($booking['pickup_location']) . '&navigate=yes';
+                    $wazePickupUrl = ($showGpsButton && $hasGps) ? $gpsUrl : 'https://waze.com/ul?q=' . urlencode($booking['pickup_location']) . '&navigate=yes';
                     $wazeDestUrl   = 'https://waze.com/ul?q=' . urlencode($booking['destination']) . '&navigate=yes';
                 } else {
-                    // GPS belongs to the destination side (return trip to client home)
                     $wazePickupUrl = 'https://waze.com/ul?q=' . urlencode($booking['pickup_location']) . '&navigate=yes';
-                    $wazeDestUrl   = $hasGps ? $gpsUrl : 'https://waze.com/ul?q=' . urlencode($booking['destination']) . '&navigate=yes';
+                    $wazeDestUrl   = ($showGpsButton && $hasGps) ? $gpsUrl : 'https://waze.com/ul?q=' . urlencode($booking['destination']) . '&navigate=yes';
                 }
 
                 // Fetch drivers and booking fee for the Manage Driver section
