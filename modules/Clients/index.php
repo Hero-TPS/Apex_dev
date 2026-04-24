@@ -87,6 +87,13 @@ $highlightClientId = $_GET['highlight'] ?? null;
             loadContacts();
         });
 
+        function buildGpsButtons(contact) {
+            var hasGps = contact.pickup_lat && contact.pickup_lng;
+            return hasGps
+                ? '<button class="action-btn toggle gps-btn" data-id="' + contact.id + '">📍 Update GPS</button>'
+                : '<button class="action-btn save gps-btn" data-id="' + contact.id + '">📍 Set GPS</button>';
+        }
+
         function loadContacts(highlightId = null) {
             tableBody.html('<tr><td colspan="7" style="text-align:center;">Loading clients...</td></tr>');
             $.ajax({
@@ -126,9 +133,13 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 ? 'https://wa.me/' + contact.whatsapp_phone + '?text=' + encodeURIComponent(waGreeting)
                                 : '#';
 
+                            var gpsIndicator = (contact.pickup_lat && contact.pickup_lng)
+                                ? ' <span title="GPS set">📍</span>'
+                                : '';
+
                             var rowClass = (highlightId && contact.id == highlightId) ? 'highlight-row' : '';
                             var row = '<tr class="' + rowClass + '" data-client-id="' + contact.id + '">' +
-                                '<td data-label="Name">' + escapeHtml(contact.name) + '</td>' +
+                                '<td data-label="Name">' + escapeHtml(contact.name) + gpsIndicator + '</td>' +
                                 '<td data-label="Phone">' + escapeHtml(contact.phone || '') + '</td>' +
                                 '<td data-label="Email">' + escapeHtml(contact.email || '') + '</td>' +
                                 '<td data-label="Address">' + escapeHtml(contact.address || '') + '</td>' +
@@ -139,8 +150,9 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 '<a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=' + contact.id + '" class="action-btn view-details-btn">View Bookings</a>' +
                                 '<a href="<?= BASE_URL ?>/modules/Clients/edit.php?id=' + contact.id + '" class="action-btn edit-btn">Edit</a>' +
                                 (contact.whatsapp_phone
-                                    ? '<a href="' + waHref + '" target="_blank" class="action-btn whatsapp-btn" onclick="logWhatsAppSend(null, ' + contact.id + ', ' + JSON.stringify(waGreeting) + ', \'message\')">Send Msg</a>'
+                                    ? '<a href="' + waHref + '" target="_blank" class="action-btn whatsapp-btn" onclick="logWhatsAppSend(null, ' + contact.id + ', ' + JSON.stringify(waGreeting) + ', \'message\')">WhatsApp</a>'
                                     : '') +
+                                buildGpsButtons(contact) +
                                 '<button class="action-btn delete-btn" data-id="' + contact.id + '">Delete</button>' +
                                 '</div>' +
                                 '</td>' +
@@ -164,7 +176,66 @@ $highlightClientId = $_GET['highlight'] ?? null;
         // Initial load
         loadContacts(<?= json_encode($highlightClientId) ?>);
 
-        // Delete button
+        // ── GPS: Set / Update ──
+        tableBody.on('click', '.gps-btn', function () {
+            var btn = $(this);
+            var clientId = btn.data('id');
+
+            if (!navigator.geolocation) {
+                showNotification('✗ Geolocation not supported by this browser.', 'error');
+                return;
+            }
+
+            btn.prop('disabled', true).text('Getting GPS…');
+
+            navigator.geolocation.getCurrentPosition(
+                function (position) {
+                    $.ajax({
+                        url: '<?= BASE_URL ?>/modules/Clients/api/index.php',
+                        type: 'POST',
+                        data: {
+                            action: 'save_pickup_gps',
+                            id: clientId,
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        },
+                        dataType: 'json',
+                        success: function (res) {
+                            if (res.success) {
+                                showNotification('✓ GPS saved for client.', 'success');
+                                btn.text('📍 Update GPS').removeClass('save').addClass('toggle');
+                                var row = btn.closest('tr');
+                                var nameCell = row.find('td[data-label="Name"]');
+                                if (!nameCell.find('span[title="GPS set"]').length) {
+                                    nameCell.append(' <span title="GPS set">📍</span>');
+                                }
+                                var c = allClients.find(function(x) { return x.id == clientId; });
+                                if (c) { c.pickup_lat = position.coords.latitude; c.pickup_lng = position.coords.longitude; }
+                            } else {
+                                showNotification('✗ ' + res.message, 'error');
+                            }
+                        },
+                        error: function () {
+                            showNotification('✗ Failed to save GPS.', 'error');
+                        },
+                        complete: function () {
+                            btn.prop('disabled', false);
+                        }
+                    });
+                },
+                function (error) {
+                    var msg = 'Could not get location.';
+                    if (error.code === error.PERMISSION_DENIED) msg = 'Location permission denied.';
+                    else if (error.code === error.POSITION_UNAVAILABLE) msg = 'Location unavailable.';
+                    else if (error.code === error.TIMEOUT) msg = 'Location request timed out.';
+                    showNotification('✗ ' + msg, 'error');
+                    btn.prop('disabled', false).text(btn.hasClass('toggle') ? '📍 Update GPS' : '📍 Set GPS');
+                },
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+            );
+        });
+
+        // ── Delete ──
         tableBody.on('click', '.delete-btn', function () {
             contactIdToDelete = $(this).data('id');
             modal.css('display', 'flex');
