@@ -178,11 +178,7 @@ if (isset($_GET['id'])) {
                 <button id="markGpsBtn" class="page-action-btn <?= $hasGps ? 'toggle' : 'save' ?>">
                     📍 <?= $hasGps ? 'Update Pickup GPS' : 'Mark Pickup GPS' ?>
                 </button>
-                <?php if ($hasGps): ?>
-                <button id="clearGpsBtn" class="page-action-btn delete">
-                    🗑️ Clear GPS
-                </button>
-                <?php endif; ?>
+
             </div>
             <div id="gps-result"></div>
         </div>
@@ -468,44 +464,6 @@ if (isset($_GET['id'])) {
                     },
                     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
                 );
-            });
-
-            // Clear Pickup GPS
-            $('#clearGpsBtn').on('click', function () {
-                var btn = $(this);
-                var resultArea = $('#gps-result');
-
-                if (!confirm('Clear the saved GPS coordinates for this client\'s pickup?')) {
-                    return;
-                }
-
-                btn.prop('disabled', true).text('Clearing...');
-                resultArea.html('');
-
-                $.ajax({
-                    url: '<?= BASE_URL ?>/modules/Clients/api/index.php',
-                    type: 'POST',
-                    data: {
-                        action: 'clear_pickup_gps',
-                        id: <?= (int) $booking['contact_id'] ?>
-                    },
-                    dataType: 'json',
-                    success: function (res) {
-                        if (res.success) {
-                            resultArea.html('<span class="success-message result-sm">✓ GPS cleared</span>');
-                            setTimeout(function () { location.reload(); }, 1000);
-                        } else {
-                            resultArea.html('<span class="error-message result-sm">✗ ' + escapeHtml(res.message) + '</span>');
-                        }
-                        setTimeout(function () { resultArea.html(''); }, 3000);
-                    },
-                    error: function () {
-                        resultArea.html('<span class="error-message result-sm">✗ Failed to clear GPS.</span>');
-                    },
-                    complete: function () {
-                        btn.prop('disabled', false).text('🗑️ Clear GPS');
-                    }
-                });
             });
 
             // More Actions section toggle
