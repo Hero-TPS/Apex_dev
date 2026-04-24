@@ -147,7 +147,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 '<td data-label="Bookings">' + (contact.booking_count || 0) + '</td>' +
                                 '<td data-label="Actions">' +
                                 '<div class="actions-container">' +
-                                '<a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=' + contact.id + '" class="action-btn view-details-btn">View Bookings</a>' +
+                                (contact.booking_count > 0 ? '<a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=' + contact.id + '" class="action-btn view-details-btn">View Bookings</a>' : '') +
                                 '<a href="<?= BASE_URL ?>/modules/Clients/edit.php?id=' + contact.id + '" class="action-btn edit-btn">Edit</a>' +
                                 (contact.whatsapp_phone
                                     ? '<a href="' + waHref + '" target="_blank" class="action-btn whatsapp-btn" onclick="logWhatsAppSend(null, ' + contact.id + ', ' + JSON.stringify(waGreeting) + ', \'message\')">WhatsApp</a>'
