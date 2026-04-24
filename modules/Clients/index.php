@@ -265,8 +265,12 @@ $highlightClientId = $_GET['highlight'] ?? null;
                         showNotification('✗ ' + response.message, 'error');
                     }
                 },
-                error: function () {
-                    showNotification('❌ Failed to delete contact', 'error');
+                error: function (xhr) {
+                    var msg = '❌ Failed to delete contact';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = '✗ ' + xhr.responseJSON.message;
+                    }
+                    showNotification(msg, 'error');
                 },
                 complete: function () {
                     modal.hide();
