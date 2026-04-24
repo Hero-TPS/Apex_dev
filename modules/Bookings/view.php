@@ -440,7 +440,7 @@ if (isset($_GET['id'])) {
                             success: function (res) {
                                 if (res.success) {
                                     resultArea.html('<span class="success-message result-sm">✓ GPS saved</span>');
-                                    btn.text('📍 Update Pickup GPS').removeClass('save').addClass('toggle');
+                                    setTimeout(function () { location.reload(); }, 1000);
                                 } else {
                                     resultArea.html('<span class="error-message result-sm">✗ ' + escapeHtml(res.message) + '</span>');
                                 }
@@ -493,8 +493,7 @@ if (isset($_GET['id'])) {
                     success: function (res) {
                         if (res.success) {
                             resultArea.html('<span class="success-message result-sm">✓ GPS cleared</span>');
-                            btn.hide();
-                            $('#markGpsBtn').text('📍 Mark Pickup GPS').removeClass('toggle').addClass('save');
+                            setTimeout(function () { location.reload(); }, 1000);
                         } else {
                             resultArea.html('<span class="error-message result-sm">✗ ' + escapeHtml(res.message) + '</span>');
                         }
