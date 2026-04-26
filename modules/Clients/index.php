@@ -23,6 +23,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
 <div class="client-search-container">
     <input type="text" id="clientSearch" class="client-search-input"
         placeholder="🔍 Search clients by name, phone or address...">
+    <div id="search-results-count"></div>
 </div>
 
 <!-- Notification Area -->
@@ -209,7 +210,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 if (!nameCell.find('span[title="GPS set"]').length) {
                                     nameCell.append(' <span title="GPS set">📍</span>');
                                 }
-                                var c = allClients.find(function(x) { return x.id == clientId; });
+                                var c = allClients.find(function (x) { return x.id == clientId; });
                                 if (c) { c.pickup_lat = position.coords.latitude; c.pickup_lng = position.coords.longitude; }
                             } else {
                                 showNotification('✗ ' + res.message, 'error');
@@ -290,10 +291,13 @@ $highlightClientId = $_GET['highlight'] ?? null;
 
             if (searchText.length === 0) {
                 tableBody.find('tr').show();
+                $('#search-results-count').text('');
                 return;
             }
 
             var words = searchText.split(/\s+/).filter(w => w.length > 0);
+
+            var visibleCount = 0;
 
             tableBody.find('tr').each(function () {
                 var row = $(this);
@@ -314,7 +318,11 @@ $highlightClientId = $_GET['highlight'] ?? null;
                 });
 
                 row.toggle(match);
+                if (match) visibleCount++;
             });
+
+            $('#search-results-count').text(visibleCount + ' result' + (visibleCount !== 1 ? 's' : ''));
+
         });
 
         function showNotification(message, type) {
