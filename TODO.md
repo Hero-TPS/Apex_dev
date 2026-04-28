@@ -9,7 +9,7 @@
 ---
 
 ### Bookings Module Enhancements and Fixes
-
+- [ ] Viewing invoice, should not be available as an open link to client. Send via WhatsApp to create the pdf, and forward it to client. Is it possible?
 ---
 
 ### Client Module Enhancements and Fixes
@@ -50,24 +50,10 @@
 ## NEXT CYCLE
 
 ### Drivers
-#### Start thinking of how to deal with additional car drivers, mark bookings as such and commission taken
-- [ ] Driver has an account 
-- [ ] Admin or manager role can assign bookings to drivers
-- [ ] Set up a commision present field in maintanance
-- [ ] set up role permission for a role that does not pay commision (such as admin)
-- [ ] if driver is asigned a booking 
-    - the booking is not added as income, only the commission
-    - booking is removed from calendar
-    - booking is still show in list, but marked as assigned
-    - when a booking is created, then it can also be immediatly asigned
-- [ ] Admin overview of driver bookings
-    -drivers has access to their own list of upcomming bookings (How)
+
 
 ### Access Control
-- [ ] Similar to drupal access control
-  - Admin user. Superuser
-  - access control to pages, based on roles. need a set up page for this.
-  - users with roles
+- [ ] Secure the whole site with just one login
 
 ### Clients Module Enhancements and Fixes
 - [ ] Create list of clients with prior bookings:
