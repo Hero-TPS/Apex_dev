@@ -10,9 +10,12 @@
 
 ### Bookings Module Enhancements and Fixes
 - [ ] Viewing invoice, should not be available as an open link to client. Send via WhatsApp to create the pdf, and forward it to client. Is it possible?
+- [ ] Booking reports show wrong month data. Got current month, then last month, the month before that show again the last month date instead of two months back. Three months back and more is fine
 ---
 
 ### Client Module Enhancements and Fixes
+- [ ] Export client data as csv
+
 
 ---
 
@@ -55,10 +58,8 @@
 ### Access Control
 - [ ] Secure the whole site with just one login
 
-### Clients Module Enhancements and Fixes
-- [ ] Create list of clients with prior bookings:
-  - Export names and phone numbers
-  - Discuss WhatsApp Business group creation
+### WhatsApp
+- [ ] Discuss WhatsApp Business group creation
   - Ideas for direct WhatsApp communication with existing clients
 - [ ] WhatsApp Business integration for bulk messaging
 
