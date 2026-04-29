@@ -17,10 +17,11 @@ if ($monthsBack < 1) {
 }
 
 $months = [];
-$tz     = new DateTimeZone(TIME_ZONE);
-$today  = new DateTime('now', $tz);
+$tz           = new DateTimeZone(TIME_ZONE);
+$today        = new DateTime('now', $tz);
+$firstOfMonth = new DateTime($today->format('Y-m-01'), $tz);
 for ($i = 1; $i < $monthsBack; $i++) {
-    $date  = clone $today;
+    $date  = clone $firstOfMonth;
     $date->modify("-$i months");
     $months[] = [
         'year'  => (int) $date->format('Y'),
