@@ -346,25 +346,28 @@ textarea {
 }
 
 .view-filter-btn {
-  background-color: #fff;
-  color: #333;
-  border: 1px solid #bbb;
+  color: #fff;
+  border: 2px solid transparent;
   padding: 6px 14px;
   font-size: 0.9em;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  opacity: 0.72;
 }
 
+/* Individual colours per filter */
+.view-filter-btn[data-filter="all"]              { background-color: #3498db; } /* blue  – All Clients        */
+.view-filter-btn[data-filter="with_bookings"]    { background-color: #27ae60; } /* green – With Bookings      */
+.view-filter-btn[data-filter="without_bookings"] { background-color: #e67e22; } /* amber – Without Bookings   */
+
 .view-filter-btn:hover {
-  background-color: #f0f4f8;
-  border-color: #888;
+  opacity: 1;
 }
 
 .view-filter-btn.active {
-  background-color: #007cba;
-  color: #fff;
-  border-color: #007cba;
+  opacity: 1;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.18);
 }
 
 .csv-download-btn {
