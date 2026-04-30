@@ -13,6 +13,9 @@ try {
         case 'get':
             handleGetClients();
             break;
+        case 'get_csv':
+            handleGetClientsCsv();
+            break;
         case 'get_single':
             handleGetSingleClient();
             break;
@@ -47,30 +50,20 @@ try {
 function handleGetClients()
 {
     global $pdo;
-    
-    $onlyWithBookings = isset($_GET['only_with_bookings']) && $_GET['only_with_bookings'] == 1;
-    
+
+    // Support new `filter` param (all | with_bookings | without_bookings)
+    // Fall back to legacy `only_with_bookings` for backward-compat.
+    $allowedFilters = ['all', 'with_bookings', 'without_bookings'];
+    $filter = $_GET['filter'] ?? null;
+    if ($filter === null) {
+        $onlyWithBookings = isset($_GET['only_with_bookings']) && $_GET['only_with_bookings'] == 1;
+        $filter = $onlyWithBookings ? 'with_bookings' : 'all';
+    } elseif (!in_array($filter, $allowedFilters, true)) {
+        $filter = 'all';
+    }
+
     try {
-        if ($onlyWithBookings) {
-            $sql = "
-                SELECT 
-                    c.*,
-                    COUNT(DISTINCT b.id) AS booking_count
-                FROM contacts c
-                INNER JOIN bookings b ON c.id = b.contact_id
-                GROUP BY c.id
-                ORDER BY c.name ASC
-            ";
-        } else {
-            $sql = "
-                SELECT 
-                    c.*,
-                    (SELECT COUNT(*) FROM bookings b WHERE b.contact_id = c.id) AS booking_count
-                FROM contacts c
-                ORDER BY c.name ASC
-            ";
-        }
-        
+        $sql = buildClientsQuery($filter);
         $stmt = $pdo->query($sql);
         $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -78,18 +71,108 @@ function handleGetClients()
             $contact['whatsapp_phone'] = formatPhoneNumberForWhatsApp($contact['phone'] ?? '');
         }
         unset($contact);
-        
+
         jsonResponse([
             'success' => true,
             'contacts' => $contacts
         ]);
-        
+
     } catch (PDOException $e) {
         logError('CLIENT', 'Failed to fetch clients', [
             'error' => $e->getMessage(),
-            'only_with_bookings' => $onlyWithBookings
+            'filter' => $filter
         ]);
         jsonResponse(['success' => false, 'message' => 'Database error'], 500);
+    }
+}
+
+function handleGetClientsCsv()
+{
+    global $pdo;
+
+    $allowedFilters = ['all', 'with_bookings', 'without_bookings'];
+    $filter = $_GET['filter'] ?? 'all';
+    if (!in_array($filter, $allowedFilters, true)) {
+        $filter = 'all';
+    }
+    $labelMap = [
+        'all'              => 'All Clients',
+        'with_bookings'    => 'Clients With Bookings',
+        'without_bookings' => 'Clients Without Bookings',
+    ];
+    $label = $labelMap[$filter] ?? 'Clients';
+    $filename = str_replace(' ', '_', $label) . '_' . date('Y-m-d') . '.csv';
+
+    try {
+        $sql = buildClientsQuery($filter);
+        $stmt = $pdo->query($sql);
+        $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Send CSV headers (override JSON header set earlier)
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $out = fopen('php://output', 'w');
+        // BOM for Excel UTF-8 compatibility
+        fputs($out, "\xEF\xBB\xBF");
+        fputcsv($out, ['Name', 'Phone', 'Email', 'Address', 'Additional Info', 'Bookings']);
+
+        foreach ($contacts as $c) {
+            fputcsv($out, [
+                $c['name']            ?? '',
+                $c['phone']           ?? '',
+                $c['email']           ?? '',
+                $c['address']         ?? '',
+                $c['additional_info'] ?? '',
+                $c['booking_count']   ?? 0,
+            ]);
+        }
+        fclose($out);
+        exit;
+
+    } catch (PDOException $e) {
+        logError('CLIENT', 'Failed to export clients CSV', [
+            'error'  => $e->getMessage(),
+            'filter' => $filter
+        ]);
+        // Restore JSON header for error response
+        header('Content-Type: application/json');
+        jsonResponse(['success' => false, 'message' => 'Database error'], 500);
+    }
+}
+
+function buildClientsQuery($filter)
+{
+    switch ($filter) {
+        case 'with_bookings':
+            return "
+                SELECT
+                    c.*,
+                    COUNT(DISTINCT b.id) AS booking_count
+                FROM contacts c
+                INNER JOIN bookings b ON c.id = b.contact_id
+                GROUP BY c.id
+                ORDER BY c.name ASC
+            ";
+        case 'without_bookings':
+            return "
+                SELECT
+                    c.*,
+                    0 AS booking_count
+                FROM contacts c
+                WHERE NOT EXISTS (SELECT 1 FROM bookings b WHERE b.contact_id = c.id)
+                ORDER BY c.name ASC
+            ";
+        default: // 'all'
+            return "
+                SELECT
+                    c.*,
+                    (SELECT COUNT(*) FROM bookings b WHERE b.contact_id = c.id) AS booking_count
+                FROM contacts c
+                ORDER BY c.name ASC
+            ";
     }
 }
 

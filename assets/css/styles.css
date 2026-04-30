@@ -336,6 +336,55 @@ textarea {
   background-color: #005a87;
 }
 
+/* View filter button group (clients index) */
+.view-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+  align-items: center;
+}
+
+.view-filter-btn {
+  background-color: #fff;
+  color: #333;
+  border: 1px solid #bbb;
+  padding: 6px 14px;
+  font-size: 0.9em;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.view-filter-btn:hover {
+  background-color: #f0f4f8;
+  border-color: #888;
+}
+
+.view-filter-btn.active {
+  background-color: #007cba;
+  color: #fff;
+  border-color: #007cba;
+}
+
+.csv-download-btn {
+  background-color: #28a745;
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  font-size: 0.9em;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: background-color 0.2s ease;
+}
+
+.csv-download-btn:hover {
+  background-color: #1e7e34;
+  color: #fff;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;

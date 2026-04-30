@@ -14,10 +14,13 @@ $highlightClientId = $_GET['highlight'] ?? null;
 <!-- Summary Stats -->
 <div id="client-stats" style="margin-bottom: 20px;"></div>
 
-<!-- Booking Filter Toggle -->
-<button id="toggleBookingsFilter" class="toggle-btn">
-    👁️ Show Only Clients With Bookings
-</button>
+<!-- Booking Filter Buttons -->
+<div class="view-filter-group">
+    <button class="view-filter-btn active" data-filter="all">👥 All Clients</button>
+    <button class="view-filter-btn" data-filter="with_bookings">📅 With Bookings</button>
+    <button class="view-filter-btn" data-filter="without_bookings">🚫 Without Bookings</button>
+    <a id="downloadCsvBtn" href="#" class="csv-download-btn">⬇️ Download CSV</a>
+</div>
 
 <!-- Client Search -->
 <div class="client-search-container">
@@ -77,16 +80,27 @@ $highlightClientId = $_GET['highlight'] ?? null;
         var modal = $('#deleteConfirmationModal');
         var contactIdToDelete = null;
         var allClients = [];
-        var showOnlyWithBookings = false;
+        var currentFilter = 'all';
 
-        $('#toggleBookingsFilter').on('click', function () {
-            showOnlyWithBookings = !showOnlyWithBookings;
-            $(this).text(showOnlyWithBookings
-                ? '👁️ Show All Clients'
-                : '👁️ Show Only Clients With Bookings'
+        // Build CSV download URL for the current filter
+        function updateCsvLink() {
+            $('#downloadCsvBtn').attr(
+                'href',
+                '<?= BASE_URL ?>/modules/Clients/api/index.php?action=get_csv&filter=' + currentFilter
             );
+        }
+
+        // Filter button clicks
+        $('.view-filter-btn').on('click', function () {
+            $('.view-filter-btn').removeClass('active');
+            $(this).addClass('active');
+            currentFilter = $(this).data('filter');
+            updateCsvLink();
             loadContacts();
         });
+
+        // Set initial CSV link
+        updateCsvLink();
 
         function buildGpsButtons(contact) {
             var hasGps = contact.pickup_lat && contact.pickup_lng;
@@ -100,7 +114,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
             $.ajax({
                 type: 'GET',
                 url: '<?= BASE_URL ?>/modules/Clients/api/index.php?action=get',
-                data: { only_with_bookings: showOnlyWithBookings ? 1 : 0 },
+                data: { filter: currentFilter },
                 dataType: 'json',
                 success: function (response) {
                     tableBody.empty();
