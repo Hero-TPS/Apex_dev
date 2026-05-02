@@ -19,6 +19,7 @@
 - Logging via `logInfo()`, `logError()`, `logWarning()`, `logCritical()`.
 - WhatsApp links use `formatPhoneNumberForWhatsApp($phone)`.
 - Don't use JS alert. Show in HTML and log to watchdog
+- When the user refer to clients view in chats and agents, etc, it is the module/clients/index.php
 
 ## Waze Link Generation (Booking Detail View)
 - GPS coordinates are stored in `contacts.pickup_lat` / `contacts.pickup_lng` (aliased as `client_pickup_lat` / `client_pickup_lng` in the booking result array) and always reference the **original_pickup** location.
