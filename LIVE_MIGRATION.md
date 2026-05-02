@@ -7,6 +7,20 @@ Run in order. Check off each one after executing.
 
 ## Pending
 
+### [contacts] Add `wa_status` column for WA cleanup campaign tracking
+
+- [ ] Done on dev
+- [ ] Done on live
+
+```sql
+ALTER TABLE contacts
+    ADD COLUMN IF NOT EXISTS wa_status VARCHAR(50) NULL DEFAULT NULL;
+```
+
+> Valid values: `NULL` (not contacted), `sent`, `positive`, `negative`, `no_response`
+
+---
+
 ### [contacts] Add `pickup_lat` and `pickup_lng` columns for GPS location
 
 - [x] Done on dev

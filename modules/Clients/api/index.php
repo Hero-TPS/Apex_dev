@@ -34,6 +34,9 @@ try {
         case 'clear_pickup_gps':
             handleClearPickupGps();
             break;
+        case 'update_wa_status':
+            handleUpdateWaStatus();
+            break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
     }
@@ -117,17 +120,26 @@ function handleGetClientsCsv()
         $out = fopen('php://output', 'w');
         // BOM for Excel UTF-8 compatibility
         fputs($out, "\xEF\xBB\xBF");
-        fputcsv($out, ['Name', 'Phone', 'Email', 'Address', 'Additional Info', 'Bookings']);
+        // Column headers — include WA Status for the without_bookings export
+        $headers = ['Name', 'Phone', 'Email', 'Address', 'Additional Info', 'Bookings'];
+        if ($filter === 'without_bookings') {
+            $headers[] = 'WA Status';
+        }
+        fputcsv($out, $headers);
 
         foreach ($contacts as $c) {
-            fputcsv($out, [
+            $row = [
                 $c['name']            ?? '',
                 $c['phone']           ?? '',
                 $c['email']           ?? '',
                 $c['address']         ?? '',
                 $c['additional_info'] ?? '',
                 $c['booking_count']   ?? 0,
-            ]);
+            ];
+            if ($filter === 'without_bookings') {
+                $row[] = $c['wa_status'] ?? '';
+            }
+            fputcsv($out, $row);
         }
         fclose($out);
         exit;
@@ -447,5 +459,42 @@ function handleClearPickupGps()
             'client_id' => $id,
         ]);
         jsonResponse(['success' => false, 'message' => 'Failed to clear GPS location.'], 500);
+    }
+}
+
+function handleUpdateWaStatus()
+{
+    global $pdo;
+
+    $id     = intval($_POST['id'] ?? 0);
+    $status = trim($_POST['status'] ?? '');
+
+    $allowed = ['sent', 'positive', 'negative', 'no_response'];
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid client ID.'], 400);
+    }
+
+    if (!in_array($status, $allowed, true)) {
+        jsonResponse(['success' => false, 'message' => 'Invalid WA status value.'], 400);
+    }
+
+    try {
+        $stmt = $pdo->prepare("UPDATE contacts SET wa_status = ? WHERE id = ?");
+        $stmt->execute([$status, $id]);
+
+        logDebug('CLIENT', 'WA status updated', [
+            'client_id' => $id,
+            'wa_status'  => $status,
+        ]);
+
+        jsonResponse(['success' => true, 'message' => 'WA status updated.', 'wa_status' => $status]);
+
+    } catch (PDOException $e) {
+        logError('CLIENT', 'Failed to update WA status', [
+            'error'     => $e->getMessage(),
+            'client_id' => $id,
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Failed to update WA status.'], 500);
     }
 }

@@ -42,6 +42,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
             <th>Address</th>
             <th>Additional Info</th>
             <th>Bookings</th>
+            <th class="wa-status-col" style="display:none;">WA Status</th>
             <th>Actions</th>
         </tr>
     </thead>
@@ -90,17 +91,28 @@ $highlightClientId = $_GET['highlight'] ?? null;
             );
         }
 
+        // Show/hide WA Status column (only visible in without_bookings view)
+        function updateWaStatusColumn() {
+            if (currentFilter === 'without_bookings') {
+                $('.wa-status-col').show();
+            } else {
+                $('.wa-status-col').hide();
+            }
+        }
+
         // Filter button clicks
         $('.view-filter-btn').on('click', function () {
             $('.view-filter-btn').removeClass('active');
             $(this).addClass('active');
             currentFilter = $(this).data('filter');
             updateCsvLink();
+            updateWaStatusColumn();
             loadContacts();
         });
 
-        // Set initial CSV link
+        // Set initial CSV link and column visibility
         updateCsvLink();
+        updateWaStatusColumn();
 
         function buildGpsButtons(contact) {
             var hasGps = contact.pickup_lat && contact.pickup_lng;
@@ -109,8 +121,46 @@ $highlightClientId = $_GET['highlight'] ?? null;
                 : '<button class="action-btn save gps-btn" data-id="' + contact.id + '">📍 Set GPS</button>';
         }
 
+        // ── WA Status helpers ──
+
+        var WA_STATUS_LABELS = {
+            '':            '📋 Not Sent',
+            'sent':        '📨 Sent',
+            'positive':    '✅ Positive',
+            'negative':    '❌ Negative',
+            'no_response': '🕐 No Response'
+        };
+        var WA_STATUS_CSS = {
+            '':            'not-sent',
+            'sent':        'sent',
+            'positive':    'positive',
+            'negative':    'negative',
+            'no_response': 'no-response'
+        };
+
+        function buildWaStatusBadge(status) {
+            var key = status || '';
+            var label = WA_STATUS_LABELS[key] || key;
+            var css   = WA_STATUS_CSS[key]   || 'not-sent';
+            return '<span class="wa-status-badge ' + css + '">' + label + '</span>';
+        }
+
+        // ======================================================
+        // CLEANUP WA MESSAGE — edit the text below as needed
+        // ======================================================
+        function buildCleanupMessage(name) {
+            return "Hi " + name + " \uD83D\uDC4B\n\n" +
+                "This is <?= e(BUSINESS_OWNER) ?> from <?= e(BUSINESS_NAME) ?>.\n\n" +
+                "We have your contact details on our records and just wanted to reach out.\n\n" +
+                "We would love to know if there is anything we can still help you with? \uD83D\uDE0A\n\n" +
+                "Please feel free to reply to this message.\n\n" +
+                "Regards,\n<?= e(BUSINESS_OWNER) ?>\n<?= e(BUSINESS_NAME) ?>";
+        }
+        // ======================================================
+
         function loadContacts(highlightId = null) {
-            tableBody.html('<tr><td colspan="7" style="text-align:center;">Loading clients...</td></tr>');
+            var colspan = currentFilter === 'without_bookings' ? 8 : 7;
+            tableBody.html('<tr><td colspan="' + colspan + '" style="text-align:center;">Loading clients...</td></tr>');
             $.ajax({
                 type: 'GET',
                 url: '<?= BASE_URL ?>/modules/Clients/api/index.php?action=get',
@@ -153,6 +203,30 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 : '';
 
                             var rowClass = (highlightId && contact.id == highlightId) ? 'highlight-row' : '';
+
+                            // WA Status cell and cleanup buttons (without_bookings view only)
+                            var waStatusCell = '';
+                            var waCleanupBtn = '';
+                            var waStatusBtns = '';
+                            if (currentFilter === 'without_bookings') {
+                                waStatusCell = '<td data-label="WA Status" class="wa-status-col">' +
+                                    buildWaStatusBadge(contact.wa_status) + '</td>';
+
+                                if (contact.whatsapp_phone) {
+                                    var cleanupMsg = buildCleanupMessage(contact.name);
+                                    var cleanupHref = 'https://wa.me/' + contact.whatsapp_phone +
+                                        '?text=' + encodeURIComponent(cleanupMsg);
+                                    waCleanupBtn = '<a href="' + cleanupHref + '" target="_blank" ' +
+                                        'class="action-btn wa-cleanup-btn" ' +
+                                        'data-id="' + contact.id + '">📨 WA Cleanup</a>';
+                                }
+
+                                waStatusBtns =
+                                    '<button class="action-btn wa-positive-btn" data-id="' + contact.id + '" data-status="positive">✅ Positive</button>' +
+                                    '<button class="action-btn wa-negative-btn" data-id="' + contact.id + '" data-status="negative">❌ Negative</button>' +
+                                    '<button class="action-btn wa-no-response-btn" data-id="' + contact.id + '" data-status="no_response">🕐 No Reply</button>';
+                            }
+
                             var row = '<tr class="' + rowClass + '" data-client-id="' + contact.id + '">' +
                                 '<td data-label="Name">' + escapeHtml(contact.name) + gpsIndicator + '</td>' +
                                 '<td data-label="Phone">' + escapeHtml(contact.phone || '') + '</td>' +
@@ -160,6 +234,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 '<td data-label="Address">' + escapeHtml(contact.address || '') + '</td>' +
                                 '<td data-label="Additional Info">' + escapeHtml(contact.additional_info || '') + '</td>' +
                                 '<td data-label="Bookings">' + (contact.booking_count || 0) + '</td>' +
+                                waStatusCell +
                                 '<td data-label="Actions">' +
                                 '<div class="actions-container">' +
                                 (contact.booking_count > 0 ? '<a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=' + contact.id + '" class="action-btn view-details-btn">View Bookings</a>' : '') +
@@ -167,7 +242,9 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 (contact.whatsapp_phone
                                     ? '<a href="' + waHref + '" target="_blank" class="action-btn whatsapp-btn" onclick="logWhatsAppSend(null, ' + contact.id + ', ' + JSON.stringify(waGreeting) + ', \'message\')">WhatsApp</a>'
                                     : '') +
+                                waCleanupBtn +
                                 buildGpsButtons(contact) +
+                                waStatusBtns +
                                 '<button class="action-btn delete-btn" data-id="' + contact.id + '">Delete</button>' +
                                 '</div>' +
                                 '</td>' +
@@ -249,6 +326,51 @@ $highlightClientId = $_GET['highlight'] ?? null;
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             );
         });
+
+        // ── WA Cleanup button: open WA and mark as 'sent' ──
+        tableBody.on('click', '.wa-cleanup-btn', function () {
+            var clientId = $(this).data('id');
+            var row = $(this).closest('tr');
+            updateWaStatus(clientId, 'sent', row);
+        });
+
+        // ── WA Status quick-update buttons ──
+        tableBody.on('click', '.wa-positive-btn, .wa-negative-btn, .wa-no-response-btn', function () {
+            var btn = $(this);
+            var clientId = btn.data('id');
+            var newStatus = btn.data('status');
+            var row = btn.closest('tr');
+            updateWaStatus(clientId, newStatus, row);
+        });
+
+        function updateWaStatus(clientId, status, row) {
+            $.ajax({
+                type: 'POST',
+                url: '<?= BASE_URL ?>/modules/Clients/api/index.php',
+                data: {
+                    action: 'update_wa_status',
+                    id: clientId,
+                    status: status
+                },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.success) {
+                        // Update badge in row
+                        row.find('.wa-status-badge')
+                            .attr('class', 'wa-status-badge ' + (WA_STATUS_CSS[status] || 'not-sent'))
+                            .text(WA_STATUS_LABELS[status] || status);
+                        // Update cached client object
+                        var c = allClients.find(function (x) { return x.id == clientId; });
+                        if (c) { c.wa_status = status; }
+                    } else {
+                        showNotification('✗ ' + res.message, 'error');
+                    }
+                },
+                error: function () {
+                    showNotification('✗ Failed to update WA status.', 'error');
+                }
+            });
+        }
 
         // ── Delete ──
         tableBody.on('click', '.delete-btn', function () {
