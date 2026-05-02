@@ -218,6 +218,32 @@ function createWhatsAppMessage(array $bookingDetails): string
 
 
 /**
+ * Build the WA cleanup/re-engagement message for clients without bookings.
+ * Sent during the Phase 1 client list cleanup campaign.
+ * The message text can be edited here — no form needed.
+ *
+ * NOTE: The Clients view builds the equivalent message in JavaScript (client-side)
+ * so that it can be opened directly as a wa.me link. This PHP function is provided
+ * for Phase 2 server-side use (e.g. batch list generation, previews).
+ *
+ * @param string $clientName  The client's display name
+ */
+function createCleanupWhatsAppMessage(string $clientName): string
+{
+    // ======================================================
+    // CLEANUP WA MESSAGE — edit the text below as needed
+    // ======================================================
+    return "Hi " . $clientName . " 👋\n\n" .
+        "This is " . BUSINESS_OWNER . " from " . BUSINESS_NAME . ".\n\n" .
+        "We have your contact details on our records and just wanted to reach out.\n\n" .
+        "We would love to know if there is anything we can still help you with? 😊\n\n" .
+        "Please feel free to reply to this message.\n\n" .
+        "Regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
+    // ======================================================
+}
+
+
+/**
  * Build a WhatsApp reminder message for a prebooking.
  * Sent to the client to remind them about their tentative booking and request confirmation of details.
  * Used by: modules/Prebookings/index.php
