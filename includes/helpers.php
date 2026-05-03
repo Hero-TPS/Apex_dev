@@ -234,11 +234,11 @@ function createCleanupWhatsAppMessage(string $clientName): string
     // CLEANUP WA MESSAGE — edit the text below as needed
     // ======================================================
     return "Hi " . $clientName . " 👋\n\n" .
-        "This is " . BUSINESS_OWNER . " from " . BUSINESS_NAME . ".\n\n" .
-        "We have your contact details on our records and just wanted to reach out.\n\n" .
-        "We would love to know if there is anything we can still help you with? 😊\n\n" .
-        "Please feel free to reply to this message.\n\n" .
-        "Regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
+        "My name is " . BUSINESS_OWNER . ", and I have recently taken over André Matthews' personal transport services. As you may know, André has retired and relocated to Namibia — we wish him well!\n\n" .
+        "André kindly shared his client list with me, and your details were included. I wanted to reach out personally to introduce myself and let you know that I am available should you ever need a reliable transport service.\n\n" .
+        "I want to assure you that this is a once-off introduction message. I will not contact you again unless you choose to reach out to me — no follow-ups, no further messages.\n\n" .
+        "I would love to hear from you. Could you perhaps let me know if you are still in the area and whether transport assistance is something you may need from time to time?\n\n" .
+        "Kind regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
     // ======================================================
 }
 
