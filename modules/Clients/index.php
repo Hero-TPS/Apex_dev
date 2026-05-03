@@ -150,11 +150,11 @@ $highlightClientId = $_GET['highlight'] ?? null;
         // ======================================================
         function buildCleanupMessage(name) {
             return "Hi " + name + " \uD83D\uDC4B\n\n" +
-                "This is <?= e(BUSINESS_OWNER) ?> from <?= e(BUSINESS_NAME) ?>.\n\n" +
-                "We have your contact details on our records and just wanted to reach out.\n\n" +
-                "We would love to know if there is anything we can still help you with? \uD83D\uDE0A\n\n" +
-                "Please feel free to reply to this message.\n\n" +
-                "Regards,\n<?= e(BUSINESS_OWNER) ?>\n<?= e(BUSINESS_NAME) ?>";
+                "My name is <?= e(BUSINESS_OWNER) ?>, and I have recently taken over Andr\u00e9 Matthews' personal transport services. As you may know, Andr\u00e9 has retired and relocated to Namibia \u2014 we wish him well!\n\n" +
+                "Andr\u00e9 kindly shared his client list with me, and your details were included. I wanted to reach out personally to introduce myself and let you know that I am available should you ever need a reliable transport service.\n\n" +
+                "I want to assure you that this is a once-off introduction message. I will not contact you again unless you choose to reach out to me \u2014 no follow-ups, no further messages.\n\n" +
+                "I would love to hear from you. Could you perhaps let me know if you are still in the area and whether transport assistance is something you may need from time to time?\n\n" +
+                "Kind regards,\n<?= e(BUSINESS_OWNER) ?>\n<?= e(BUSINESS_NAME) ?>";
         }
         // ======================================================
 
