@@ -1926,8 +1926,8 @@ body:not(.home-page) .floating-menu-toggle {
 .wa-status-badge.not-sent    { background: #f0f0f0; color: #666; }
 .wa-status-badge.sent        { background: #e3f2fd; color: #1565c0; }
 .wa-status-badge.positive    { background: #e8f5e9; color: #2e7d32; }
-.wa-status-badge.negative    { background: #ffebee; color: #c62828; }
-.wa-status-badge.no-response { background: #fff3e0; color: #e65100; }
+
+.wa-sent-date { font-size: 0.75em; color: #888; margin-top: 3px; }
 
 /* WA Cleanup action button */
 .wa-cleanup-btn { background-color: #128c7e; }
@@ -1936,9 +1936,3 @@ body:not(.home-page) .floating-menu-toggle {
 /* Quick status buttons */
 .wa-positive-btn    { background-color: #27ae60; }
 .wa-positive-btn:hover { background-color: #229954; }
-
-.wa-negative-btn    { background-color: #e74c3c; }
-.wa-negative-btn:hover { background-color: #c0392b; }
-
-.wa-no-response-btn { background-color: #e67e22; }
-.wa-no-response-btn:hover { background-color: #ca6f1e; }

@@ -469,7 +469,7 @@ function handleUpdateWaStatus()
     $id     = intval($_POST['id'] ?? 0);
     $status = trim($_POST['status'] ?? '');
 
-    $allowed = ['sent', 'positive', 'negative', 'no_response'];
+    $allowed = ['sent', 'positive'];
 
     if ($id <= 0) {
         jsonResponse(['success' => false, 'message' => 'Invalid client ID.'], 400);
@@ -480,15 +480,25 @@ function handleUpdateWaStatus()
     }
 
     try {
-        $stmt = $pdo->prepare("UPDATE contacts SET wa_status = ? WHERE id = ?");
-        $stmt->execute([$status, $id]);
+        if ($status === 'sent') {
+            $stmt = $pdo->prepare("UPDATE contacts SET wa_status = ?, wa_sent_date = CURDATE() WHERE id = ?");
+            $stmt->execute([$status, $id]);
+        } else {
+            $stmt = $pdo->prepare("UPDATE contacts SET wa_status = ? WHERE id = ?");
+            $stmt->execute([$status, $id]);
+        }
 
         logDebug('CLIENT', 'WA status updated', [
             'client_id' => $id,
             'wa_status'  => $status,
         ]);
 
-        jsonResponse(['success' => true, 'message' => 'WA status updated.', 'wa_status' => $status]);
+        $waSentDate = null;
+        if ($status === 'sent') {
+            $waSentDate = date('Y-m-d');
+        }
+
+        jsonResponse(['success' => true, 'message' => 'WA status updated.', 'wa_status' => $status, 'wa_sent_date' => $waSentDate]);
 
     } catch (PDOException $e) {
         logError('CLIENT', 'Failed to update WA status', [
