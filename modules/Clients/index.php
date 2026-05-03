@@ -37,8 +37,6 @@ $highlightClientId = $_GET['highlight'] ?? null;
     <thead>
         <tr>
             <th>Name</th>
-            <th>Phone</th>
-            <th>Email</th>
             <th>Address</th>
             <th>Additional Info</th>
             <th>Bookings</th>
@@ -159,7 +157,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
         // ======================================================
 
         function loadContacts(highlightId = null) {
-            var colspan = currentFilter === 'without_bookings' ? 8 : 7;
+            var colspan = currentFilter === 'without_bookings' ? 6 : 5;
             tableBody.html('<tr><td colspan="' + colspan + '" style="text-align:center;">Loading clients...</td></tr>');
             $.ajax({
                 type: 'GET',
@@ -228,9 +226,10 @@ $highlightClientId = $_GET['highlight'] ?? null;
                             }
 
                             var row = '<tr class="' + rowClass + '" data-client-id="' + contact.id + '">' +
-                                '<td data-label="Name">' + escapeHtml(contact.name) + gpsIndicator + '</td>' +
-                                '<td data-label="Phone">' + escapeHtml(contact.phone || '') + '</td>' +
-                                '<td data-label="Email">' + escapeHtml(contact.email || '') + '</td>' +
+                                '<td data-label="Name">' + escapeHtml(contact.name) + gpsIndicator +
+                                (contact.phone ? '<br><span class="client-subline">📞 ' + escapeHtml(contact.phone) + '</span>' : '') +
+                                (contact.email ? '<br><span class="client-subline">✉️ ' + escapeHtml(contact.email) + '</span>' : '') +
+                                '</td>' +
                                 '<td data-label="Address">' + escapeHtml(contact.address || '') + '</td>' +
                                 '<td data-label="Additional Info">' + escapeHtml(contact.additional_info || '') + '</td>' +
                                 '<td data-label="Bookings">' + (contact.booking_count || 0) + '</td>' +
