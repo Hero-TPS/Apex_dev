@@ -7,6 +7,18 @@ Run in order. Check off each one after executing.
 
 ## Pending
 
+### [contacts] Add `wa_sent_date` column for WA cleanup campaign
+
+- [ ] Done on dev
+- [ ] Done on live
+
+```sql
+ALTER TABLE contacts
+    ADD COLUMN IF NOT EXISTS wa_sent_date DATE NULL DEFAULT NULL;
+```
+
+---
+
 ### [contacts] Add `wa_status` column for WA cleanup campaign tracking
 
 - [x] Done on dev
@@ -17,7 +29,7 @@ ALTER TABLE contacts
     ADD COLUMN IF NOT EXISTS wa_status VARCHAR(50) NULL DEFAULT NULL;
 ```
 
-> Valid values: `NULL` (not contacted), `sent`, `positive`, `negative`, `no_response`
+> Valid values: `NULL` (not contacted), `sent`, `positive`
 
 ---
 
