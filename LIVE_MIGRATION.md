@@ -9,8 +9,8 @@ Run in order. Check off each one after executing.
 
 ### [contacts] Add `wa_sent_date` column for WA cleanup campaign
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 ```sql
 ALTER TABLE contacts
