@@ -27,11 +27,50 @@ function getWeeksInMonth(int $year, int $month): int
 }
 
 /**
+ * Calculate km driven in a period using odometer delta.
+ *
+ * Returns the difference between the last odo_km on or before $endUnix
+ * and the last odo_km strictly before $startUnix.
+ * Returns 0.0 if insufficient data exists.
+ *
+ * This avoids the trip_km boundary problem where a fill-up's trip_km
+ * spans across a week/month boundary and distorts efficiency metrics
+ * (km/l, l/100km, cost/km, income/km).
+ */
+function getOdoKmForPeriod(PDO $pdo, int $startUnix, int $endUnix): float
+{
+    // Odometer at end of period (last fill-up on or before period end)
+    $stmt = $pdo->prepare(
+        "SELECT odo_km FROM fuel_logs WHERE log_timestamp <= ? ORDER BY log_timestamp DESC LIMIT 1"
+    );
+    $stmt->execute([$endUnix]);
+    $endOdo = $stmt->fetchColumn();
+
+    if ($endOdo === false) {
+        return 0.0; // No fuel data at all
+    }
+
+    // Odometer just before start of period (last fill-up before period start)
+    $stmt = $pdo->prepare(
+        "SELECT odo_km FROM fuel_logs WHERE log_timestamp < ? ORDER BY log_timestamp DESC LIMIT 1"
+    );
+    $stmt->execute([$startUnix]);
+    $startOdo = $stmt->fetchColumn();
+
+    if ($startOdo === false) {
+        $startOdo = 0.0; // No prior entry — assume starting from zero
+    }
+
+    $delta = (float) $endOdo - (float) $startOdo;
+    return $delta > 0.0 ? $delta : 0.0;
+}
+
+/**
  * Get financial metrics for a single week (Mon–Sun, SAST).
  *
  * @param  PDO $pdo
  * @param  int $startUnix  Unix timestamp of Monday 00:00 SAST
- * @param  int $endUnix    Unix timestamp of Sunday 23:59:59 SAST (used for fuel range)
+ * @param  int $endUnix    Unix timestamp of Sunday 23:59:59 SAST
  * @return array
  */
 function getWeeklyMetrics(PDO $pdo, int $startUnix, int $endUnix): array
@@ -81,22 +120,24 @@ function getWeeklyMetrics(PDO $pdo, int $startUnix, int $endUnix): array
         $uberAdditionalCosts = (float) $stmt->fetchColumn();
     }
 
-    // === FUEL: full SAST day range ===
+    // === FUEL: cost and litres by fill-up timestamp (actual spend this week) ===
     $fuelEndObj = clone $endDateObj;
     $fuelEndObj->setTime(23, 59, 59);
     $fuelStart = $startDateObj->getTimestamp();
     $fuelEnd   = $fuelEndObj->getTimestamp();
 
     $stmt = $pdo->prepare(
-        "SELECT COALESCE(SUM(total_cost), 0) AS cost, COALESCE(SUM(trip_km), 0) AS km,
+        "SELECT COALESCE(SUM(total_cost), 0) AS cost,
                 COALESCE(SUM(total_cost / NULLIF(fuel_price, 0)), 0) AS liters
          FROM fuel_logs WHERE log_timestamp BETWEEN ? AND ?"
     );
     $stmt->execute([$fuelStart, $fuelEnd]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    $fuelCost    = (float) $row['cost'];
-    $totalTripKm = (float) $row['km'];
-    $fuelLiters  = (float) $row['liters'];
+    $fuelCost   = (float) $row['cost'];
+    $fuelLiters = (float) $row['liters'];
+
+    // === KM driven: odometer delta (avoids trip_km boundary distortion) ===
+    $totalTripKm = getOdoKmForPeriod($pdo, $fuelStart, $fuelEnd);
 
     // === CAR RENTAL (weekly rate from system variables) ===
     $carRental = (float) getSystemVariable($pdo, 'car_rental_price');
@@ -141,9 +182,15 @@ function getWeeklyMetrics(PDO $pdo, int $startUnix, int $endUnix): array
 
 /**
  * Get financial metrics for an entire calendar month (SAST).
- * Fuel logs are attributed by billing week (Mon–Sun), capped to month end,
- * so a log dated in the next calendar month but in a week that started this
- * month is correctly counted here and not in the next month.
+ *
+ * Fuel cost and litres are summed across billing weeks (Mon–Sun) whose Monday
+ * falls within this month, using the full week range (no month-end cap), so
+ * fill-ups in the next calendar month that belong to a billing week starting
+ * this month are correctly attributed here.
+ *
+ * km driven (total_trip_km) is derived from the odometer delta between the
+ * start and end of the calendar month, completely avoiding the trip_km
+ * boundary distortion where a fill-up's trip_km spans a month boundary.
  */
 function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
 {
@@ -168,7 +215,7 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
 
     // === UBER income (all weeks whose Monday falls within this month) ===
     $startUnix = $startDate->getTimestamp();
-    $endUnix   = $endDate->getTimestamp();
+    $endUnix   = (clone $endDate)->setTime(23, 59, 59)->getTimestamp();
 
     $stmt = $pdo->prepare(
         "SELECT COALESCE(SUM(total_income), 0) AS income,
@@ -192,15 +239,12 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
     $stmt->execute([$startUnix, $endUnix]);
     $uberAdditionalCosts = (float) $stmt->fetchColumn();
 
-    // === FUEL: sum across billing weeks whose Monday falls in this month.
-    //     The full Mon–Sun range is used for each week (no month-end cap) so
-    //     that logs dated in the next calendar month but belonging to a billing
-    //     week that started this month are correctly counted here.  There is no
-    //     double-counting risk because the next month's billing weeks start on
-    //     the Monday after the last Sunday of this month's last week.
-    $fuelCost    = 0.0;
-    $totalTripKm = 0.0;
-    $fuelLiters  = 0.0;
+    // === FUEL: cost and litres summed across billing weeks whose Monday falls
+    //     in this month. The full Mon–Sun range is used per week (no month-end
+    //     cap) so fill-ups in the next calendar month that belong to a billing
+    //     week starting this month are correctly attributed here.
+    $fuelCost   = 0.0;
+    $fuelLiters = 0.0;
 
     $fuelWeekCurrent = new DateTime("$year-$month-01", $tz);
     if ($fuelWeekCurrent->format('N') !== '1') {
@@ -217,18 +261,22 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
         $wSunday->setTime(23, 59, 59);
 
         $stmt = $pdo->prepare(
-            "SELECT COALESCE(SUM(total_cost), 0) AS cost, COALESCE(SUM(trip_km), 0) AS km,
+            "SELECT COALESCE(SUM(total_cost), 0) AS cost,
                     COALESCE(SUM(total_cost / NULLIF(fuel_price, 0)), 0) AS liters
              FROM fuel_logs WHERE log_timestamp BETWEEN ? AND ?"
         );
         $stmt->execute([$wMonday->getTimestamp(), $wSunday->getTimestamp()]);
         $fRow = $stmt->fetch(PDO::FETCH_ASSOC);
-        $fuelCost    += (float) $fRow['cost'];
-        $totalTripKm += (float) $fRow['km'];
-        $fuelLiters  += (float) $fRow['liters'];
+        $fuelCost   += (float) $fRow['cost'];
+        $fuelLiters += (float) $fRow['liters'];
 
         $fuelWeekCurrent->modify('+1 week');
     }
+
+    // === KM driven: odometer delta for the full calendar month.
+    //     Uses the last odo reading on/before month end minus the last odo
+    //     reading before month start — unaffected by fill-up timing.
+    $totalTripKm = getOdoKmForPeriod($pdo, $startUnix, $endUnix);
 
     // === CAR RENTAL (weekly rate × number of billing weeks in month) ===
     $carRental = (float) getSystemVariable($pdo, 'car_rental_price') * getWeeksInMonth($year, $month);
@@ -273,6 +321,7 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
 
 /**
  * Return an array of weekly metric snapshots for drill-down within a month.
+ * Calls getWeeklyMetrics() which already uses odometer delta for km.
  */
 function getWeeklyBreakdownForMonth(PDO $pdo, int $year, int $month): array
 {
