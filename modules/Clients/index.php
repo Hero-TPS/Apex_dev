@@ -115,8 +115,8 @@ $highlightClientId = $_GET['highlight'] ?? null;
         function buildGpsButtons(contact) {
             var hasGps = contact.pickup_lat && contact.pickup_lng;
             return hasGps
-                ? '<button class="action-btn toggle gps-btn" data-id="' + contact.id + '">📍 Update GPS</button>'
-                : '<button class="action-btn save gps-btn" data-id="' + contact.id + '">📍 Set GPS</button>';
+                ? '<button class="action-btn toggle gps-btn" data-id="' + contact.id + '">Update GPS</button>'
+                : '<button class="action-btn save gps-btn" data-id="' + contact.id + '">Set GPS</button>';
         }
 
         // ── WA Status helpers ──
@@ -218,11 +218,11 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                         '?text=' + encodeURIComponent(cleanupMsg);
                                     waCleanupBtn = '<a href="' + cleanupHref + '" target="_blank" ' +
                                         'class="action-btn wa-cleanup-btn" ' +
-                                        'data-id="' + contact.id + '">📨 WA Cleanup</a>';
+                                        'data-id="' + contact.id + '">WA Cleanup</a>';
                                 }
 
                                 waStatusBtns =
-                                    '<button class="action-btn wa-positive-btn" data-id="' + contact.id + '" data-status="positive">✅ Positive</button>';
+                                    '<button class="action-btn wa-positive-btn" data-id="' + contact.id + '" data-status="positive">Positive</button>';
                             }
 
                             var row = '<tr class="' + rowClass + '" data-client-id="' + contact.id + '">' +
@@ -294,7 +294,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
                         success: function (res) {
                             if (res.success) {
                                 showNotification('✓ GPS saved for client.', 'success');
-                                btn.text('📍 Update GPS').removeClass('save').addClass('toggle');
+                                btn.text('Update GPS').removeClass('save').addClass('toggle');
                                 var row = btn.closest('tr');
                                 var nameCell = row.find('td[data-label="Name"]');
                                 if (!nameCell.find('span[title="GPS set"]').length) {
@@ -320,7 +320,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
                     else if (error.code === error.POSITION_UNAVAILABLE) msg = 'Location unavailable.';
                     else if (error.code === error.TIMEOUT) msg = 'Location request timed out.';
                     showNotification('✗ ' + msg, 'error');
-                    btn.prop('disabled', false).text(btn.hasClass('toggle') ? '📍 Update GPS' : '📍 Set GPS');
+                    btn.prop('disabled', false).text(btn.hasClass('toggle') ? 'Update GPS' : 'Set GPS');
                 },
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             );
