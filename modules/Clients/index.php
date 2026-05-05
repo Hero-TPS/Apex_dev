@@ -122,21 +122,21 @@ $highlightClientId = $_GET['highlight'] ?? null;
         // ── WA Status helpers ──
 
         var WA_STATUS_LABELS = {
-            '':         '📋 Not Sent',
-            'sent':     '📨 Sent',
+            '': '📋 Not Sent',
+            'sent': '📨 Sent',
             'positive': '✅ Positive'
         };
         var WA_STATUS_CSS = {
-            '':         'not-sent',
-            'sent':     'sent',
+            '': 'not-sent',
+            'sent': 'sent',
             'positive': 'positive'
         };
 
         function buildWaStatusBadge(status, sentDate) {
             var key = status || '';
             var label = WA_STATUS_LABELS[key] || key;
-            var css   = WA_STATUS_CSS[key]   || 'not-sent';
-            var html  = '<span class="wa-status-badge ' + css + '">' + label + '</span>';
+            var css = WA_STATUS_CSS[key] || 'not-sent';
+            var html = '<span class="wa-status-badge ' + css + '">' + label + '</span>';
             if (sentDate) {
                 var d = new Date(sentDate);
                 var formatted = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -212,7 +212,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 waStatusCell = '<td data-label="WA Status" class="wa-status-col">' +
                                     buildWaStatusBadge(contact.wa_status, contact.wa_sent_date) + '</td>';
 
-                                if (contact.whatsapp_phone) {
+                                if (contact.whatsapp_phone && contact.wa_status !== 'sent' && contact.wa_status !== 'positive') {
                                     var cleanupMsg = buildCleanupMessage(contact.name);
                                     var cleanupHref = 'https://wa.me/' + contact.whatsapp_phone +
                                         '?text=' + encodeURIComponent(cleanupMsg);
@@ -222,7 +222,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 }
 
                                 waStatusBtns =
-                                    '<button class="action-btn wa-positive-btn" data-id="' + contact.id + '" data-status="positive">Positive</button>';
+                                    (contact.wa_status !== 'positive' ? '<button class="action-btn wa-positive-btn" data-id="' + contact.id + '" data-status="positive">Positive</button>' : '');
                             }
 
                             var row = '<tr class="' + rowClass + '" data-client-id="' + contact.id + '">' +
@@ -357,6 +357,15 @@ $highlightClientId = $_GET['highlight'] ?? null;
                         // Update badge in row
                         var statusCell = row.find('.wa-status-col');
                         statusCell.html(buildWaStatusBadge(status, res.wa_sent_date || null));
+
+                        // ✅ ADD HERE — hide buttons based on new status
+                        if (status === 'sent' || status === 'positive') {
+                            row.find('.wa-cleanup-btn').hide();
+                        }
+                        if (status === 'positive') {
+                            row.find('.wa-positive-btn').hide();
+                        }
+
                         // Update cached client object
                         var c = allClients.find(function (x) { return x.id == clientId; });
                         if (c) {
