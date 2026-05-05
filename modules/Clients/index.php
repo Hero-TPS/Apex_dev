@@ -149,11 +149,10 @@ $highlightClientId = $_GET['highlight'] ?? null;
         // CLEANUP WA MESSAGE — edit the text below as needed
         // ======================================================
         function buildCleanupMessage(name) {
-            return "Hi " + name + " \uD83D\uDC4B\n\n" +
-                "My name is <?= e(BUSINESS_OWNER) ?>, and I have recently taken over Andr\u00e9 Matthews' personal transport services. As you may know, Andr\u00e9 has retired and relocated to Namibia \u2014 we wish him well!\n\n" +
-                "Andr\u00e9 kindly shared his client list with me, and your details were included. I wanted to reach out personally to introduce myself and let you know that I am available should you ever need a reliable transport service.\n\n" +
-                "I want to assure you that this is a once-off introduction message. I will not contact you again unless you choose to reach out to me \u2014 no follow-ups, no further messages.\n\n" +
-                "I would love to hear from you. Could you perhaps let me know if you are still in the area and whether transport assistance is something you may need from time to time?\n\n" +
+            return "Hi " + name + " 👋\n\n" +
+                "My name is <?= e(BUSINESS_OWNER) ?>. I recently took over André Matthews' personal transport services after his retirement and move to Namibia.\n\n" +
+                "André passed on your details, and I just wanted to introduce myself. If you ever need reliable personal transport, I’d be happy to assist. I’m active in the Helderberg area and have regular clients in Helderberg Village.\n\n" +
+                "This is a once-off message — I won’t contact you again unless you reply.\n\n" +
                 "Kind regards,\n<?= e(BUSINESS_OWNER) ?>\n<?= e(BUSINESS_NAME) ?>";
         }
         // ======================================================
