@@ -4,6 +4,7 @@ $page_subtitle = 'Activity & Error Logs';
 $show_breadcrumb = true;
 
 require_once __DIR__ . '/../config.php';
+require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 $breadcrumb = buildBreadcrumb([
     ['label' => 'Maintenance', 'url' => BASE_URL . '/maintenance/'],

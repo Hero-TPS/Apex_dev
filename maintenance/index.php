@@ -6,6 +6,7 @@ $page_subtitle = 'General Settings';
 $show_breadcrumb = true;
 
 require_once __DIR__ . '/../config.php';
+require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 $breadcrumb = buildBreadcrumb([['label' => 'Maintenance']]);
 include ROOT_DIR . '/includes/header.php';
