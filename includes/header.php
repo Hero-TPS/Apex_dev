@@ -27,13 +27,14 @@
             <p class="subtitle">
                 <?php echo isset($page_subtitle) ? htmlspecialchars($page_subtitle) : 'Management Dashboard'; ?>
             </p>
+            <a href="<?= BASE_URL ?>/logout.php" class="logout-link">🔓 Logout</a>
         </header>
 
         <main class="content">
             <!-- Breadcrumb Navigation -->
             <?php if (isset($show_breadcrumb) && $show_breadcrumb): ?>
                 <div class="breadcrumb">
-                    <a href="<?= BASE_URL ?>/index.php">Home</a>
+                    <a href="<?= BASE_URL ?>/dashboard/index.php">Home</a>
                     <?php echo isset($breadcrumb) ? $breadcrumb : ''; ?>
                 </div>
             <?php endif; ?>

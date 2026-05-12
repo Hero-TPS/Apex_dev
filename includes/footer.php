@@ -6,7 +6,7 @@
 
     <div class="floating-menu-toggle" id="menuToggle">☰</div>
     <div class="floating-menu" id="floatingMenu">
-        <a href="<?= BASE_URL ?>/index.php" class="hamburger-item">🏠 Home</a>
+        <a href="<?= BASE_URL ?>/dashboard/index.php" class="hamburger-item">🏠 Home</a>
         <a href="<?= BASE_URL ?>/modules/Bookings/" class="hamburger-item">📅 View Bookings</a>
         <a href="<?= BASE_URL ?>/modules/Bookings/add.php" class="hamburger-item">🚗 Add Booking</a>
         <a href="<?= BASE_URL ?>/modules/Prebookings/" class="hamburger-item">🗒️ View Prebookings</a>
@@ -44,7 +44,7 @@
 <!-- Breadcrumb at Bottom -->
 <?php if (isset($show_breadcrumb) && $show_breadcrumb): ?>
     <div class="breadcrumb breadcrumb-footer">
-        <a href="<?= BASE_URL ?>/index.php">Home</a>
+        <a href="<?= BASE_URL ?>/dashboard/index.php">Home</a>
         <?php echo isset($breadcrumb) ? $breadcrumb : ''; ?>
     </div>
 <?php endif; ?>

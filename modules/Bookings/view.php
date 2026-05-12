@@ -6,6 +6,7 @@ $page_subtitle = 'View Booking';
 $show_breadcrumb = true;
 
 require_once __DIR__ . '/../../config.php';
+require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once __DIR__ . '/helpers.php';
 $breadcrumb = buildBreadcrumb([

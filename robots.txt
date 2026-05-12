@@ -1,2 +1,13 @@
 User-agent: *
-Disallow: /
+Disallow: /dashboard/
+Disallow: /modules/
+Disallow: /maintenance/
+Disallow: /includes/
+Disallow: /assets/
+Disallow: /login.php
+Disallow: /logout.php
+Disallow: /contact.php
+Disallow: /google-auth.php
+
+Allow: /
+Allow: /index.php

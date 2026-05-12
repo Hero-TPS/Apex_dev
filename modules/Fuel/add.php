@@ -4,6 +4,7 @@ $page_subtitle = 'Track fuel expenses';
 $show_breadcrumb = true;
 
 require_once __DIR__ . '/../../config.php';
+require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 $breadcrumb = buildBreadcrumb([
     ['label' => 'Fuel', 'url' => BASE_URL . '/modules/Fuel/'],
