@@ -17,10 +17,23 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+/**
+ * Build a safe redirect location.
+ * The ?redirect= param comes from REQUEST_URI — already root-relative (e.g. /HPTS-XAMPP/modules/Clients/).
+ * Use it directly. Only prepend BASE_URL for the default dashboard path.
+ */
+function safeRedirect(string $param): string
+{
+    // Must start with / to be a valid root-relative path (prevents open redirect)
+    if ($param !== '' && str_starts_with($param, '/')) {
+        return $param;
+    }
+    return BASE_URL . '/dashboard/index.php';
+}
+
 // Already logged in — redirect to dashboard
 if (!empty($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
-    $redirect = $_GET['redirect'] ?? '/dashboard/index.php';
-    header('Location: ' . BASE_URL . $redirect);
+    header('Location: ' . safeRedirect($_GET['redirect'] ?? ''));
     exit;
 }
 
@@ -32,8 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($username === ADMIN_USERNAME && password_verify($password, ADMIN_PASSWORD_HASH)) {
         $_SESSION['logged_in'] = true;
-        $redirect = $_GET['redirect'] ?? '/dashboard/index.php';
-        header('Location: ' . BASE_URL . $redirect);
+        header('Location: ' . safeRedirect($_GET['redirect'] ?? ''));
         exit;
     } else {
         $error = 'Invalid username or password.';
