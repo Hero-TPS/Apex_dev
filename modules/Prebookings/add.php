@@ -5,6 +5,7 @@ $page_subtitle = 'Add Prebooking';
 $show_breadcrumb = true;
 
 require_once __DIR__ . '/../../config.php';
+require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 $breadcrumb = buildBreadcrumb([
     ['label' => 'Prebookings', 'url' => BASE_URL . '/modules/Prebookings/'],

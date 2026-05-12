@@ -4,6 +4,7 @@ $page_subtitle   = 'Monthly Balance Sheet Report';
 $show_breadcrumb = true;
 
 require_once __DIR__ . '/../../config.php';
+require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once ROOT_DIR . '/modules/Financials/helper.php';
 $breadcrumb = buildBreadcrumb([

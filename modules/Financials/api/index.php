@@ -6,6 +6,7 @@ require_once ROOT_DIR . '/includes/helpers.php';
 require_once ROOT_DIR . '/modules/Financials/helper.php';
 
 header('Content-Type: application/json');
+require_once ROOT_DIR . '/includes/auth_api.php';
 
 $action = $_GET['action'] ?? '';
 
