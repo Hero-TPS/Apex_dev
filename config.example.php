@@ -48,10 +48,14 @@ try {
 // -----------------------------------------------------------------------------
 // AUTHENTICATION
 // -----------------------------------------------------------------------------
-// To generate a password hash, run in PHP:
-//   echo password_hash('your_password', PASSWORD_DEFAULT);
+// Option A — Pre-generated hash (recommended for production, faster):
+//   Step 1: Run once:  echo password_hash('your_password', PASSWORD_DEFAULT);
+//   Step 2: Paste the output below as a string
 define('ADMIN_USERNAME', 'your_admin_username');
 define('ADMIN_PASSWORD_HASH', 'your_bcrypt_hash_here');
+
+// Option B — Inline hash (simpler, fine for dev or short-term):
+// define('ADMIN_PASSWORD_HASH', password_hash('your_actual_password', PASSWORD_DEFAULT));
 
 // -----------------------------------------------------------------------------
 // BUSINESS DETAILS
@@ -65,8 +69,9 @@ define('BUSINESS_EMAIL', 'you@example.com');
 // -----------------------------------------------------------------------------
 // LOCALISATION
 // -----------------------------------------------------------------------------
-define('TIME_ZONE',              'Africa/Johannesburg');
-define('WHATSAPP_COUNTRY_CODE',  '27'); // South Africa
+define('TIME_ZONE',             'Africa/Johannesburg');
+define('WHATSAPP_COUNTRY_CODE', '27'); // South Africa
+date_default_timezone_set(TIME_ZONE); // Set PHP global timezone — must be after TIME_ZONE define
 
 // -----------------------------------------------------------------------------
 // GOOGLE CALENDAR
