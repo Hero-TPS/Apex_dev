@@ -17,7 +17,7 @@ define('APP_ENV', 'development'); // 'development' or 'production'
 // URL & PATHS
 // -----------------------------------------------------------------------------
 define('BASE_URL', 'http://localhost/HPTS-XAMPP'); // No trailing slash. e.g. http://localhost/HPTS-XAMPP
-define('ROOT_DIR', 'C:/xampp/htdocs/HPTS-XAMPP');  // Absolute filesystem path. No trailing slash.
+define('ROOT_DIR',  __DIR__);                      // Automatically resolves to the directory of this file
 
 // -----------------------------------------------------------------------------
 // DATABASE
