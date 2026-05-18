@@ -1,13 +1,12 @@
 <?php
 // modules/Bookings/api/index.php
 // Unified Bookings API router
-
+header('Content-Type: application/json');
 require_once __DIR__ . '/../../../config.php';
 require_once ROOT_DIR . '/google-auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once __DIR__ . '/../helpers.php';
 
-header('Content-Type: application/json');
 require_once ROOT_DIR . '/includes/auth_api.php';
 
 $action = $_REQUEST['action'] ?? null;
