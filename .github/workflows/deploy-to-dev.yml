@@ -1,0 +1,31 @@
+name: Deploy to Dev Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Deploy note (e.g. what changed)'
+        required: false
+        default: 'Manual deploy to dev'
+
+jobs:
+  ftp-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Apex_dev repo
+        uses: actions/checkout@v4
+
+      - name: FTP Deploy to Dev Server
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: ${{ secrets.FTP_DEV_SERVER_DIR }}/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .github/**
+            *.md
+            config.php
