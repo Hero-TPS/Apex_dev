@@ -11,7 +11,7 @@ include ROOT_DIR . '/includes/header_public.php';
 
         <img
             class="at-hero-logo"
-            src="<?= htmlspecialchars(BASE_URL) ?>/assets/images/android-chrome-512x512.png"
+            src="assets/android-chrome-512x512.png"
             alt="<?= htmlspecialchars(BUSINESS_NAME) ?> Logo"
         >
 
@@ -224,7 +224,7 @@ include ROOT_DIR . '/includes/header_public.php';
             &copy; <?= date('Y') . ' ' . htmlspecialchars(BUSINESS_NAME) ?>.
             All rights reserved. &nbsp;|&nbsp; Looking forward to being of service to you!
         </span>
-        <a href="<?= htmlspecialchars(BASE_URL) ?>/login.php">Staff Login</a>
+        <a href="login.php">Staff Login</a>
     </footer>
 
 </div><!-- /.at-page -->
@@ -240,7 +240,7 @@ document.getElementById('enquiry-form').addEventListener('submit', function (e) 
     btn.disabled = true;
     result.textContent = 'Sending\u2026';
 
-    fetch('<?= BASE_URL ?>/contact.php', {
+    fetch('contact.php', {
         method: 'POST',
         body: data
     })
