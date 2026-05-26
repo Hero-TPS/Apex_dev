@@ -1,41 +1,37 @@
-/* ============================================================
-   APEX TRANSIT — Frontend / Public Brochure Styles
-   File: assets/css/frontend.css
-   Loaded via header_public.php only — does NOT affect backend/intranet.
-   All classes namespaced with "at-" to prevent collisions with styles.css
-   ============================================================ */
+/* Apex Transit — Public frontend styles (assets/css/frontend.css)
+   Namespaced "at-" — safe alongside styles.css                    */
 
-/* ── Google Fonts ─────────────────────────────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Montserrat:wght@400;700;900&display=swap');
 
-/* ── CSS Variables ────────────────────────────────────────── */
+/* Variables */
 :root {
-    --navy:      #1a2b4a;
-    --navy-dark: #111e35;
-    --navy-mid:  #223460;
-    --gold:      #f0a500;
-    --gold-dark: #c98a00;
-    --white:     #ffffff;
-    --off-white: #f4f6fa;
-    --text-muted:#a8b8d4;
-    --shadow:    0 8px 32px rgba(10,20,40,0.22);
-    --radius:    14px;
-    --font-head: 'Montserrat', sans-serif;
-    --font-body: 'Poppins', sans-serif;
+    --navy:       #1e3558;
+    --navy-dark:  #162844;
+    --navy-light: #2a4a7f;
+    --gold:       #e8a020;
+    --gold-dark:  #c98800;
+    --white:      #ffffff;
+    --off-white:  #eef2f8;
+    --text-light: #c8d8f0;
+    --text-muted: #7a98c4;
+    --shadow:     0 6px 24px rgba(10,20,50,0.18);
+    --radius:     14px;
+    --font-head:  'Montserrat', sans-serif;
+    --font-body:  'Poppins', sans-serif;
 }
 
-/* ── Reset & Base ─────────────────────────────────────────── */
+/* Base */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 .at-page {
     font-family: var(--font-body);
     color: var(--white);
-    background: var(--navy-dark);
+    background: var(--off-white);
     line-height: 1.6;
     overflow-x: hidden;
 }
 
-/* ── HERO ─────────────────────────────────────────────────── */
+/* ── HERO ── */
 .at-hero {
     position: relative;
     min-height: 100vh;
@@ -46,41 +42,24 @@
     text-align: center;
     padding: 80px 24px 60px;
     background:
-        radial-gradient(ellipse at 70% 20%, rgba(240,165,0,0.10) 0%, transparent 55%),
-        radial-gradient(ellipse at 20% 80%, rgba(34,52,96,0.8) 0%, transparent 60%),
-        linear-gradient(160deg, var(--navy-dark) 0%, var(--navy) 50%, var(--navy-mid) 100%);
+        linear-gradient(160deg, rgba(22,40,68,0.82) 0%, rgba(30,53,88,0.75) 60%, rgba(42,74,127,0.70) 100%),
+        url('https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=1600&q=80') center/cover no-repeat;
     overflow: hidden;
 }
 
-/* decorative diagonal stripe */
-.at-hero::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-        -45deg,
-        transparent,
-        transparent 38px,
-        rgba(255,255,255,0.018) 38px,
-        rgba(255,255,255,0.018) 40px
-    );
-    pointer-events: none;
-}
-
-/* gold accent bar */
 .at-hero::after {
     content: '';
     position: absolute;
     bottom: 0; left: 0; right: 0;
-    height: 4px;
+    height: 3px;
     background: linear-gradient(90deg, transparent, var(--gold), transparent);
 }
 
 .at-hero-logo {
-    width: clamp(90px, 18vw, 150px);
+    width: clamp(140px, 26vw, 220px);
     height: auto;
-    margin-bottom: 24px;
-    filter: drop-shadow(0 4px 18px rgba(240,165,0,0.35));
+    margin-bottom: 20px;
+    filter: drop-shadow(0 4px 18px rgba(0,0,0,0.4));
     animation: at-float 4s ease-in-out infinite;
 }
 
@@ -91,32 +70,28 @@
 
 .at-hero h1 {
     font-family: var(--font-head);
-    font-size: clamp(2.4rem, 7vw, 5rem);
-    font-weight: 900;
-    letter-spacing: -0.5px;
-    line-height: 1.05;
-    margin-bottom: 16px;
-    background: linear-gradient(135deg, #ffffff 40%, var(--gold) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-size: clamp(1.6rem, 4vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    line-height: 1.1;
+    margin-bottom: 14px;
+    color: var(--white);
 }
 
 .at-hero-tagline {
-    font-size: clamp(1rem, 2.5vw, 1.25rem);
-    font-weight: 500;
-    color: var(--text-muted);
+    font-size: clamp(0.95rem, 2vw, 1.15rem);
+    font-weight: 400;
+    color: var(--text-light);
     letter-spacing: 0.04em;
     margin-bottom: 10px;
     text-transform: uppercase;
 }
 
 .at-hero-contact {
-    font-size: clamp(1.1rem, 2.8vw, 1.4rem);
+    font-size: clamp(1.1rem, 2.5vw, 1.35rem);
     font-weight: 700;
     color: var(--gold);
     margin-bottom: 36px;
-    letter-spacing: 0.02em;
 }
 
 .at-hero-contact a {
@@ -133,11 +108,12 @@
     justify-content: center;
 }
 
+/* Buttons */
 .at-btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 14px 30px;
+    padding: 13px 28px;
     border-radius: 50px;
     font-family: var(--font-body);
     font-size: 1rem;
@@ -151,65 +127,68 @@
 .at-btn-primary {
     background: var(--gold);
     color: var(--navy-dark);
-    box-shadow: 0 4px 20px rgba(240,165,0,0.45);
+    box-shadow: 0 4px 18px rgba(232,160,32,0.4);
 }
 .at-btn-primary:hover {
     background: var(--gold-dark);
     transform: translateY(-2px);
-    box-shadow: 0 8px 28px rgba(240,165,0,0.55);
+    box-shadow: 0 8px 26px rgba(232,160,32,0.5);
 }
 
 .at-btn-outline {
     background: transparent;
     color: var(--white);
-    border: 2px solid rgba(255,255,255,0.4);
+    border: 2px solid rgba(255,255,255,0.45);
 }
 .at-btn-outline:hover {
-    background: rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.1);
     border-color: var(--white);
     transform: translateY(-2px);
 }
 
-/* ── SECTION WRAPPER ──────────────────────────────────────── */
+.at-btn-submit { align-self: flex-start; }
+
+/* Section wrapper */
 .at-section {
-    padding: 80px 24px;
+    padding: 72px 24px;
     max-width: 1100px;
     margin: 0 auto;
 }
 
 .at-section-title {
     font-family: var(--font-head);
-    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-size: clamp(1.5rem, 3.5vw, 2.2rem);
     font-weight: 800;
     text-align: center;
     margin-bottom: 10px;
-    color: var(--white);
 }
 
 .at-section-underline {
-    width: 60px;
-    height: 4px;
+    width: 50px;
+    height: 3px;
     background: var(--gold);
     border-radius: 2px;
-    margin: 0 auto 48px;
+    margin: 0 auto 44px;
 }
 
-/* ── SERVICES GRID ────────────────────────────────────────── */
+/* ── SERVICES ── */
 .at-services-wrap {
     background: var(--navy);
 }
 
+.at-services-wrap .at-section-title { color: var(--white); }
+
 .at-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 24px;
+    gap: 22px;
 }
 
 .at-card {
-    background: var(--navy-dark);
-    border: 1px solid rgba(255,255,255,0.07);
+    background: var(--navy-light);
+    border: 1px solid rgba(255,255,255,0.09);
     border-radius: var(--radius);
-    padding: 36px 28px;
+    padding: 32px 24px;
     text-align: center;
     box-shadow: var(--shadow);
     transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
@@ -229,37 +208,43 @@
 }
 
 .at-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 18px 48px rgba(10,20,40,0.38);
-    border-color: rgba(240,165,0,0.25);
+    transform: translateY(-5px);
+    box-shadow: 0 16px 42px rgba(10,20,50,0.32);
+    border-color: rgba(232,160,32,0.28);
 }
 .at-card:hover::before { transform: scaleX(1); }
 
-.at-card-icon {
-    font-size: 2.6rem;
-    margin-bottom: 16px;
-    display: block;
+.at-card-img {
+    width: 100%;
+    height: 130px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 18px;
+    opacity: 0.88;
 }
 
 .at-card h3 {
     font-family: var(--font-head);
-    font-size: 1.05rem;
+    font-size: 1rem;
     font-weight: 700;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     color: var(--white);
     letter-spacing: 0.02em;
 }
 
 .at-card p {
-    font-size: 0.88rem;
-    color: var(--text-muted);
+    font-size: 0.86rem;
+    color: var(--text-light);
     line-height: 1.55;
 }
 
-/* ── ABOUT ────────────────────────────────────────────────── */
+/* ── ABOUT ── */
 .at-about-wrap {
-    background: var(--navy-dark);
+    background: var(--off-white);
 }
+
+.at-about-wrap .at-section-title { color: var(--navy-dark); }
+.at-about-wrap .at-section-underline { background: var(--gold); }
 
 .at-about-inner {
     display: grid;
@@ -269,47 +254,49 @@
 }
 
 .at-about-text p {
-    font-size: 1.05rem;
-    color: var(--off-white);
-    margin-bottom: 20px;
-    line-height: 1.75;
+    font-size: 1rem;
+    color: #2a3a5a;
+    margin-bottom: 18px;
+    line-height: 1.78;
 }
 
 .at-trust-badges {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
 }
 
 .at-badge {
     display: flex;
     align-items: center;
     gap: 14px;
-    background: var(--navy);
-    border: 1px solid rgba(255,255,255,0.07);
+    background: var(--white);
+    border: 1px solid rgba(30,53,88,0.1);
     border-radius: var(--radius);
-    padding: 18px 22px;
-    box-shadow: var(--shadow);
+    padding: 16px 20px;
+    box-shadow: 0 3px 12px rgba(10,20,50,0.08);
 }
 
-.at-badge-icon { font-size: 1.6rem; flex-shrink: 0; }
+.at-badge-icon { font-size: 1.5rem; flex-shrink: 0; }
 
 .at-badge-text strong {
     display: block;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     font-weight: 700;
-    color: var(--gold);
+    color: var(--navy);
 }
 
 .at-badge-text span {
-    font-size: 0.82rem;
+    font-size: 0.8rem;
     color: var(--text-muted);
 }
 
-/* ── CONTACT ──────────────────────────────────────────────── */
+/* ── CONTACT ── */
 .at-contact-wrap {
     background: var(--navy);
 }
+
+.at-contact-wrap .at-section-title { color: var(--white); }
 
 .at-contact-inner {
     display: grid;
@@ -320,7 +307,7 @@
 
 .at-contact-info h3 {
     font-family: var(--font-head);
-    font-size: 1.25rem;
+    font-size: 1.2rem;
     font-weight: 700;
     margin-bottom: 24px;
     color: var(--gold);
@@ -330,8 +317,8 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    margin-bottom: 18px;
-    color: var(--off-white);
+    margin-bottom: 16px;
+    color: var(--text-light);
     font-size: 1rem;
 }
 
@@ -343,44 +330,40 @@
 }
 .at-contact-detail a:hover { color: var(--gold); }
 
-.at-contact-detail span.icon { font-size: 1.4rem; }
+.at-contact-detail span.icon { font-size: 1.3rem; }
 
 .at-contact-note {
-    margin-top: 24px;
-    padding: 18px 20px;
-    background: rgba(240,165,0,0.08);
+    margin-top: 22px;
+    padding: 16px 18px;
+    background: rgba(232,160,32,0.09);
     border-left: 3px solid var(--gold);
     border-radius: 0 var(--radius) var(--radius) 0;
-    font-size: 0.88rem;
-    color: var(--text-muted);
+    font-size: 0.87rem;
+    color: var(--text-light);
     line-height: 1.6;
 }
 
-/* ── FORM ─────────────────────────────────────────────────── */
-.at-form { display: flex; flex-direction: column; gap: 14px; }
+/* Form */
+.at-form { display: flex; flex-direction: column; gap: 13px; }
 
-.at-field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
+.at-field { display: flex; flex-direction: column; gap: 5px; }
 
 .at-field label {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.07em;
 }
 
 .at-field input,
 .at-field textarea {
     background: var(--navy-dark);
-    border: 1px solid rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.12);
     border-radius: 8px;
-    padding: 13px 16px;
+    padding: 12px 15px;
     font-family: var(--font-body);
-    font-size: 0.95rem;
+    font-size: 0.93rem;
     color: var(--white);
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
@@ -388,58 +371,62 @@
 }
 
 .at-field input::placeholder,
-.at-field textarea::placeholder { color: rgba(255,255,255,0.25); }
+.at-field textarea::placeholder { color: rgba(255,255,255,0.22); }
 
 .at-field input:focus,
 .at-field textarea:focus {
     border-color: var(--gold);
-    box-shadow: 0 0 0 3px rgba(240,165,0,0.12);
+    box-shadow: 0 0 0 3px rgba(232,160,32,0.12);
 }
 
 #contact-result {
     font-size: 0.9rem;
     font-weight: 600;
-    padding: 12px 16px;
+    padding: 11px 15px;
     border-radius: 8px;
     display: none;
 }
-#contact-result.success {
-    background: rgba(0,200,80,0.12);
-    color: #4ddd88;
-    display: block;
-}
-#contact-result.error {
-    background: rgba(255,60,60,0.12);
-    color: #ff7070;
-    display: block;
-}
+#contact-result.success { background: rgba(0,190,80,0.13); color: #3dd880; display: block; }
+#contact-result.error   { background: rgba(255,60,60,0.13); color: #ff7070; display: block; }
 
-/* ── FOOTER ───────────────────────────────────────────────── */
+/* ── FOOTER ── */
 .at-footer {
     background: var(--navy-dark);
-    border-top: 1px solid rgba(255,255,255,0.06);
-    padding: 30px 24px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    padding: 36px 24px 24px;
     text-align: center;
-    font-size: 0.85rem;
+}
+
+.at-footer-tagline {
+    font-family: var(--font-head);
+    font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+    font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 14px;
+    letter-spacing: 0.01em;
+}
+
+.at-footer-copy {
+    font-size: 0.82rem;
     color: var(--text-muted);
 }
 
-.at-footer a {
+.at-footer-copy a {
     color: var(--text-muted);
     text-decoration: none;
-    margin-left: 20px;
+    margin-left: 18px;
     transition: color 0.2s;
 }
-.at-footer a:hover { color: var(--gold); }
+.at-footer-copy a:hover { color: var(--gold); }
 
-/* ── RESPONSIVE ───────────────────────────────────────────── */
+/* Responsive */
 @media (max-width: 720px) {
-    .at-about-inner  { grid-template-columns: 1fr; }
+    .at-about-inner   { grid-template-columns: 1fr; }
     .at-contact-inner { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {
-    .at-section { padding: 56px 18px; }
-    .at-btn     { padding: 12px 22px; font-size: 0.92rem; }
+    .at-section { padding: 52px 18px; }
+    .at-btn     { padding: 12px 20px; font-size: 0.91rem; }
 }
 
