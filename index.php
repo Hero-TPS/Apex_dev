@@ -1,12 +1,13 @@
 <?php
 // index.php — Public brochure landing page
+// Stylesheet: assets/css/frontend.css (linked in header_public.php)
 require_once __DIR__ . '/config.php';
 include ROOT_DIR . '/includes/header_public.php';
 ?>
 
 <div class="at-page">
 
-    <!-- ═══════════ HERO ═══════════ -->
+    <!-- HERO -->
     <section class="at-hero">
 
         <img
@@ -38,7 +39,7 @@ include ROOT_DIR . '/includes/header_public.php';
 
     </section>
 
-    <!-- ═══════════ SERVICES ═══════════ -->
+    <!-- SERVICES -->
     <div class="at-services-wrap">
         <div class="at-section">
             <h2 class="at-section-title">Our Services</h2>
@@ -47,34 +48,42 @@ include ROOT_DIR . '/includes/header_public.php';
             <div class="at-grid">
 
                 <div class="at-card">
-                    <span class="at-card-icon">✈️</span>
+                    <img class="at-card-img"
+                         src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600&q=75"
+                         alt="Airport Transfers">
                     <h3>Airport Transfers</h3>
                     <p>Punctual door-to-door transfers to and from Cape Town International and beyond.</p>
                 </div>
 
                 <div class="at-card">
-                    <span class="at-card-icon">🚗</span>
+                    <img class="at-card-img"
+                         src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=600&q=75"
+                         alt="Point-to-Point Rides">
                     <h3>Point-to-Point Rides</h3>
                     <p>Comfortable private hire for any destination — local errands or cross-town trips.</p>
                 </div>
 
                 <div class="at-card">
-                    <span class="at-card-icon">💼</span>
+                    <img class="at-card-img"
+                         src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=75"
+                         alt="Corporate and Events">
                     <h3>Corporate &amp; Events</h3>
                     <p>Professional transport for business meetings, corporate functions, and special events.</p>
                 </div>
 
                 <div class="at-card">
-                    <span class="at-card-icon">🧳</span>
+                    <img class="at-card-img"
+                         src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=75"
+                         alt="Tours and Package Transport">
                     <h3>Tours &amp; Package Transport</h3>
-                    <p>Guided area tours and reliable transport for goods and packages throughout the region.</p>
+                    <p>Scenic tours and reliable transport for goods and packages throughout the region.</p>
                 </div>
 
             </div>
         </div>
     </div>
 
-    <!-- ═══════════ ABOUT ═══════════ -->
+    <!-- ABOUT -->
     <div class="at-about-wrap">
         <div class="at-section">
             <h2 class="at-section-title">About Us</h2>
@@ -86,8 +95,7 @@ include ROOT_DIR . '/includes/header_public.php';
                     <p>
                         <?= htmlspecialchars(BUSINESS_NAME) ?> is an owner-operated private transport
                         service built on reliability, trust, and getting you there on time — every time.
-                        Based in the Helderberg Area, we are proud to serve our local community and
-                        visitors with a personal, professional touch.
+                        We are proud to serve our community and visitors with a personal, professional touch.
                     </p>
                     <p>
                         Our registered Comfort Class sedan offers spacious legroom and a generous
@@ -123,21 +131,13 @@ include ROOT_DIR . '/includes/header_public.php';
                         </div>
                     </div>
 
-                    <div class="at-badge">
-                        <span class="at-badge-icon">📍</span>
-                        <div class="at-badge-text">
-                            <strong>Helderberg Based</strong>
-                            <span>Serving the local area and greater Western Cape</span>
-                        </div>
-                    </div>
-
                 </div>
 
             </div>
         </div>
     </div>
 
-    <!-- ═══════════ CONTACT ═══════════ -->
+    <!-- CONTACT -->
     <div class="at-contact-wrap" id="contact">
         <div class="at-section">
             <h2 class="at-section-title">Get in Touch</h2>
@@ -145,7 +145,6 @@ include ROOT_DIR . '/includes/header_public.php';
 
             <div class="at-contact-inner">
 
-                <!-- Contact details -->
                 <div class="at-contact-info">
                     <h3>Ready when you are.</h3>
 
@@ -178,7 +177,6 @@ include ROOT_DIR . '/includes/header_public.php';
                     </div>
                 </div>
 
-                <!-- Enquiry form -->
                 <form id="enquiry-form" class="at-form">
 
                     <div class="at-field">
@@ -218,13 +216,13 @@ include ROOT_DIR . '/includes/header_public.php';
         </div>
     </div>
 
-    <!-- ═══════════ FOOTER ═══════════ -->
+    <!-- FOOTER -->
     <footer class="at-footer">
-        <span>
-            &copy; <?= date('Y') . ' ' . htmlspecialchars(BUSINESS_NAME) ?>.
-            All rights reserved. &nbsp;|&nbsp; Looking forward to being of service to you!
-        </span>
-        <a href="login.php">Staff Login</a>
+        <p class="at-footer-tagline">Looking forward to being of service to you!</p>
+        <p class="at-footer-copy">
+            &copy; <?= date('Y') . ' ' . htmlspecialchars(BUSINESS_NAME) ?>. All rights reserved.
+            <a href="login.php">Staff Login</a>
+        </p>
     </footer>
 
 </div><!-- /.at-page -->
@@ -240,28 +238,26 @@ document.getElementById('enquiry-form').addEventListener('submit', function (e) 
     btn.disabled = true;
     result.textContent = 'Sending\u2026';
 
-    fetch('contact.php', {
-        method: 'POST',
-        body: data
-    })
-    .then(function (res) { return res.json(); })
-    .then(function (json) {
-        if (json.success) {
-            result.style.color = '#27ae60';
-            result.textContent = json.message || 'Thank you! We will be in touch soon.';
-            form.reset();
-        } else {
-            result.style.color = '#e74c3c';
-            result.textContent = json.message || 'Something went wrong. Please try again.';
-        }
-        btn.disabled = false;
-    })
-    .catch(function () {
-        result.style.color = '#e74c3c';
-        result.textContent = 'Could not send your enquiry. Please try again later.';
-        btn.disabled = false;
-    });
+    fetch('contact.php', { method: 'POST', body: data })
+        .then(function (res) { return res.json(); })
+        .then(function (json) {
+            if (json.success) {
+                result.className = 'success';
+                result.textContent = json.message || 'Thank you! We will be in touch soon.';
+                form.reset();
+            } else {
+                result.className = 'error';
+                result.textContent = json.message || 'Something went wrong. Please try again.';
+            }
+            btn.disabled = false;
+        })
+        .catch(function () {
+            result.className = 'error';
+            result.textContent = 'Could not send your enquiry. Please try again later.';
+            btn.disabled = false;
+        });
 });
 </script>
 
 <?php include ROOT_DIR . '/includes/footer_public.php'; ?>
+
