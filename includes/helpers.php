@@ -230,17 +230,14 @@ function createWhatsAppMessage(array $bookingDetails): string
  */
 function createCleanupWhatsAppMessage(string $clientName): string
 {
-    // ======================================================
-    // CLEANUP WA MESSAGE — edit the text below as needed
-    // ======================================================
-    return "Hi " . $clientName . " 👋\n\n" .
-        "My name is " . BUSINESS_OWNER . ", and I have recently taken over André Matthews' personal transport services. As you may know, André has retired and relocated to Namibia — we wish him well!\n\n" .
-        "André kindly shared his client list with me, and your details were included. I wanted to reach out personally to introduce myself and let you know that I am available should you ever need a reliable transport service.\n\n" .
-        "I want to assure you that this is a once-off introduction message. I will not contact you again unless you choose to reach out to me — no follow-ups, no further messages.\n\n" .
-        "I would love to hear from you. Could you perhaps let me know if you are still in the area and whether transport assistance is something you may need from time to time?\n\n" .
+    return "Hi " . $clientName . " 👋 André Matthews suggested I reach out to you.\n\n" .
+        "I'm " . BUSINESS_OWNER . " from " . BUSINESS_NAME . " — I've taken over his personal transport services in the Helderberg area since he retired.\n\n" .
+        "Just checking whether transport is something you still need from time to time. I'd be happy to assist if so.\n\n" .
+        "This is a once-off message — I won't follow up unless I hear from you.\n\n" .
         "Kind regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
     // ======================================================
 }
+
 
 
 /**
