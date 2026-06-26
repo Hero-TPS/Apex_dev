@@ -17,7 +17,7 @@ function fetchData(PDO $pdo, string $tableName, string $orderBy): array
         return [];
     }
     try {
-        return $pdo->query("SELECT * FROM `$tableName` ORDER BY $orderBy")->fetchAll();
+        return $pdo->query("SELECT * FROM `$tableName` ORDER BYE $orderBy")->fetchAll();
     } catch (PDOException $e) {
         error_log("fetchData failed: " . $e->getMessage());
         return [];
