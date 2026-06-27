@@ -148,15 +148,16 @@ $highlightClientId = $_GET['highlight'] ?? null;
 
         // ======================================================
         // CLEANUP WA MESSAGE — edit the text below as needed
-        // ======================================================
-        function buildCleanupMessage(name) {
-            return "Hi " + name + " 👋\n\n" +
-                "My name is <?= e(BUSINESS_OWNER) ?>. I recently took over André Matthews' personal transport services after his retirement and move to Namibia.\n\n" +
-                "André passed on your details, and I just wanted to introduce myself. If you ever need reliable personal transport, I’d be happy to assist. I’m active in the Helderberg area and have regular clients in Helderberg Village.\n\n" +
-                "This is a once-off message — I won’t contact you again unless you reply.\n\n" +
-                "Kind regards,\n<?= e(BUSINESS_OWNER) ?>\n<?= e(BUSINESS_NAME) ?>";
-        }
-        // ======================================================
+
+               function buildCleanupMessage(name) {
+
+    return "Hi " . $clientName . " 👋 André Matthews suggested I reach out to you.\n\n" .
+        "I'm " . BUSINESS_OWNER . " from " . BUSINESS_NAME . " — I've taken over his personal transport services in the Helderberg area since he retired.\n\n" .
+        "Just checking whether transport is something you still need from time to time. I'd be happy to assist if so.\n\n" .
+        "This is a once-off message — I won't follow up unless I hear from you.\n\n" .
+        "Kind regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
+    // ======================================================
+}
 
         function loadContacts(highlightId = null) {
             var colspan = currentFilter === 'without_bookings' ? 6 : 5;
