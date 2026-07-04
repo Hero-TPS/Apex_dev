@@ -67,6 +67,14 @@ include ROOT_DIR . '/includes/header.php';
         </div>
     </div>
 
+    <!-- Trip Distance Calculator -->
+    <div class="menu-section">
+        <h3 class="menu-toggle" data-target="distcalc-section">🗺️ Tools</h3>
+        <div id="distcalc-section" class="menu-content">
+            <a href="<?= BASE_URL ?>/modules/DistanceCalculator/" class="dashboard-button db-distcalc">Trip Distance Calculator</a>
+        </div>
+    </div>
+
     <!-- Financials Menu -->
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="financials-section">💰 Financials</h3>
