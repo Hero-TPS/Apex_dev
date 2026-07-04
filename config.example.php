@@ -81,6 +81,15 @@ date_default_timezone_set(TIME_ZONE); // Set PHP global timezone — must be aft
 // and is listed in .gitignore — NEVER commit it.
 define('CUSTOM_CALENDAR_ID', 'your_google_calendar_id@group.calendar.google.com');
 
+// -----------------------------------------------------------------------------
+// GOOGLE DISTANCE MATRIX API
+// -----------------------------------------------------------------------------
+// Used by Trip Distance Calculator module
+// Obtain an API key from: https://console.cloud.google.com/
+// Enable the Distance Matrix API for your project
+define('GOOGLE_API_KEY', 'YOUR_GOOGLE_API_KEY_HERE');
+define('GOOGLE_DISTANCE_MATRIX_URL', 'https://maps.googleapis.com/maps/api/distancematrix/json');
+
 // =============================================================================
 // END OF CONFIG
 // =============================================================================
