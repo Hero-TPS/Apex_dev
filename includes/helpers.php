@@ -298,12 +298,13 @@ function createPrebookingWhatsAppMessage(array $prebookingDetails): string
  * All configurable system variables, with labels, types, and defaults.
  * Managed via maintenance/index.php and stored in the system_variables table.
  */
+
 const SYSTEM_VARIABLES = [
     'car_rental_price' => ['label' => 'Car Rental Price (R)', 'type' => 'number', 'default' => 2600],
     'financial_months_back' => ['label' => 'Financial History (months)', 'type' => 'number', 'default' => 6],
     'apex_booking_fee_pct' => ['label' => 'Apex Booking Fee (%)', 'type' => 'number', 'default' => 0],
+    'rate_per_km' => ['label' => 'Rate per Km (R)', 'type' => 'number', 'default' => 15.00],
 ];
-
 /**
  * Get a system variable value from the database.
  * Falls back to the default defined in SYSTEM_VARIABLES if not found.
