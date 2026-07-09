@@ -160,18 +160,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </tbody>
             </table>
 
-            <?php if ($totalDistanceM > 0): ?>
-                <div class="at-distcalc-totals">
-                    <div class="at-distcalc-total-item">
-                        <strong>Total Distance:</strong>
-                        <span><?= number_format($totalDistanceM / 1000, 1) ?> km</span>
-                    </div>
-                    <div class="at-distcalc-total-item">
-                        <strong>Total Driving Time:</strong>
-                        <span>~<?= round($totalDurationS / 60) ?> minutes</span>
-                    </div>
-                </div>
-            <?php endif; ?>
+<?php if ($totalDistanceM > 0): ?>
+    <div class="at-distcalc-totals">
+        <div class="at-distcalc-total-item">
+            <strong>Total Distance:</strong>
+            <span><?= number_format($totalDistanceM / 1000, 1) ?> km</span>
+        </div>
+        <div class="at-distcalc-total-item">
+            <strong>Total Driving Time:</strong>
+            <span>~<?= round($totalDurationS / 60) ?> minutes</span>
+        </div>
+        <?php
+            $ratePerKm = (float) getSystemVariable($pdo, 'rate_per_km');
+            if ($ratePerKm > 0) {
+                $estimatedCost = ($totalDistanceM / 1000) * $ratePerKm;
+        ?>
+        <div class="at-distcalc-total-item">
+            <strong>Estimated Cost (@ R<?= number_format($ratePerKm, 2) ?>/km):</strong>
+            <span>R<?= number_format($estimatedCost, 2) ?></span>
+        </div>
+        <?php } ?>
+    </div>
+<?php endif; ?>
+            
         </div>
     <?php endif; ?>
 </div>
