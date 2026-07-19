@@ -30,8 +30,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate we have at least start and final destination
     if (empty($start) || empty($final)) {
         $error = 'Start address and final destination are required.';
-    } elseif (GOOGLE_API_KEY === 'YOUR_GOOGLE_API_KEY_HERE') {
-        $error = 'Google API key not configured. Please check config.php.';
     } else {
         // Build full route: start → stops[] → final
         $allStops = [$start];
