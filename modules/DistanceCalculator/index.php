@@ -1,7 +1,7 @@
 <?php
 /**
  * modules/DistanceCalculator/index.php
- * Trip Distance Calculator — multi-stop route planning with Google Places Autocomplete
+ * Trip Distance Calculator — multi-stop route planning
  */
 
 $page_title = 'Trip Distance Calculator';
@@ -30,6 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate we have at least start and final destination
     if (empty($start) || empty($final)) {
         $error = 'Start address and final destination are required.';
+    } elseif (GOOGLE_API_KEY === 'YOUR_GOOGLE_API_KEY_HERE') {
+        $error = 'Google API key not configured. Please check config.php.';
     } else {
         // Build full route: start → stops[] → final
         $allStops = [$start];
@@ -78,8 +80,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars(GOOGLE_API_KEY) ?>&libraries=places"></script>
-
 <div class="at-distcalc-wrapper">
     <h2>🗺️ Trip Distance Calculator</h2>
     <p class="at-distcalc-description">
@@ -92,7 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="form-group">
             <label for="start_address">Start Address <span class="required">*</span></label>
             <input type="text" id="start_address" name="start_address" 
-                   class="at-distcalc-autocomplete"
                    placeholder="e.g., 123 Main Street, Cape Town" 
                    value="<?= htmlspecialchars($_POST['start_address'] ?? '') ?>" 
                    required>
@@ -111,7 +110,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="form-group">
             <label for="final_destination">Final Destination <span class="required">*</span></label>
             <input type="text" id="final_destination" name="final_destination" 
-                   class="at-distcalc-autocomplete"
                    placeholder="e.g., 456 Beach Road, Gordon's Bay" 
                    value="<?= htmlspecialchars($_POST['final_destination'] ?? '') ?>" 
                    required>
@@ -162,53 +160,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </tbody>
             </table>
 
-            <?php if ($totalDistanceM > 0): ?>
-                <div class="at-distcalc-totals">
-                    <div class="at-distcalc-total-item">
-                        <strong>Total Distance:</strong>
-                        <span><?= number_format($totalDistanceM / 1000, 1) ?> km</span>
-                    </div>
-                    <div class="at-distcalc-total-item">
-                        <strong>Total Driving Time:</strong>
-                        <span>~<?= round($totalDurationS / 60) ?> minutes</span>
-                    </div>
-                    <?php
-                        $ratePerKm = (float) getSystemVariable($pdo, 'rate_per_km');
-                        if ($ratePerKm > 0) {
-                            $estimatedCost = ($totalDistanceM / 1000) * $ratePerKm;
-                    ?>
-                    <div class="at-distcalc-total-item">
-                        <strong>Estimated Cost (@ R<?= number_format($ratePerKm, 2) ?>/km):</strong>
-                        <span>R<?= number_format($estimatedCost, 2) ?></span>
-                    </div>
-                    <?php } ?>
-                </div>
-            <?php endif; ?>
+<?php if ($totalDistanceM > 0): ?>
+    <div class="at-distcalc-totals">
+        <div class="at-distcalc-total-item">
+            <strong>Total Distance:</strong>
+            <span><?= number_format($totalDistanceM / 1000, 1) ?> km</span>
+        </div>
+        <div class="at-distcalc-total-item">
+            <strong>Total Driving Time:</strong>
+            <span>~<?= round($totalDurationS / 60) ?> minutes</span>
+        </div>
+        <?php
+            $ratePerKm = (float) getSystemVariable($pdo, 'rate_per_km');
+            if ($ratePerKm > 0) {
+                $estimatedCost = ($totalDistanceM / 1000) * $ratePerKm;
+        ?>
+        <div class="at-distcalc-total-item">
+            <strong>Estimated Cost (@ R<?= number_format($ratePerKm, 2) ?>/km):</strong>
+            <span>R<?= number_format($estimatedCost, 2) ?></span>
+        </div>
+        <?php } ?>
+    </div>
+<?php endif; ?>
+            
         </div>
     <?php endif; ?>
 </div>
 
 <script>
 $(document).ready(function () {
-    // Initialize Google Places Autocomplete
-    function initAutocomplete(inputElement) {
-        const autocomplete = new google.maps.places.Autocomplete(inputElement, {
-            componentRestrictions: { country: 'za' },
-            types: ['geocode']
-        });
-        
-        autocomplete.addListener('place_changed', function() {
-            const place = autocomplete.getPlace();
-            if (place.formatted_address) {
-                inputElement.value = place.formatted_address;
-            }
-        });
-    }
-
-    // Initialize autocomplete on start and final destination
-    initAutocomplete(document.getElementById('start_address'));
-    initAutocomplete(document.getElementById('final_destination'));
-
     // Load previously entered stops from form submission
     const previousStops = <?= json_encode(array_filter(array_map('trim', $_POST['stops'] ?? []), fn($s) => !empty($s))) ?>;
 
@@ -232,17 +212,13 @@ $(document).ready(function () {
         const index = container.find('.at-distcalc-stop-row').length;
         const row = $(`
             <div class="at-distcalc-stop-row">
-                <input type="text" name="stops[]" class="at-distcalc-stop-input at-distcalc-autocomplete" 
+                <input type="text" name="stops[]" class="at-distcalc-stop-input" 
                        placeholder="Stop ${index + 1} (optional)" 
                        value="${escapeHtml(value)}">
                 <button type="button" class="at-distcalc-remove-stop-btn" data-index="${index}">Remove</button>
             </div>
         `);
         container.append(row);
-
-        // Initialize autocomplete on the new stop input
-        const newInput = row.find('.at-distcalc-autocomplete')[0];
-        initAutocomplete(newInput);
 
         // Attach remove handler
         row.find('.at-distcalc-remove-stop-btn').on('click', function (e) {
