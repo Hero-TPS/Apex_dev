@@ -44,6 +44,9 @@ try {
         case 'update_gate_code':
             handleUpdateGateCode();
             break;
+        case 'set_earmark':
+            handleSetEarmark();
+            break;
         case 'tomorrows_bookings':
             handleTomorrowsBookings();
             break;
@@ -632,6 +635,36 @@ function handleDeleteBooking()
         jsonResponse(['success' => false, 'message' => 'An unexpected error occurred.'], 500);
     }
 }
+
+function handleSetEarmark()
+{
+    global $pdo;
+
+    $id = intval($_POST['booking_id'] ?? 0);
+    $earmarked_for = $_POST['earmarked_for'] ?? '';
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid booking ID.'], 400);
+    }
+    if ($earmarked_for !== '' && !in_array($earmarked_for, ['rent', 'debt'])) {
+        jsonResponse(['success' => false, 'message' => 'Invalid earmark value.'], 400);
+    }
+
+    try {
+        $stmt = $pdo->prepare("UPDATE bookings SET earmarked_for = ? WHERE id = ?");
+        $stmt->execute([$earmarked_for === '' ? null : $earmarked_for, $id]);
+
+        jsonResponse(['success' => true, 'message' => 'Earmark saved.']);
+
+    } catch (PDOException $e) {
+        logError('BOOKING', 'Failed to save earmark', [
+            'error' => $e->getMessage(),
+            'booking_id' => $id
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Failed to save earmark.'], 500);
+    }
+}
+
 
 function handleUpdateGateCode()  // ✅ NEW
 {
