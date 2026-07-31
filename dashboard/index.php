@@ -84,6 +84,14 @@ include ROOT_DIR . '/includes/header.php';
         </div>
     </div>
 
+    <!-- Budgeting -->
+    <div class="menu-section">
+        <h3 class="menu-toggle" data-target="budgeting-section">📊 Budgeting</h3>
+        <div id="budgeting-section" class="menu-content">
+            <a href="<?= BASE_URL ?>/modules/Budgeting/ai_advisor.php" class="dashboard-button db-budgeting">Weekly Budget Plan</a>
+        </div>
+    </div>
+
     <!-- Maintenance -->
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="maintenance-section">⚙️ Maintenance</h3>
