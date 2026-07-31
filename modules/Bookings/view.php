@@ -113,6 +113,12 @@ if (isset($_GET['id'])) {
         <div class="detail-item">
             <strong>Cost:</strong> R <?= number_format((float) $booking['cost'], 2) ?>
         </div>
+        <?php if (!empty($booking['earmarked_for'])): ?>
+        <div class="detail-item">
+            <strong>Earmarked For:</strong>
+            <?= $booking['earmarked_for'] === 'rent' ? '🏠 Rent' : '💳 Debt' ?>
+        </div>
+        <?php endif; ?>
         <div class="detail-item">
             <strong>Payment Method:</strong>
             <?= $booking['payment_method'] === 'eft' ? 'EFT' : 'Cash' ?>
