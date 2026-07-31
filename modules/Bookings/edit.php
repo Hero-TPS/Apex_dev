@@ -199,6 +199,17 @@ if (isset($_GET['id'])) {
                 <small>Optional — assign a driver to this booking</small>
             </div>
 
+            <!-- Budget Earmark -->
+            <div class="form-group">
+                <label for="earmarked_for">Earmark Income For</label>
+                <select id="earmarked_for" name="earmarked_for">
+                    <option value="">— Not earmarked —</option>
+                    <option value="rent" <?= ($booking['earmarked_for'] ?? '') === 'rent' ? 'selected' : '' ?>>Rent</option>
+                    <option value="debt" <?= ($booking['earmarked_for'] ?? '') === 'debt' ? 'selected' : '' ?>>Debt</option>
+                </select>
+                <small>Marks this booking's income as set aside for a fixed weekly cost</small>
+            </div>
+
             <?php if ($booking_fee_pct > 0): ?>
             <div class="form-group<?= empty($booking['driver_id']) ? ' hidden' : '' ?>" id="bookingFeeGroup">
                 <label>Apex Booking Fee (<?= htmlspecialchars($booking_fee_pct) ?>%)</label>
@@ -238,6 +249,20 @@ if (isset($_GET['id'])) {
 
 <script>
 $(document).ready(function () {
+    // Earmark auto-saves independently of the main form (dedicated lightweight endpoint)
+    $('#earmarked_for').on('change', function () {
+        var select = $(this);
+        $.post('<?= BASE_URL ?>/modules/Bookings/api/index.php', {
+            action: 'set_earmark',
+            booking_id: <?= (int) $booking['id'] ?>,
+            earmarked_for: select.val()
+        }, function (response) {
+            if (!response.success) {
+                alert('Could not save earmark: ' + response.message);
+            }
+        }, 'json');
+    });
+
     var initialPickupValue = "<?php echo addslashes(htmlspecialchars($booking['original_pickup'], ENT_QUOTES)); ?>";
     var initialDestinationValue = "<?php echo addslashes(htmlspecialchars($booking['original_destination'], ENT_QUOTES)); ?>";
 
