@@ -304,6 +304,31 @@ const SYSTEM_VARIABLES = [
     'financial_months_back' => ['label' => 'Financial History (months)', 'type' => 'number', 'default' => 6],
     'apex_booking_fee_pct' => ['label' => 'Apex Booking Fee (%)', 'type' => 'number', 'default' => 0],
     'rate_per_km' => ['label' => 'Rate per Km (R)', 'type' => 'number', 'default' => 15.00],
+    'rent' => ['label' => 'Rent (R/week)', 'type' => 'number', 'default' => 0],
+    'debt_payment' => ['label' => 'Debt Payment (R/week)', 'type' => 'number', 'default' => 0],
+    'living_expenses_daily' => ['label' => 'Living Expenses (R/day)', 'type' => 'number', 'default' => 120],
+    'ai_prompt_template' => [
+        'label' => 'AI Budget Prompt Template',
+        'type' => 'textarea',
+        'default' => <<<PROMPT
+You are a budgeting advisor for a one-person transport business owner in South Africa.
+Bookings are his main income; he also drives Uber mainly to cover his car rental.
+Give a short, direct weekly budget briefing (5-6 sentences max) covering whether rent/debt
+are covered, whether fuel and running costs are affordable this week, and how much buffer
+he has left. Use Rand (R). No preamble.
+
+Week of {{week_start}}:
+- Rent: target R{{rent_target}}, earmarked from bookings so far R{{rent_earmarked}} (shortfall R{{rent_shortfall}})
+- Debt: target R{{debt_target}}, earmarked from bookings so far R{{debt_earmarked}} (shortfall R{{debt_shortfall}})
+- Car rental (funded via Uber): R{{car_rental}}
+- Fuel needed: R{{uber_fuel_target}} (Uber) + R{{booking_fuel_forecast}} (bookings) = R{{fuel_total}}
+- Running costs planned (vehicle/fines/data, historical average): R{{running_costs_planned}}
+- Living expenses target: R{{living_expenses_target}}
+- Income so far this week: R{{booking_income}} (bookings) + R{{uber_income_so_far}} (Uber) = R{{total_income}}
+- Total obligations: R{{total_obligations}}
+- Projected buffer: R{{buffer}}
+PROMPT,
+    ],
 ];
 /**
  * Get a system variable value from the database.
