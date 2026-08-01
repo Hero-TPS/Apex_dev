@@ -90,6 +90,15 @@ define('CUSTOM_CALENDAR_ID', 'your_google_calendar_id@group.calendar.google.com'
 define('GOOGLE_API_KEY', 'YOUR_GOOGLE_API_KEY_HERE');
 define('GOOGLE_DISTANCE_MATRIX_URL', 'https://maps.googleapis.com/maps/api/distancematrix/json');
 
+// -----------------------------------------------------------------------------
+// GOOGLE PLACES API (browser-side autocomplete)
+// -----------------------------------------------------------------------------
+// Used by Trip Distance Calculator module for address autocomplete while typing.
+// This key MUST be restricted by HTTP referrer (your domains), NOT by IP —
+// it runs in the visitor's browser, not on the server. Keep it separate from
+// GOOGLE_API_KEY above, which stays IP-restricted for server-side calls.
+define('GOOGLE_MAPS_BROWSER_KEY', 'YOUR_BROWSER_RESTRICTED_KEY_HERE');
+
 // =============================================================================
 // END OF CONFIG
 // =============================================================================
