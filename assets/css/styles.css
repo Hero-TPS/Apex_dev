@@ -2219,3 +2219,143 @@ body:not(.home-page) .floating-menu-toggle {
     line-height: 1.5;
 }
 
+/* ========================
+   Trip Distance Calculator (at-distcalc-*)
+   @version 1.0.0
+   Reuses shared .btn / .error-message / .form-group / .bookings-table
+   from earlier in this file — only module-specific layout below.
+======================== */
+
+.at-distcalc-wrapper {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.at-distcalc-description {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 25px;
+  line-height: 1.6;
+}
+
+.at-distcalc-stops-container {
+  margin-bottom: 15px;
+  padding: 10px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e1e8ed;
+  min-height: 40px;
+}
+
+.at-distcalc-stop-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+.at-distcalc-stop-row:last-child {
+  margin-bottom: 0;
+}
+
+.at-distcalc-stop-input {
+  flex: 1;
+}
+
+.at-distcalc-remove-stop-btn {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 0.2s ease;
+}
+.at-distcalc-remove-stop-btn:hover {
+  background: #c0392b;
+}
+
+.at-distcalc-add-btn {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+  margin-top: 5px;
+}
+.at-distcalc-add-btn:hover {
+  background: #229954;
+}
+
+.at-distcalc-results {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e1e8ed;
+  margin-top: 25px;
+}
+.at-distcalc-results h3 {
+  color: #333;
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.at-distcalc-leg-error td {
+  color: #721c24;
+  background: #fff5f5;
+}
+
+.at-distcalc-error-badge {
+  display: inline-block;
+  background: #f8d7da;
+  color: #721c24;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.at-distcalc-totals {
+  background: #f0f8f0;
+  padding: 15px;
+  border-radius: 6px;
+  border-left: 4px solid #27ae60;
+  margin-top: 15px;
+}
+.at-distcalc-total-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+.at-distcalc-total-item:last-child {
+  margin-bottom: 0;
+}
+.at-distcalc-total-item strong {
+  color: #333;
+  font-weight: 600;
+}
+.at-distcalc-total-item span {
+  color: #27ae60;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+@media screen and (max-width: 600px) {
+  .at-distcalc-stop-row {
+    flex-direction: column;
+  }
+  .at-distcalc-stop-input,
+  .at-distcalc-remove-stop-btn {
+    width: 100%;
+  }
+}
+
