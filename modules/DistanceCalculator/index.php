@@ -2,6 +2,7 @@
 /**
  * modules/DistanceCalculator/index.php
  * Trip Distance Calculator — multi-stop route planning
+ * @version 1.1.0 — CSS consolidated into assets/css/styles.css (distcalc.css removed)
  */
 
 $page_title = 'Trip Distance Calculator';
@@ -87,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         We'll calculate the distance and time for each leg.
     </p>
 
-    <form method="post" class="at-distcalc-form">
+    <form method="post">
         <!-- Start Address -->
         <div class="form-group">
             <label for="start_address">Start Address <span class="required">*</span></label>
@@ -100,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <!-- Dynamic Stops -->
         <div class="form-group">
             <label>Stops (Optional)</label>
-            <div id="at-distcalc-stops-container">
+            <div id="at-distcalc-stops-container" class="at-distcalc-stops-container">
                 <!-- Stops will be inserted here via JavaScript -->
             </div>
             <button type="button" id="at-distcalc-add-stop-btn" class="at-distcalc-add-btn">+ Add Stop</button>
@@ -119,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </form>
 
     <?php if ($error): ?>
-        <div class="error-message at-distcalc-error">
+        <div class="error-message">
             <?= htmlspecialchars($error) ?>
         </div>
     <?php endif; ?>
@@ -127,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php if (!empty($legs)): ?>
         <div class="at-distcalc-results">
             <h3>📍 Route Breakdown</h3>
-            <table class="at-distcalc-table">
+            <table class="bookings-table">
                 <thead>
                     <tr>
                         <th>From</th>
