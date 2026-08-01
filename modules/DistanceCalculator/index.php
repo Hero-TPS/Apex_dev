@@ -2,7 +2,7 @@
 /**
  * modules/DistanceCalculator/index.php
  * Trip Distance Calculator — multi-stop route planning
- * @version 1.1.0 — CSS consolidated into assets/css/styles.css (distcalc.css removed)
+ * @version 1.2.0 — Added Places Autocomplete on address fields
  */
 
 $page_title = 'Trip Distance Calculator';
@@ -226,6 +226,9 @@ $(document).ready(function () {
             e.preventDefault();
             row.remove();
         });
+
+        // Wire up autocomplete on this new stop input
+        distCalcInitAutocomplete(row.find('.at-distcalc-stop-input')[0]);
     }
 
     $('#at-distcalc-add-stop-btn').on('click', function (e) {
@@ -242,6 +245,35 @@ $(document).ready(function () {
     // Initialize with previous stops or empty
     renderStops();
 });
+
+// --- Places Autocomplete wiring ---
+// Google's Maps script (loaded below with a callback) calls distCalcMapsReady()
+// once the places library is available. Inputs added before that point (start,
+// final, and any restored stops) are queued and attached once ready. Inputs
+// added afterward (new stop rows) attach immediately.
+window.distCalcMapsReady = false;
+window.distCalcPendingInputs = [];
+
+function distCalcInitAutocomplete(inputEl) {
+    if (!inputEl) return;
+    if (window.distCalcMapsReady) {
+        new google.maps.places.Autocomplete(inputEl, {
+            componentRestrictions: { country: 'za' },
+            fields: ['formatted_address']
+        });
+    } else {
+        window.distCalcPendingInputs.push(inputEl);
+    }
+}
+
+function distCalcOnMapsLoaded() {
+    window.distCalcMapsReady = true;
+    distCalcInitAutocomplete(document.getElementById('start_address'));
+    distCalcInitAutocomplete(document.getElementById('final_destination'));
+    window.distCalcPendingInputs.forEach(el => distCalcInitAutocomplete(el));
+    window.distCalcPendingInputs = [];
+}
 </script>
+<script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars(GOOGLE_MAPS_BROWSER_KEY) ?>&libraries=places&callback=distCalcOnMapsLoaded" async defer></script>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>
