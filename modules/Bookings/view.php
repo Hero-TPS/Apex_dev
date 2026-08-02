@@ -113,6 +113,20 @@ if (isset($_GET['id'])) {
         <div class="detail-item">
             <strong>Cost:</strong> R <?= number_format((float) $booking['cost'], 2) ?>
         </div>
+        <div class="detail-item">
+            <strong>Distance:</strong>
+            <?= $booking['distance_km'] !== null ? number_format((float) $booking['distance_km'], 1) . ' km' : '—' ?>
+        </div>
+        <?php
+            $viewRatePerKm = (float) getSystemVariable($pdo, 'rate_per_km');
+            if ($booking['distance_km'] !== null && $viewRatePerKm > 0):
+                $viewCalculatedCost = (float) $booking['distance_km'] * $viewRatePerKm;
+        ?>
+        <div class="detail-item">
+            <strong>Calculated Cost (@ R<?= number_format($viewRatePerKm, 2) ?>/km):</strong>
+            R <?= number_format($viewCalculatedCost, 2) ?>
+        </div>
+        <?php endif; ?>
         <?php if (!empty($booking['earmarked_for'])): ?>
         <div class="detail-item">
             <strong>Earmarked For:</strong>
