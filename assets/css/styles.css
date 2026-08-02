@@ -992,6 +992,7 @@ body:not(.home-page) .floating-menu-toggle {
 }
 
 .db-uber, .db-uber-reports { background: linear-gradient(135deg, #6a82fb, #5d73f5); }
+.db-distcalc { background: linear-gradient(135deg, #ff6a88, #ff9966); }
 
 .variables-section { margin-top: 30px; }
 .add-variable-btn { background: #27ae60; width: auto; }
