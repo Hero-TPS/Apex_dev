@@ -109,7 +109,7 @@ function handleGetBookings()
                 SELECT 
                     b.id, b.contact_id, b.trip_date, b.start_time, b.end_time, b.status,
                     b.original_pickup, b.original_destination, b.was_swapped, b.cost,
-                    b.driver_id, b.booking_fee,
+                    b.driver_id, b.booking_fee, b.distance_km,
                     c.name AS client_name, c.phone AS client_phone,
                     d.name AS driver_name
                 FROM bookings b
@@ -127,7 +127,7 @@ function handleGetBookings()
                 SELECT 
                     b.id, b.contact_id, b.trip_date, b.start_time, b.end_time, b.status,
                     b.original_pickup, b.original_destination, b.was_swapped, b.cost,
-                    b.driver_id, b.booking_fee,
+                    b.driver_id, b.booking_fee, b.distance_km,
                     c.name AS client_name, c.phone AS client_phone,
                     d.name AS driver_name
                 FROM bookings b
@@ -144,6 +144,7 @@ function handleGetBookings()
 
         $now = new DateTime('now', new DateTimeZone(TIME_ZONE));
         $today_str = $now->format('Y-m-d');
+        $ratePerKm = (float) getSystemVariable($pdo, 'rate_per_km');
 
         foreach ($bookings as $row) {
             $pickup = $row['was_swapped'] ? $row['original_destination'] : $row['original_pickup'];
@@ -153,6 +154,11 @@ function handleGetBookings()
             $isToday = ($row['trip_date'] === $today_str);
             $isPast = ($tripDate < $now && !$isToday);
             $isOverdue = $isPast && ($row['status'] !== 'completed');
+
+            $distanceKm = $row['distance_km'] !== null ? (float) $row['distance_km'] : null;
+            $calculatedCost = ($distanceKm !== null && $ratePerKm > 0)
+                ? $distanceKm * $ratePerKm
+                : null;
 
             $response['bookings'][] = [
                 'id' => (int) $row['id'],
@@ -167,6 +173,8 @@ function handleGetBookings()
                 'pickup_location' => $pickup,
                 'destination' => $destination,
                 'cost' => 'R' . number_format((float) $row['cost'], 2),
+                'distance' => $distanceKm !== null ? number_format($distanceKm, 1) . ' km' : null,
+                'calculated_cost' => $calculatedCost !== null ? 'R' . number_format($calculatedCost, 2) : null,
                 'client_name' => $row['client_name'],
                 'client_phone' => formatPhoneNumberForWhatsApp($row['client_phone'] ?? ''),
                 'driver_name' => $row['driver_name'] ?? null,
@@ -283,14 +291,17 @@ function handleAddBooking()
             }
         }
 
+        // Calculate trip distance (null on failure — never guessed)
+        $distance_km = calculateTripDistanceKm($original_pickup, $original_destination);
+
         // Insert booking
         $stmt = $pdo->prepare("
             INSERT INTO bookings (
                 contact_id, trip_date, start_time, end_time,
                 original_pickup, original_destination, was_swapped, cost, payment_method,
                 flight_number, description, driver_id, booking_fee, no_booking_fee, driver_notes,
-                pickup_is_custom
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                pickup_is_custom, distance_km
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -309,7 +320,8 @@ function handleAddBooking()
             $booking_fee,
             $no_booking_fee,
             $driver_notes,
-            $pickup_is_custom
+            $pickup_is_custom,
+            $distance_km
         ]);
 
         $booking_id = $pdo->lastInsertId();
@@ -497,12 +509,15 @@ function handleUpdateBooking()
 
             $description_to_save = $description_input;
 
+            // Recalculate trip distance in case pickup/destination changed
+            $distance_km = calculateTripDistanceKm($original_pickup, $original_destination);
+
             $sql = "UPDATE bookings SET 
                 contact_id = ?, trip_date = ?, start_time = ?, end_time = ?,
                 original_pickup = ?, original_destination = ?, was_swapped = ?,
                 cost = ?, flight_number = ?, description = ?, payment_method = ?,
                 driver_id = ?, booking_fee = ?, no_booking_fee = ?, driver_notes = ?,
-                pickup_is_custom = ?,
+                pickup_is_custom = ?, distance_km = ?,
                 last_confirmed_at = NULL,
                 updated_at = NOW()
             WHERE id = ?";
@@ -525,6 +540,7 @@ function handleUpdateBooking()
                 $no_booking_fee,
                 $driver_notes ?: null,
                 $pickup_is_custom,
+                $distance_km,
                 $booking_id
             ]);
 
