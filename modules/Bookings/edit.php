@@ -147,6 +147,12 @@ if (isset($_GET['id'])) {
                 </label>
             </div>
             <div class="form-group">
+                <label>
+                    <input type="checkbox" id="roundTrip" name="round_trip" <?php if (!empty($booking['is_round_trip'])) echo 'checked'; ?>>
+                    🔁 Round trip (double the calculated distance)
+                </label>
+            </div>
+            <div class="form-group">
                 <label for="cost">Cost <span class="required">*</span></label>
                 <select id="cost" name="cost" required>
                     <?php
