@@ -116,6 +116,7 @@ if (isset($_GET['id'])) {
         <div class="detail-item">
             <strong>Distance:</strong>
             <?= $booking['distance_km'] !== null ? number_format((float) $booking['distance_km'], 1) . ' km' : '—' ?>
+            <?= !empty($booking['is_round_trip']) ? ' (round trip)' : '' ?>
         </div>
         <?php
             $viewRatePerKm = (float) getSystemVariable($pdo, 'rate_per_km');
