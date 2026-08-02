@@ -30,6 +30,8 @@ include ROOT_DIR . '/includes/header.php';
             <th>Pickup</th>
             <th>Destination</th>
             <th>Cost</th>
+            <th>Distance</th>
+            <th>Calc. Cost</th>
             <th>Driver</th>
             <th>Actions</th>
         </tr>
@@ -69,7 +71,7 @@ include ROOT_DIR . '/includes/header.php';
         var showAll = false;
 
         function loadBookings() {
-            tableBody.html('<tr><td colspan="8" style="text-align:center;">Loading bookings...</td></tr>');
+            tableBody.html('<tr><td colspan="10" style="text-align:center;">Loading bookings...</td></tr>');
             $.ajax({
                 type: 'GET',
                 url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
@@ -92,6 +94,8 @@ include ROOT_DIR . '/includes/header.php';
                                 '<td data-label="Pickup">' + escapeHtml(booking.pickup_location) + '</td>' +
                                 '<td data-label="Destination">' + escapeHtml(booking.destination) + '</td>' +
                                 '<td data-label="Cost">' + escapeHtml(booking.cost) + '</td>' +
+                                '<td data-label="Distance">' + (booking.distance ? escapeHtml(booking.distance) : '<span style="color:#aaa;">—</span>') + '</td>' +
+                                '<td data-label="Calc. Cost">' + (booking.calculated_cost ? escapeHtml(booking.calculated_cost) : '<span style="color:#aaa;">—</span>') + '</td>' +
                                 '<td data-label="Driver">' + (booking.driver_name ? escapeHtml(booking.driver_name) : '<span style="color:#aaa;">—</span>') + '</td>' +
                                 '<td data-label="Actions">' +
                                 '<div class="actions-container">' +
@@ -362,7 +366,7 @@ include ROOT_DIR . '/includes/header.php';
                     // Add separator row
                     tableBody.append(
                         '<tr class="prebooking-separator">' +
-                        '<td colspan="8">📋 Tentative / Prebookings</td>' +
+                        '<td colspan="10">📋 Tentative / Prebookings</td>' +
                         '</tr>'
                     );
 
@@ -379,6 +383,8 @@ include ROOT_DIR . '/includes/header.php';
                             '<td data-label="Pickup">' + (p.pickup_location ? escapeHtml(p.pickup_location) : '<em>TBC</em>') + '</td>' +
                             '<td data-label="Destination">' + (p.destination ? escapeHtml(p.destination) : '<em>TBC</em>') + '</td>' +
                             '<td data-label="Cost">' + (p.cost ? escapeHtml(p.cost) : '<em>TBC</em>') + '</td>' +
+                            '<td data-label="Distance"><span style="color:#aaa;">—</span></td>' +
+                            '<td data-label="Calc. Cost"><span style="color:#aaa;">—</span></td>' +
                             '<td data-label="Driver">' +
                             '<span class="prebooking-label">Tentative</span>' +
                             (p.description ? '<div class="prebooking-description">' + escapeHtml(p.description) + '</div>' : '') +
