@@ -145,6 +145,13 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
             </label>
         </div>
 
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="roundTrip" name="round_trip">
+                🔁 Round trip (double the calculated distance)
+            </label>
+        </div>
+
         <!-- Cost -->
         <div class="form-group">
             <label for="cost">Cost <span class="required">*</span></label>
