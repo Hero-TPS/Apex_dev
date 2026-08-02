@@ -109,7 +109,7 @@ function handleGetBookings()
                 SELECT 
                     b.id, b.contact_id, b.trip_date, b.start_time, b.end_time, b.status,
                     b.original_pickup, b.original_destination, b.was_swapped, b.cost,
-                    b.driver_id, b.booking_fee, b.distance_km,
+                    b.driver_id, b.booking_fee, b.distance_km, b.is_round_trip,
                     c.name AS client_name, c.phone AS client_phone,
                     d.name AS driver_name
                 FROM bookings b
@@ -127,7 +127,7 @@ function handleGetBookings()
                 SELECT 
                     b.id, b.contact_id, b.trip_date, b.start_time, b.end_time, b.status,
                     b.original_pickup, b.original_destination, b.was_swapped, b.cost,
-                    b.driver_id, b.booking_fee, b.distance_km,
+                    b.driver_id, b.booking_fee, b.distance_km, b.is_round_trip,
                     c.name AS client_name, c.phone AS client_phone,
                     d.name AS driver_name
                 FROM bookings b
@@ -173,7 +173,9 @@ function handleGetBookings()
                 'pickup_location' => $pickup,
                 'destination' => $destination,
                 'cost' => 'R' . number_format((float) $row['cost'], 2),
-                'distance' => $distanceKm !== null ? number_format($distanceKm, 1) . ' km' : null,
+                'distance' => $distanceKm !== null
+                    ? number_format($distanceKm, 1) . ' km' . (!empty($row['is_round_trip']) ? ' (RT)' : '')
+                    : null,
                 'calculated_cost' => $calculatedCost !== null ? 'R' . number_format($calculatedCost, 2) : null,
                 'client_name' => $row['client_name'],
                 'client_phone' => formatPhoneNumberForWhatsApp($row['client_phone'] ?? ''),
@@ -292,7 +294,11 @@ function handleAddBooking()
         }
 
         // Calculate trip distance (null on failure — never guessed)
+        $is_round_trip = isset($_POST['round_trip']) ? 1 : 0;
         $distance_km = calculateTripDistanceKm($original_pickup, $original_destination);
+        if ($distance_km !== null && $is_round_trip) {
+            $distance_km = round($distance_km * 2, 1);
+        }
 
         // Insert booking
         $stmt = $pdo->prepare("
@@ -300,8 +306,8 @@ function handleAddBooking()
                 contact_id, trip_date, start_time, end_time,
                 original_pickup, original_destination, was_swapped, cost, payment_method,
                 flight_number, description, driver_id, booking_fee, no_booking_fee, driver_notes,
-                pickup_is_custom, distance_km
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                pickup_is_custom, distance_km, is_round_trip
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -321,7 +327,8 @@ function handleAddBooking()
             $no_booking_fee,
             $driver_notes,
             $pickup_is_custom,
-            $distance_km
+            $distance_km,
+            $is_round_trip
         ]);
 
         $booking_id = $pdo->lastInsertId();
@@ -510,14 +517,18 @@ function handleUpdateBooking()
             $description_to_save = $description_input;
 
             // Recalculate trip distance in case pickup/destination changed
+            $is_round_trip = isset($_REQUEST['round_trip']) ? 1 : 0;
             $distance_km = calculateTripDistanceKm($original_pickup, $original_destination);
+            if ($distance_km !== null && $is_round_trip) {
+                $distance_km = round($distance_km * 2, 1);
+            }
 
             $sql = "UPDATE bookings SET 
                 contact_id = ?, trip_date = ?, start_time = ?, end_time = ?,
                 original_pickup = ?, original_destination = ?, was_swapped = ?,
                 cost = ?, flight_number = ?, description = ?, payment_method = ?,
                 driver_id = ?, booking_fee = ?, no_booking_fee = ?, driver_notes = ?,
-                pickup_is_custom = ?, distance_km = ?,
+                pickup_is_custom = ?, distance_km = ?, is_round_trip = ?,
                 last_confirmed_at = NULL,
                 updated_at = NOW()
             WHERE id = ?";
@@ -541,6 +552,7 @@ function handleUpdateBooking()
                 $driver_notes ?: null,
                 $pickup_is_custom,
                 $distance_km,
+                $is_round_trip,
                 $booking_id
             ]);
 
