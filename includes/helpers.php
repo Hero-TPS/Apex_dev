@@ -361,6 +361,43 @@ function calculateBookingFee(float $cost, float $pct): float
 }
 
 /**
+ * Calculate driving distance in km between two addresses using the
+ * Google Distance Matrix API. Used by: Bookings add/update (distance_km
+ * column) and modules/DistanceCalculator.
+ *
+ * Returns null on any failure (address not found, API error, network
+ * issue) so callers can store/display "unknown" rather than a wrong
+ * number — never guess or fall back to a default distance.
+ */
+function calculateTripDistanceKm(string $origin, string $destination): ?float
+{
+    if (trim($origin) === '' || trim($destination) === '') {
+        return null;
+    }
+
+    $url = GOOGLE_DISTANCE_MATRIX_URL . '?' . http_build_query([
+        'origins'      => $origin,
+        'destinations' => $destination,
+        'units'        => 'metric',
+        'key'          => GOOGLE_API_KEY,
+    ]);
+
+    $responseJson = @file_get_contents($url);
+    if ($responseJson === false) {
+        return null;
+    }
+
+    $data = json_decode($responseJson, true);
+    $element = $data['rows'][0]['elements'][0] ?? null;
+
+    if (!$element || $element['status'] !== 'OK') {
+        return null;
+    }
+
+    return round($element['distance']['value'] / 1000, 1);
+}
+
+/**
  * Build the WhatsApp message to send to an allocated driver about a booking.
  * Used by: modules/Bookings/view.php
  *
