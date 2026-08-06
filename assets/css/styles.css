@@ -2360,3 +2360,8 @@ body:not(.home-page) .floating-menu-toggle {
   }
 }
 
+.at-help-text {
+    font-size: 12px;
+    color: #888;
+    margin: 2px 0 10px;
+}
