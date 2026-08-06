@@ -41,6 +41,9 @@ while ($row = $stmt->fetch()) {
 
 // Fetch cost reasons for dropdown
 $cost_reasons = fetchColumn($pdo, 'uber_cost_reasons', 'reason', 'reason ASC');
+
+// Current car rental price, used for the shortfall calculation display
+$car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
 ?>
 
 <div class="form-container">
@@ -89,6 +92,30 @@ $cost_reasons = fetchColumn($pdo, 'uber_cost_reasons', 'reason', 'reason ASC');
             <button type="button" class="btn" id="addCostBtn" style="margin-top: 8px; width: auto;">+ Add Cost</button>
         </div>
 
+        <div class="form-group">
+            <h3>🏠 Rental Shortfall</h3>
+            <p class="at-help-text">Record-keeping only — never used in Financials or Budgeting reports.</p>
+
+            <div class="metric-row"><span>Car Rental (weekly)</span><span>R <span id="shortfallCarRental"><?= number_format($car_rental_price, 2) ?></span></span></div>
+            <div class="metric-row"><span>Fines (from Additional Costs, reason "Fines")</span><span>R <span id="shortfallFines">0.00</span></span></div>
+            <div class="metric-row"><span>Shortfall Due This Week</span><strong>R <span id="shortfallDue">0.00</span></strong></div>
+
+            <div class="form-group">
+                <label for="shortfall_carried_in">Carried Over In (R)</label>
+                <input type="number" id="shortfall_carried_in" name="shortfall_carried_in" step="0.01" min="0" value="0">
+                <p class="at-help-text">Auto-filled from last week's unpaid balance — adjust if needed.</p>
+            </div>
+
+            <div class="metric-row"><span>Total Owed</span><strong>R <span id="shortfallTotalOwed">0.00</span></strong></div>
+
+            <div class="form-group">
+                <label for="shortfall_paid">Amount Paid In This Week (R) <span class="required">*</span></label>
+                <input type="number" id="shortfall_paid" name="shortfall_paid" step="0.01" min="0" value="0" required>
+            </div>
+
+            <div class="metric-row"><span>Balance To Carry Forward</span><strong>R <span id="shortfallCarriedOut">0.00</span></strong></div>
+        </div>
+
         <button type="submit" class="btn" id="submitBtn">💾 Save Income</button>
     </form>
     <div id="result"></div>
@@ -96,6 +123,7 @@ $cost_reasons = fetchColumn($pdo, 'uber_cost_reasons', 'reason', 'reason ASC');
 
 <script>
     const costReasons = <?= json_encode($cost_reasons) ?>;
+    const carRentalPrice = <?= json_encode($car_rental_price) ?>;
 
     function buildReasonOptions(selected = '') {
         let options = '<option value="">Select reason</option>';
@@ -119,6 +147,46 @@ $cost_reasons = fetchColumn($pdo, 'uber_cost_reasons', 'reason', 'reason ASC');
         $('#additional-costs-container').append(row);
     }
 
+    function recalcShortfall() {
+        const totalIncome = parseFloat($('#total_income').val()) || 0;
+
+        let fines = 0;
+        $('.cost-row').each(function () {
+            const reason = $(this).find('select[name="cost_reasons[]"]').val();
+            const amount = parseFloat($(this).find('input[name="cost_amounts[]"]').val()) || 0;
+            if (reason === 'Fines') {
+                fines += amount;
+            }
+        });
+
+        const carriedIn = parseFloat($('#shortfall_carried_in').val()) || 0;
+        const paid = parseFloat($('#shortfall_paid').val()) || 0;
+
+        const shortfallDue = Math.max(carRentalPrice + fines - totalIncome, 0);
+        const totalOwed = shortfallDue + carriedIn;
+        const carriedOut = Math.max(totalOwed - paid, 0);
+
+        $('#shortfallFines').text(fines.toFixed(2));
+        $('#shortfallDue').text(shortfallDue.toFixed(2));
+        $('#shortfallTotalOwed').text(totalOwed.toFixed(2));
+        $('#shortfallCarriedOut').text(carriedOut.toFixed(2));
+    }
+
+    function fetchCarryForward(weekMonday) {
+        $.ajax({
+            url: '<?= BASE_URL ?>/modules/Uber/api/index.php',
+            type: 'GET',
+            data: { action: 'get_carry_forward', week_monday: weekMonday },
+            dataType: 'json',
+            success: function (res) {
+                if (res.success) {
+                    $('#shortfall_carried_in').val(res.carried_in.toFixed(2));
+                    recalcShortfall();
+                }
+            }
+        });
+    }
+
     $(document).ready(function () {
 
         $('#addCostBtn').on('click', function () {
@@ -128,6 +196,15 @@ $cost_reasons = fetchColumn($pdo, 'uber_cost_reasons', 'reason', 'reason ASC');
         $(document).on('click', '.remove-cost-btn', function () {
             $(this).closest('.cost-row').remove();
         });
+
+        $(document).on('input change', '#total_income, #shortfall_carried_in, #shortfall_paid, select[name="cost_reasons[]"], input[name="cost_amounts[]"]', recalcShortfall);
+
+        $('#week_monday').on('change', function () {
+            fetchCarryForward($(this).val());
+        });
+
+        // Prefill carry-forward for the default selected week on load
+        fetchCarryForward($('#week_monday').val());
 
         $('#uberForm').on('submit', function (e) {
             e.preventDefault();
@@ -144,6 +221,8 @@ $cost_reasons = fetchColumn($pdo, 'uber_cost_reasons', 'reason', 'reason ASC');
                 cash_received: $('#cash_received').val(),
                 total_trips: $('#total_trips').val(),
                 total_time_online: $('#total_time_online').val(),
+                shortfall_carried_in: $('#shortfall_carried_in').val(),
+                shortfall_paid: $('#shortfall_paid').val(),
                 'cost_reasons[]': $('select[name="cost_reasons[]"]').map(function () { return $(this).val(); }).get(),
                 'cost_amounts[]': $('input[name="cost_amounts[]"]').map(function () { return $(this).val(); }).get()
             };
