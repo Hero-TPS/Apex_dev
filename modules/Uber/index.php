@@ -133,8 +133,10 @@ include ROOT_DIR . '/includes/header.php';
                 <div class="metric-row"><span>Total Trips:</span>     <strong>${log.total_trips}</strong></div>
                 <div class="metric-row"><span>Time Online:</span>     <span>${parseFloat(log.total_time_online || 0).toFixed(1)} hrs</span></div>
                 <div class="metric-row"><span>Additional Costs:</span><span>${costsHtml}</span></div>
-                <div class="metric-row"><span>Rental Shortfall Paid:</span><span>R${parseFloat(log.shortfall.shortfall_paid || 0).toFixed(2)} of R${parseFloat(log.shortfall.total_owed || 0).toFixed(2)} owed</span></div>
-                ${parseFloat(log.shortfall.carried_out || 0) > 0 ? `<div class="metric-row"><span>Carried Forward:</span><strong>R${parseFloat(log.shortfall.carried_out).toFixed(2)}</strong></div>` : ''}
+                <div class="metric-row"><span>Net This Week:</span><span>R${parseFloat(log.ledger.net || 0).toFixed(2)}</span></div>
+                <div class="metric-row"><span>Paid In:</span><span>R${parseFloat(log.ledger.shortfall_paid || 0).toFixed(2)}</span></div>
+                ${parseFloat(log.ledger.paid_out || 0) > 0 ? `<div class="metric-row"><span>Paid Out To You:</span><strong>R${parseFloat(log.ledger.paid_out).toFixed(2)}</strong></div>` : ''}
+                ${parseFloat(log.ledger.balance_after || 0) > 0 ? `<div class="metric-row"><span>Outstanding Balance:</span><strong>R${parseFloat(log.ledger.balance_after).toFixed(2)}</strong></div>` : ''}
                 <div class="metric-row">
                     <span></span>
                     <span>
