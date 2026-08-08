@@ -99,6 +99,11 @@ define('GOOGLE_DISTANCE_MATRIX_URL', 'https://maps.googleapis.com/maps/api/dista
 // GOOGLE_API_KEY above, which stays IP-restricted for server-side calls.
 define('GOOGLE_MAPS_BROWSER_KEY', 'YOUR_BROWSER_RESTRICTED_KEY_HERE');
 
-// =============================================================================
+// -----------------------------------------------------------------------------
+// Anthropic api key
+// -----------------------------------------------------------------------------
+
+define('ANTHROPIC_API_KEY', 'your-anthropic-api-key-here');// =============================================================================
+
 // END OF CONFIG
 // =============================================================================
