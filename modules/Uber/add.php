@@ -6,6 +6,7 @@ $show_breadcrumb = true;
 require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
+require_once __DIR__ . '/helper.php';
 $breadcrumb = buildBreadcrumb([
     ['label' => 'Uber', 'url' => BASE_URL . '/modules/Uber/'],
     ['label' => 'Add'],
@@ -44,6 +45,11 @@ $cost_reasons = fetchColumn($pdo, 'uber_cost_reasons', 'reason', 'reason ASC');
 
 // Current car rental price, used for the shortfall calculation display
 $car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
+
+// Current outstanding balance as of the most recent recorded week —
+// informational only. The actual balance for whichever week you're
+// logging is computed live from full history once saved.
+$current_balance = getCurrentUberBalance($pdo);
 ?>
 
 <div class="form-container">
@@ -96,24 +102,23 @@ $car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
             <h3>🏠 Rental Shortfall</h3>
             <p class="at-help-text">Record-keeping only — never used in Financials or Budgeting reports.</p>
 
+            <div class="metric-row"><span>Outstanding Balance (before this week)</span><strong>R <span id="shortfallBalanceBefore"><?= number_format($current_balance, 2) ?></span></strong></div>
+            <p class="at-help-text">As of the most recently recorded week. Recalculates automatically once this week is saved — order doesn't matter.</p>
+
+            <div class="metric-row"><span>Card Income (Total Income − Cash)</span><span>R <span id="shortfallCardIncome">0.00</span></span></div>
             <div class="metric-row"><span>Car Rental (weekly)</span><span>R <span id="shortfallCarRental"><?= number_format($car_rental_price, 2) ?></span></span></div>
-            <div class="metric-row"><span>Fines (from Additional Costs, reason "Fines")</span><span>R <span id="shortfallFines">0.00</span></span></div>
-            <div class="metric-row"><span>Shortfall Due This Week</span><strong>R <span id="shortfallDue">0.00</span></strong></div>
+            <div class="metric-row"><span>Fines (Additional Costs)</span><span>R <span id="shortfallFines">0.00</span></span></div>
+            <div class="metric-row"><span>Vehicle Repairs (Additional Costs)</span><span>R <span id="shortfallRepairs">0.00</span></span></div>
+            <div class="metric-row"><span>Net This Week</span><strong>R <span id="shortfallNet">0.00</span></strong></div>
 
             <div class="form-group">
-                <label for="shortfall_carried_in">Carried Over In (R)</label>
-                <input type="number" id="shortfall_carried_in" name="shortfall_carried_in" step="0.01" min="0" value="0">
-                <p class="at-help-text">Auto-filled from last week's unpaid balance — adjust if needed.</p>
+                <label for="shortfall_paid">Amount Paid In (R)</label>
+                <input type="number" id="shortfall_paid" name="shortfall_paid" step="0.01" min="0" value="0">
+                <p class="at-help-text">Only fill this in if you actually paid money toward the balance this week.</p>
             </div>
 
-            <div class="metric-row"><span>Total Owed</span><strong>R <span id="shortfallTotalOwed">0.00</span></strong></div>
-
-            <div class="form-group">
-                <label for="shortfall_paid">Amount Paid In This Week (R) <span class="required">*</span></label>
-                <input type="number" id="shortfall_paid" name="shortfall_paid" step="0.01" min="0" value="0" required>
-            </div>
-
-            <div class="metric-row"><span>Balance To Carry Forward</span><strong>R <span id="shortfallCarriedOut">0.00</span></strong></div>
+            <div class="metric-row"><span>Balance After This Week</span><strong>R <span id="shortfallBalanceAfter">0.00</span></strong></div>
+            <div class="metric-row" id="shortfallPaidOutRow" style="display:none;"><span>Paid Out To You</span><strong>R <span id="shortfallPaidOut">0.00</span></strong></div>
         </div>
 
         <button type="submit" class="btn" id="submitBtn">💾 Save Income</button>
@@ -147,44 +152,45 @@ $car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
         $('#additional-costs-container').append(row);
     }
 
+    const balanceBefore = <?= json_encode($current_balance) ?>;
+
     function recalcShortfall() {
         const totalIncome = parseFloat($('#total_income').val()) || 0;
+        const cashReceived = parseFloat($('#cash_received').val()) || 0;
+        const cardIncome = totalIncome - cashReceived;
 
         let fines = 0;
+        let repairs = 0;
         $('.cost-row').each(function () {
             const reason = $(this).find('select[name="cost_reasons[]"]').val();
             const amount = parseFloat($(this).find('input[name="cost_amounts[]"]').val()) || 0;
             if (reason === 'Fines') {
                 fines += amount;
+            } else if (reason === 'Vehicle Repairs') {
+                repairs += amount;
             }
         });
 
-        const carriedIn = parseFloat($('#shortfall_carried_in').val()) || 0;
+        const deductions = carRentalPrice + fines + repairs;
+        const net = cardIncome - deductions;
         const paid = parseFloat($('#shortfall_paid').val()) || 0;
 
-        const shortfallDue = Math.max(carRentalPrice + fines - totalIncome, 0);
-        const totalOwed = shortfallDue + carriedIn;
-        const carriedOut = Math.max(totalOwed - paid, 0);
+        const balanceAfterDeduction = Math.max(balanceBefore - net, 0);
+        const paidOut = Math.max(net - balanceBefore, 0);
+        const balanceAfter = Math.max(balanceAfterDeduction - paid, 0);
 
+        $('#shortfallCardIncome').text(cardIncome.toFixed(2));
         $('#shortfallFines').text(fines.toFixed(2));
-        $('#shortfallDue').text(shortfallDue.toFixed(2));
-        $('#shortfallTotalOwed').text(totalOwed.toFixed(2));
-        $('#shortfallCarriedOut').text(carriedOut.toFixed(2));
-    }
+        $('#shortfallRepairs').text(repairs.toFixed(2));
+        $('#shortfallNet').text(net.toFixed(2));
+        $('#shortfallBalanceAfter').text(balanceAfter.toFixed(2));
 
-    function fetchCarryForward(weekMonday) {
-        $.ajax({
-            url: '<?= BASE_URL ?>/modules/Uber/api/index.php',
-            type: 'GET',
-            data: { action: 'get_carry_forward', week_monday: weekMonday },
-            dataType: 'json',
-            success: function (res) {
-                if (res.success) {
-                    $('#shortfall_carried_in').val(res.carried_in.toFixed(2));
-                    recalcShortfall();
-                }
-            }
-        });
+        if (paidOut > 0) {
+            $('#shortfallPaidOutRow').show();
+            $('#shortfallPaidOut').text(paidOut.toFixed(2));
+        } else {
+            $('#shortfallPaidOutRow').hide();
+        }
     }
 
     $(document).ready(function () {
@@ -197,14 +203,10 @@ $car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
             $(this).closest('.cost-row').remove();
         });
 
-        $(document).on('input change', '#total_income, #shortfall_carried_in, #shortfall_paid, select[name="cost_reasons[]"], input[name="cost_amounts[]"]', recalcShortfall);
+        $(document).on('input change', '#total_income, #cash_received, #shortfall_paid, select[name="cost_reasons[]"], input[name="cost_amounts[]"]', recalcShortfall);
 
-        $('#week_monday').on('change', function () {
-            fetchCarryForward($(this).val());
-        });
-
-        // Prefill carry-forward for the default selected week on load
-        fetchCarryForward($('#week_monday').val());
+        // Initial calc on load (car rental already applies even with no income entered yet)
+        recalcShortfall();
 
         $('#uberForm').on('submit', function (e) {
             e.preventDefault();
@@ -221,7 +223,6 @@ $car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
                 cash_received: $('#cash_received').val(),
                 total_trips: $('#total_trips').val(),
                 total_time_online: $('#total_time_online').val(),
-                shortfall_carried_in: $('#shortfall_carried_in').val(),
                 shortfall_paid: $('#shortfall_paid').val(),
                 'cost_reasons[]': $('select[name="cost_reasons[]"]').map(function () { return $(this).val(); }).get(),
                 'cost_amounts[]': $('input[name="cost_amounts[]"]').map(function () { return $(this).val(); }).get()
