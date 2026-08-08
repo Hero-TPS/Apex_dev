@@ -33,8 +33,8 @@ try {
         case 'get_by_month':
             handleGetByMonth();
             break;
-        case 'get_carry_forward':
-            handleGetCarryForward();
+        case 'get_current_balance':
+            handleGetCurrentBalance();
             break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
@@ -75,7 +75,7 @@ function handleGetAll()
             $costStmt->execute([$record['id']]);
             $record['additional_costs'] = $costStmt->fetchAll(PDO::FETCH_ASSOC);
 
-            $record['shortfall'] = calculateUberShortfall($pdo, $record);
+            $record['ledger'] = getUberLedgerEntry($pdo, (int) $record['id']);
         }
 
         jsonResponse(['success' => true, 'data' => $records]);
@@ -110,7 +110,7 @@ function handleGetSingle()
         $costStmt->execute([$id]);
         $record['additional_costs'] = $costStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $record['shortfall'] = calculateUberShortfall($pdo, $record);
+        $record['ledger'] = getUberLedgerEntry($pdo, (int) $record['id']);
 
         jsonResponse(['success' => true, 'record' => $record]);
 
@@ -149,7 +149,6 @@ function handleAdd()
         $cashReceived  = floatval($_POST['cash_received'] ?? 0);
         $totalTrips    = intval($_POST['total_trips'] ?? 0);
         $totalTimeOnline = floatval($_POST['total_time_online'] ?? 0);
-        $shortfallCarriedIn = floatval($_POST['shortfall_carried_in'] ?? 0);
         $shortfallPaid      = floatval($_POST['shortfall_paid'] ?? 0);
 
         // Additional costs come in as two parallel arrays: reasons[] and amounts[]
@@ -176,10 +175,10 @@ function handleAdd()
         // Insert uber_income record
         $stmt = $pdo->prepare("
             INSERT INTO uber_income 
-            (week_start, week_end, total_income, cash_received, total_trips, total_time_online, shortfall_carried_in, shortfall_paid, created_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            (week_start, week_end, total_income, cash_received, total_trips, total_time_online, shortfall_paid, created_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
         ");
-        $stmt->execute([$weekStart, $weekEnd, $totalIncome, $cashReceived, $totalTrips, $totalTimeOnline, $shortfallCarriedIn, $shortfallPaid]);
+        $stmt->execute([$weekStart, $weekEnd, $totalIncome, $cashReceived, $totalTrips, $totalTimeOnline, $shortfallPaid]);
 
         $uberIncomeId = $pdo->lastInsertId();
 
@@ -210,7 +209,6 @@ function handleUpdate()
         $cashReceived  = floatval($_POST['cash_received'] ?? 0);
         $totalTrips    = intval($_POST['total_trips'] ?? 0);
         $totalTimeOnline = floatval($_POST['total_time_online'] ?? 0);
-        $shortfallCarriedIn = floatval($_POST['shortfall_carried_in'] ?? 0);
         $shortfallPaid      = floatval($_POST['shortfall_paid'] ?? 0);
 
         // Additional costs come in as two parallel arrays: reasons[] and amounts[]
@@ -223,10 +221,10 @@ function handleUpdate()
 
         $stmt = $pdo->prepare("
             UPDATE uber_income 
-            SET total_income = ?, cash_received = ?, total_trips = ?, total_time_online = ?, shortfall_carried_in = ?, shortfall_paid = ?
+            SET total_income = ?, cash_received = ?, total_trips = ?, total_time_online = ?, shortfall_paid = ?
             WHERE id = ?
         ");
-        $stmt->execute([$totalIncome, $cashReceived, $totalTrips, $totalTimeOnline, $shortfallCarriedIn, $shortfallPaid, $id]);
+        $stmt->execute([$totalIncome, $cashReceived, $totalTrips, $totalTimeOnline, $shortfallPaid, $id]);
 
         // Delete existing additional costs and re-save
         $pdo->prepare("DELETE FROM uber_additional_costs WHERE uber_income_id = ?")->execute([$id]);
@@ -272,27 +270,16 @@ function handleDelete()
     }
 }
 
-function handleGetCarryForward()
+function handleGetCurrentBalance()
 {
     global $pdo;
 
-    $weekMonday = trim($_GET['week_monday'] ?? '');
-
-    if (empty($weekMonday)) {
-        jsonResponse(['success' => false, 'message' => 'Week start date is required'], 400);
-    }
-
     try {
-        $tz = new DateTimeZone(TIME_ZONE);
-        $dt = new DateTime($weekMonday, $tz);
-        $dt->setTime(0, 0, 0);
-
-        $carriedIn = getPreviousWeekCarryOut($pdo, $dt->getTimestamp());
-
-        jsonResponse(['success' => true, 'carried_in' => $carriedIn]);
+        $balance = getCurrentUberBalance($pdo);
+        jsonResponse(['success' => true, 'balance' => $balance]);
 
     } catch (PDOException $e) {
-        logError('UBER', 'Failed to fetch carry-forward balance', ['error' => $e->getMessage(), 'week_monday' => $weekMonday]);
+        logError('UBER', 'Failed to fetch current balance', ['error' => $e->getMessage()]);
         jsonResponse(['success' => false, 'message' => 'Database error'], 500);
     }
 }
@@ -360,7 +347,7 @@ function handleGetByMonth()
             $costStmt->execute([$record['id']]);
             $record['additional_costs'] = $costStmt->fetchAll(PDO::FETCH_ASSOC);
 
-            $record['shortfall'] = calculateUberShortfall($pdo, $record);
+            $record['ledger'] = getUberLedgerEntry($pdo, (int) $record['id']);
         }
 
         jsonResponse(['success' => true, 'data' => $records]);
