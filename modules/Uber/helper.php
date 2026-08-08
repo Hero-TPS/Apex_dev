@@ -164,3 +164,82 @@ function getCurrentUberBalance(PDO $pdo): float
     $last = end($ledger);
     return $last['balance_after'];
 }
+
+/**
+ * Full ledger grouped by month, for the History Report.
+ *
+ * The balance itself is always computed from the FULL history (so it's
+ * always accurate, no matter how far back the report window starts) —
+ * only which months get returned/displayed is limited by $monthsBack.
+ *
+ * @param PDO $pdo
+ * @param int $monthsBack  Number of months to include, most recent first.
+ *                          Matches the `financial_months_back` system
+ *                          variable used by other report pages.
+ * @return array{
+ *     months: array<int, array{
+ *         label: string,
+ *         year: int,
+ *         month: int,
+ *         weeks: array,
+ *         totals: array{card_income: float, net: float, shortfall_paid: float, paid_out: float},
+ *         balance_at_month_end: float
+ *     }>,
+ *     current_balance: float
+ * }
+ */
+function getUberLedgerReport(PDO $pdo, int $monthsBack): array
+{
+    $ledger = calculateUberLedger($pdo);
+
+    $tz = new DateTimeZone(TIME_ZONE);
+    $windowStart = new DateTime('first day of this month', $tz);
+    $windowStart->modify('-' . ($monthsBack - 1) . ' months');
+    $windowStart->setTime(0, 0, 0);
+    $windowStartTs = $windowStart->getTimestamp();
+
+    $months = []; // keyed by "Y-n"
+
+    foreach ($ledger as $entry) {
+        if ((int) $entry['week_start'] < $windowStartTs) {
+            continue;
+        }
+
+        $dt = new DateTime();
+        $dt->setTimestamp((int) $entry['week_start']);
+        $dt->setTimezone($tz);
+
+        $key = $dt->format('Y-m');
+
+        if (!isset($months[$key])) {
+            $months[$key] = [
+                'label'  => $dt->format('F Y'),
+                'year'   => (int) $dt->format('Y'),
+                'month'  => (int) $dt->format('n'),
+                'weeks'  => [],
+                'totals' => ['card_income' => 0.0, 'net' => 0.0, 'shortfall_paid' => 0.0, 'paid_out' => 0.0],
+                'balance_at_month_end' => 0.0,
+            ];
+        }
+
+        $endDt = clone $dt;
+        $endDt->setTimestamp((int) $entry['week_end']);
+        $endDt->setTimezone($tz);
+        $entry['week_display'] = $dt->format('d M Y') . ' – ' . $endDt->format('d M Y');
+
+        $months[$key]['weeks'][] = $entry;
+        $months[$key]['totals']['card_income']    += $entry['card_income'];
+        $months[$key]['totals']['net']             += $entry['net'];
+        $months[$key]['totals']['shortfall_paid']  += $entry['shortfall_paid'];
+        $months[$key]['totals']['paid_out']        += $entry['paid_out'];
+        $months[$key]['balance_at_month_end'] = $entry['balance_after'];
+    }
+
+    // Most recent month first, matching other report pages
+    krsort($months);
+
+    return [
+        'months'          => array_values($months),
+        'current_balance' => empty($ledger) ? 0.0 : end($ledger)['balance_after'],
+    ];
+}
