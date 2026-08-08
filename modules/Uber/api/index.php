@@ -57,6 +57,10 @@ function handleGetAll()
         $stmt = $pdo->query("SELECT * FROM uber_income ORDER BY week_start DESC");
         $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // Compute the ledger once for the whole request, not per record —
+        // each record just looks up its own entry from it.
+        $ledger = calculateUberLedger($pdo);
+
         // For each record, add week_display and fetch additional costs
         foreach ($records as &$record) {
             if (isset($record['week_start']) && $record['week_start'] > 0) {
@@ -75,7 +79,7 @@ function handleGetAll()
             $costStmt->execute([$record['id']]);
             $record['additional_costs'] = $costStmt->fetchAll(PDO::FETCH_ASSOC);
 
-            $record['ledger'] = getUberLedgerEntry($pdo, (int) $record['id']);
+            $record['ledger'] = $ledger[(int) $record['id']] ?? null;
         }
 
         jsonResponse(['success' => true, 'data' => $records]);
@@ -327,6 +331,9 @@ function handleGetByMonth()
         $today   = new DateTime('now', $tz);
         $todayTs = $today->getTimestamp();
 
+        // Compute the ledger once for the whole request, not per record.
+        $ledger = calculateUberLedger($pdo);
+
         foreach ($records as &$record) {
             if (isset($record['week_start']) && $record['week_start'] > 0) {
                 $start = new DateTime();
@@ -347,7 +354,7 @@ function handleGetByMonth()
             $costStmt->execute([$record['id']]);
             $record['additional_costs'] = $costStmt->fetchAll(PDO::FETCH_ASSOC);
 
-            $record['ledger'] = getUberLedgerEntry($pdo, (int) $record['id']);
+            $record['ledger'] = $ledger[(int) $record['id']] ?? null;
         }
 
         jsonResponse(['success' => true, 'data' => $records]);
