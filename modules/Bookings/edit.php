@@ -207,13 +207,28 @@ if (isset($_GET['id'])) {
 
             <!-- Budget Earmark -->
             <div class="form-group">
-                <label for="earmarked_for">Earmark Income For</label>
-                <select id="earmarked_for" name="earmarked_for">
-                    <option value="">— Not earmarked —</option>
-                    <option value="rent" <?= ($booking['earmarked_for'] ?? '') === 'rent' ? 'selected' : '' ?>>Rent</option>
-                    <option value="debt" <?= ($booking['earmarked_for'] ?? '') === 'debt' ? 'selected' : '' ?>>Debt</option>
-                </select>
-                <small>Marks this booking's income as set aside for a fixed weekly cost</small>
+                <label>Earmark Income For</label>
+                <div class="at-earmark-row">
+                    <label class="at-earmark-checkbox">
+                        <input type="checkbox" id="earmark_rent_check"
+                            <?= !empty($booking['earmarked_rent']) ? 'checked' : '' ?>>
+                        Rent
+                    </label>
+                    <input type="number" id="earmark_rent_amount" step="0.01" min="0"
+                        value="<?= htmlspecialchars($booking['earmarked_rent'] ?? '') ?>"
+                        style="<?= empty($booking['earmarked_rent']) ? 'display:none;' : '' ?>">
+                </div>
+                <div class="at-earmark-row">
+                    <label class="at-earmark-checkbox">
+                        <input type="checkbox" id="earmark_debt_check"
+                            <?= !empty($booking['earmarked_debt']) ? 'checked' : '' ?>>
+                        Debt
+                    </label>
+                    <input type="number" id="earmark_debt_amount" step="0.01" min="0"
+                        value="<?= htmlspecialchars($booking['earmarked_debt'] ?? '') ?>"
+                        style="<?= empty($booking['earmarked_debt']) ? 'display:none;' : '' ?>">
+                </div>
+                <small>A booking can partially or fully fund rent, debt, or both</small>
             </div>
 
             <?php if ($booking_fee_pct > 0): ?>
@@ -255,19 +270,41 @@ if (isset($_GET['id'])) {
 
 <script>
 $(document).ready(function () {
+    var bookingCost = <?= (float) $booking['cost'] ?>;
+
     // Earmark auto-saves independently of the main form (dedicated lightweight endpoint)
-    $('#earmarked_for').on('change', function () {
-        var select = $(this);
+    function saveEarmark() {
         $.post('<?= BASE_URL ?>/modules/Bookings/api/index.php', {
             action: 'set_earmark',
             booking_id: <?= (int) $booking['id'] ?>,
-            earmarked_for: select.val()
+            earmarked_rent: $('#earmark_rent_check').is(':checked') ? $('#earmark_rent_amount').val() : '',
+            earmarked_debt: $('#earmark_debt_check').is(':checked') ? $('#earmark_debt_amount').val() : ''
         }, function (response) {
             if (!response.success) {
                 alert('Could not save earmark: ' + response.message);
             }
         }, 'json');
+    }
+
+    $('#earmark_rent_check').on('change', function () {
+        var amountField = $('#earmark_rent_amount');
+        if ($(this).is(':checked')) {
+            amountField.val(bookingCost.toFixed(2)).show();
+        } else {
+            amountField.hide();
+        }
+        saveEarmark();
     });
+    $('#earmark_debt_check').on('change', function () {
+        var amountField = $('#earmark_debt_amount');
+        if ($(this).is(':checked')) {
+            amountField.val(bookingCost.toFixed(2)).show();
+        } else {
+            amountField.hide();
+        }
+        saveEarmark();
+    });
+    $('#earmark_rent_amount, #earmark_debt_amount').on('change', saveEarmark);
 
     var initialPickupValue = "<?php echo addslashes(htmlspecialchars($booking['original_pickup'], ENT_QUOTES)); ?>";
     var initialDestinationValue = "<?php echo addslashes(htmlspecialchars($booking['original_destination'], ENT_QUOTES)); ?>";
