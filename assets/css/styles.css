@@ -2448,3 +2448,7 @@ body:not(.home-page) .floating-menu-toggle {
     border: 1px solid #ccc;
     border-radius: 5px;
 }
+
+/* db-budgeting was missing a background — caused white text on white/transparent
+   background. Add this next to the other .db-* rules (e.g. near .db-reports). */
+.db-budgeting { background: linear-gradient(135deg, #11998e, #38ef7d); }
