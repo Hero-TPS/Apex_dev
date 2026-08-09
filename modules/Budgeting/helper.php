@@ -42,9 +42,11 @@ function estimateBookingFuelCost(array $booking, float $fuelCostPerKm): array
 }
 
 /**
- * Build the full weekly budget plan: rent/debt earmark status, car rental
- * (via Uber), fuel needs (Uber + bookings), running costs, living expenses,
- * weighed against this week's income (bookings + Uber).
+ * Build the full weekly budget plan: rent/debt earmark status (split-capable —
+ * a booking can partially fund both), car rental (settled weekly via Uber
+ * payout, not daily), fuel needs (Uber + bookings), running costs, living
+ * expenses, weighed against this week's income (bookings + Uber, where Uber
+ * is only logged at week's end so may not be available mid-week).
  *
  * @param  PDO $pdo
  * @return array
@@ -64,7 +66,7 @@ function getWeeklyBudgetPlan(PDO $pdo): array
 
     // Cancelled bookings are deleted, not flagged — no status filter needed to exclude them.
     $stmt = $pdo->prepare(
-        "SELECT id, trip_date, cost, status, earmarked_for, original_pickup, original_destination
+        "SELECT id, trip_date, cost, status, earmarked_rent, earmarked_debt, original_pickup, original_destination
          FROM bookings WHERE trip_date BETWEEN ? AND ?"
     );
     $stmt->execute([$monday->format('Y-m-d'), $sunday->format('Y-m-d')]);
@@ -77,19 +79,20 @@ function getWeeklyBudgetPlan(PDO $pdo): array
 
     foreach ($bookings as $b) {
         $bookingIncomeTotal += (float) $b['cost'];
-        if ($b['earmarked_for'] === 'rent') {
-            $earmarkedRent += (float) $b['cost'];
-        } elseif ($b['earmarked_for'] === 'debt') {
-            $earmarkedDebt += (float) $b['cost'];
-        }
+        $earmarkedRent += (float) ($b['earmarked_rent'] ?? 0);
+        $earmarkedDebt += (float) ($b['earmarked_debt'] ?? 0);
         if ($b['status'] !== 'completed') {
             $upcomingBookings[] = $b;
         }
     }
 
-    $stmt = $pdo->prepare("SELECT total_income FROM uber_income WHERE week_start = ?");
+    // Uber income/costs are only logged manually, usually at week's end (Sundays) —
+    // a missing row mid-week means "not logged yet," not "zero income."
+    $stmt = $pdo->prepare("SELECT id, total_income FROM uber_income WHERE week_start = ?");
     $stmt->execute([$monday->getTimestamp()]);
-    $uberIncomeSoFar = (float) ($stmt->fetchColumn() ?: 0);
+    $uberWeek = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    $uberLogged = $uberWeek !== null;
+    $uberIncomeSoFar = $uberLogged ? (float) $uberWeek['total_income'] : null;
 
     // Historical fuel_cost_per_km (trailing 8 weeks, reusing Financials' own metrics)
     $trailingStart = (clone $monday)->modify('-8 weeks');
@@ -124,15 +127,17 @@ function getWeeklyBudgetPlan(PDO $pdo): array
 
     $livingTarget = $livingDaily * 7;
 
+    // Total obligations always include car rental + Uber fuel as planned weekly
+    // costs, regardless of whether Uber's actually been logged yet this week.
     $totalObligations = $rentTarget + $debtTarget + $carRental + $uberFuelTarget
         + $bookingFuelForecast + $runningCostsPlanned + $livingTarget;
-    $totalIncome = $bookingIncomeTotal + $uberIncomeSoFar;
+    $totalIncome = $bookingIncomeTotal + ($uberIncomeSoFar ?? 0);
 
     return [
         'week_start' => $monday->format('Y-m-d'),
         'rent' => ['target' => $rentTarget, 'earmarked' => $earmarkedRent, 'shortfall' => max(0, $rentTarget - $earmarkedRent)],
         'debt' => ['target' => $debtTarget, 'earmarked' => $earmarkedDebt, 'shortfall' => max(0, $debtTarget - $earmarkedDebt)],
-        'car_rental' => $carRental,
+        'car_rental' => ['amount' => $carRental, 'note' => 'Due Sunday via Uber payout'],
         'fuel' => [
             'uber_target' => $uberFuelTarget,
             'booking_forecast' => $bookingFuelForecast,
@@ -143,6 +148,7 @@ function getWeeklyBudgetPlan(PDO $pdo): array
         'living_expenses_target' => $livingTarget,
         'income' => [
             'booking_income' => $bookingIncomeTotal,
+            'uber_logged' => $uberLogged,
             'uber_income_so_far' => $uberIncomeSoFar,
             'total' => $totalIncome,
         ],
@@ -161,6 +167,10 @@ function getWeeklyBudgetPlan(PDO $pdo): array
  */
 function buildPromptFromBudgetPlan(string $template, array $plan): string
 {
+    $uberIncomeText = $plan['income']['uber_logged']
+        ? 'R' . number_format($plan['income']['uber_income_so_far'], 2)
+        : 'not logged yet this week (he logs Uber income/costs manually, usually on Sundays — do not treat this as zero income)';
+
     $replacements = [
         '{{week_start}}'             => $plan['week_start'],
         '{{rent_target}}'            => number_format($plan['rent']['target'], 2),
@@ -169,14 +179,14 @@ function buildPromptFromBudgetPlan(string $template, array $plan): string
         '{{debt_target}}'            => number_format($plan['debt']['target'], 2),
         '{{debt_earmarked}}'         => number_format($plan['debt']['earmarked'], 2),
         '{{debt_shortfall}}'         => number_format($plan['debt']['shortfall'], 2),
-        '{{car_rental}}'             => number_format($plan['car_rental'], 2),
+        '{{car_rental}}'             => number_format($plan['car_rental']['amount'], 2) . ' (' . $plan['car_rental']['note'] . ')',
         '{{uber_fuel_target}}'       => number_format($plan['fuel']['uber_target'], 2),
         '{{booking_fuel_forecast}}'  => number_format($plan['fuel']['booking_forecast'], 2),
         '{{fuel_total}}'             => number_format($plan['fuel']['total'], 2),
         '{{running_costs_planned}}'  => number_format($plan['running_costs_planned'], 2),
         '{{living_expenses_target}}' => number_format($plan['living_expenses_target'], 2),
         '{{booking_income}}'         => number_format($plan['income']['booking_income'], 2),
-        '{{uber_income_so_far}}'     => number_format($plan['income']['uber_income_so_far'], 2),
+        '{{uber_income_so_far}}'     => $uberIncomeText,
         '{{total_income}}'           => number_format($plan['income']['total'], 2),
         '{{total_obligations}}'      => number_format($plan['total_obligations'], 2),
         '{{buffer}}'                 => number_format($plan['buffer'], 2),
