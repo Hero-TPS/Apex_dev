@@ -54,6 +54,52 @@ ALTER TABLE uber_income
 
 ---
 
+### [Budgeting] Add `ai_recommendations` cache table
+
+- [ ] Done on dev
+- [ ] Done on live
+
+```sql
+CREATE TABLE IF NOT EXISTS ai_recommendations (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    type           VARCHAR(50) NOT NULL DEFAULT 'daily_fuel',
+    snapshot_hash  CHAR(32) NOT NULL,
+    recommendation TEXT NOT NULL,
+    generated_at   DATETIME NOT NULL,
+    INDEX (type, generated_at)
+);
+```
+
+---
+
+### [Budgeting] Add `earmarked_for` to bookings (for rent/debt allocation)
+
+- [ ] Done on dev
+- [ ] Done on live
+
+```sql
+ALTER TABLE bookings
+    ADD COLUMN earmarked_for ENUM('rent','debt') NULL DEFAULT NULL AFTER status;
+```
+
+> Superseded by the next entry below — a single either/or value wasn't enough since one booking can partially fund both rent and debt. If you already ran this on live, run the replacement entry after it.
+
+---
+
+### [Budgeting] Replace `earmarked_for` with split `earmarked_rent` / `earmarked_debt` amounts
+
+- [ ] Done on dev
+- [ ] Done on live
+
+```sql
+ALTER TABLE bookings
+    DROP COLUMN earmarked_for,
+    ADD COLUMN earmarked_rent DECIMAL(10,2) NULL DEFAULT NULL AFTER status,
+    ADD COLUMN earmarked_debt DECIMAL(10,2) NULL DEFAULT NULL AFTER earmarked_rent;
+```
+
+---
+
 ---
 
 **Notes:**
