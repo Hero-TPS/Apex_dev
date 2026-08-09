@@ -128,10 +128,15 @@ if (isset($_GET['id'])) {
             R <?= number_format($viewCalculatedCost, 2) ?>
         </div>
         <?php endif; ?>
-        <?php if (!empty($booking['earmarked_for'])): ?>
+        <?php if (!empty($booking['earmarked_rent']) || !empty($booking['earmarked_debt'])): ?>
         <div class="detail-item">
-            <strong>Earmarked For:</strong>
-            <?= $booking['earmarked_for'] === 'rent' ? '🏠 Rent' : '💳 Debt' ?>
+            <strong>Earmarked:</strong>
+            <?php if (!empty($booking['earmarked_rent'])): ?>
+                🏠 Rent R<?= number_format((float) $booking['earmarked_rent'], 2) ?>
+            <?php endif; ?>
+            <?php if (!empty($booking['earmarked_debt'])): ?>
+                💳 Debt R<?= number_format((float) $booking['earmarked_debt'], 2) ?>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
         <div class="detail-item">
