@@ -56,8 +56,8 @@ ALTER TABLE uber_income
 
 ### [Budgeting] Add `ai_recommendations` cache table
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 ```sql
 CREATE TABLE IF NOT EXISTS ai_recommendations (
@@ -74,8 +74,8 @@ CREATE TABLE IF NOT EXISTS ai_recommendations (
 
 ### [Budgeting] Add `earmarked_for` to bookings (for rent/debt allocation)
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 ```sql
 ALTER TABLE bookings
@@ -88,8 +88,8 @@ ALTER TABLE bookings
 
 ### [Budgeting] Replace `earmarked_for` with split `earmarked_rent` / `earmarked_debt` amounts
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 ```sql
 ALTER TABLE bookings
