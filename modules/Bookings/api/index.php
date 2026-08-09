@@ -669,18 +669,31 @@ function handleSetEarmark()
     global $pdo;
 
     $id = intval($_POST['booking_id'] ?? 0);
-    $earmarked_for = $_POST['earmarked_for'] ?? '';
+    $earmarkedRent = trim($_POST['earmarked_rent'] ?? '');
+    $earmarkedDebt = trim($_POST['earmarked_debt'] ?? '');
 
     if ($id <= 0) {
         jsonResponse(['success' => false, 'message' => 'Invalid booking ID.'], 400);
     }
-    if ($earmarked_for !== '' && !in_array($earmarked_for, ['rent', 'debt'])) {
-        jsonResponse(['success' => false, 'message' => 'Invalid earmark value.'], 400);
+
+    $rentValue = $earmarkedRent === '' ? null : (float) $earmarkedRent;
+    $debtValue = $earmarkedDebt === '' ? null : (float) $earmarkedDebt;
+
+    if (($rentValue !== null && $rentValue < 0) || ($debtValue !== null && $debtValue < 0)) {
+        jsonResponse(['success' => false, 'message' => 'Earmark amounts cannot be negative.'], 400);
     }
 
     try {
-        $stmt = $pdo->prepare("UPDATE bookings SET earmarked_for = ? WHERE id = ?");
-        $stmt->execute([$earmarked_for === '' ? null : $earmarked_for, $id]);
+        $stmt = $pdo->prepare("SELECT cost FROM bookings WHERE id = ?");
+        $stmt->execute([$id]);
+        $cost = (float) $stmt->fetchColumn();
+
+        if (($rentValue ?? 0) + ($debtValue ?? 0) > $cost + 0.01) {
+            jsonResponse(['success' => false, 'message' => 'Rent + debt earmark cannot exceed the booking cost.'], 400);
+        }
+
+        $stmt = $pdo->prepare("UPDATE bookings SET earmarked_rent = ?, earmarked_debt = ? WHERE id = ?");
+        $stmt->execute([$rentValue, $debtValue, $id]);
 
         jsonResponse(['success' => true, 'message' => 'Earmark saved.']);
 
