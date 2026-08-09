@@ -61,7 +61,7 @@ $plan = getWeeklyBudgetPlan($pdo);
         <h3>🚗 Car Rental &amp; Fuel</h3>
         <div class="at-budget-row">
             <span class="label">Car rental (via Uber)</span>
-            <span class="value">R<?= number_format($plan['car_rental'], 2) ?></span>
+            <span class="value">R<?= number_format($plan["car_rental"]["amount"], 2) ?> <small>(<?= htmlspecialchars($plan["car_rental"]["note"]) ?>)</small></span>
         </div>
         <div class="at-budget-row">
             <span class="label">Uber fuel (⅓ of rental)</span>
@@ -105,7 +105,13 @@ $plan = getWeeklyBudgetPlan($pdo);
         </div>
         <div class="at-budget-row">
             <span class="label">Uber income so far</span>
-            <span class="value">R<?= number_format($plan['income']['uber_income_so_far'], 2) ?></span>
+            <span class="value">
+                <?php if ($plan['income']['uber_logged']): ?>
+                    R<?= number_format($plan['income']['uber_income_so_far'], 2) ?>
+                <?php else: ?>
+                    <em>Not yet logged (Sundays)</em>
+                <?php endif; ?>
+            </span>
         </div>
         <div class="at-budget-row">
             <span class="label"><strong>Total income</strong></span>
