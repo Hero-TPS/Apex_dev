@@ -68,37 +68,23 @@ include ROOT_DIR . '/includes/header.php';
         </div>
     </div>
 
-    <!-- Trip Distance Calculator -->
-    <div class="menu-section">
-        <h3 class="menu-toggle" data-target="distcalc-section">🗺️ Tools</h3>
-        <div id="distcalc-section" class="menu-content">
-            <a href="<?= BASE_URL ?>/modules/DistanceCalculator/" class="dashboard-button db-distcalc">Trip Distance Calculator</a>
-        </div>
-    </div>
-
     <!-- Financials Menu -->
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="financials-section">💰 Financials</h3>
         <div id="financials-section" class="menu-content">
             <a href="<?= BASE_URL ?>/modules/Financials/" class="dashboard-button db-reports">Financial Summary</a>
             <a href="<?= BASE_URL ?>/modules/Financials/balance_sheet.php" class="dashboard-button db-balance-sheet">Balance Sheet</a>
-        </div>
-    </div>
-
-    <!-- Budgeting -->
-    <div class="menu-section">
-        <h3 class="menu-toggle" data-target="budgeting-section">📊 Budgeting</h3>
-        <div id="budgeting-section" class="menu-content">
             <a href="<?= BASE_URL ?>/modules/Budgeting/ai_advisor.php" class="dashboard-button db-budgeting">Weekly Budget Plan</a>
         </div>
     </div>
 
-    <!-- Maintenance -->
+    <!-- Services -->
     <div class="menu-section">
-        <h3 class="menu-toggle" data-target="maintenance-section">⚙️ Maintenance</h3>
-        <div id="maintenance-section" class="menu-content">
+        <h3 class="menu-toggle" data-target="services-section">⚙️ Services</h3>
+        <div id="services-section" class="menu-content">
             <a href="<?= BASE_URL ?>/maintenance/" class="dashboard-button db-maintenance">Manage Lists</a>
             <a href="<?= BASE_URL ?>/maintenance/logs.php" class="dashboard-button db-maintenance">System Logs</a>
+            <a href="<?= BASE_URL ?>/modules/DistanceCalculator/" class="dashboard-button db-distcalc">Trip Distance Calculator</a>
         </div>
     </div>
 
