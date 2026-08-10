@@ -42,177 +42,215 @@ function estimateBookingFuelCost(array $booking, float $fuelCostPerKm): array
 }
 
 /**
- * Build the full weekly budget plan: rent/debt earmark status (split-capable —
- * a booking can partially fund both), car rental (settled weekly via Uber
- * payout, not daily), fuel needs (Uber + bookings), running costs, living
- * expenses, weighed against this week's income (bookings + Uber, where Uber
- * is only logged at week's end so may not be available mid-week).
+ * Build a rolling 7-day forecast (today + next 6 days). Each day shows
+ * scheduled bookings (income + fuel), and whichever day is the upcoming
+ * Sunday also carries the car rental + Uber fuel target as a known
+ * settlement (these are fixed/planned figures, not dependent on whether
+ * Uber income has actually been logged yet).
  *
  * @param  PDO $pdo
- * @return array
+ * @return array  ['days' => [...], 'final_net' => float]
  */
-function getWeeklyBudgetPlan(PDO $pdo): array
+function getSevenDayForecast(PDO $pdo): array
 {
     $tz = new DateTimeZone(TIME_ZONE);
     $today = new DateTime('now', $tz);
-    $dayOfWeek = (int) $today->format('N');
-    $monday = (clone $today)->modify('-' . ($dayOfWeek - 1) . ' days')->setTime(0, 0, 0);
-    $sunday = (clone $monday)->modify('+6 days')->setTime(23, 59, 59);
+    $today->setTime(0, 0, 0);
 
-    $rentTarget  = (float) getSystemVariable($pdo, 'rent');
-    $debtTarget  = (float) getSystemVariable($pdo, 'debt_payment');
     $carRental   = (float) getSystemVariable($pdo, 'car_rental_price');
     $livingDaily = (float) getSystemVariable($pdo, 'living_expenses_daily');
-
-    // Cancelled bookings are deleted, not flagged — no status filter needed to exclude them.
-    $stmt = $pdo->prepare(
-        "SELECT id, trip_date, cost, status, earmarked_rent, earmarked_debt, original_pickup, original_destination
-         FROM bookings WHERE trip_date BETWEEN ? AND ?"
-    );
-    $stmt->execute([$monday->format('Y-m-d'), $sunday->format('Y-m-d')]);
-    $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $bookingIncomeTotal = 0.0;
-    $earmarkedRent = 0.0;
-    $earmarkedDebt = 0.0;
-    $upcomingBookings = [];
-
-    foreach ($bookings as $b) {
-        $bookingIncomeTotal += (float) $b['cost'];
-        $earmarkedRent += (float) ($b['earmarked_rent'] ?? 0);
-        $earmarkedDebt += (float) ($b['earmarked_debt'] ?? 0);
-        if ($b['status'] !== 'completed') {
-            $upcomingBookings[] = $b;
-        }
-    }
-
-    // Uber income/costs are only logged manually, usually at week's end (Sundays) —
-    // a missing row mid-week means "not logged yet," not "zero income."
-    $stmt = $pdo->prepare("SELECT id, total_income FROM uber_income WHERE week_start = ?");
-    $stmt->execute([$monday->getTimestamp()]);
-    $uberWeek = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-    $uberLogged = $uberWeek !== null;
-    $uberIncomeSoFar = $uberLogged ? (float) $uberWeek['total_income'] : null;
-
-    // Historical fuel_cost_per_km (trailing 8 weeks, reusing Financials' own metrics)
-    $trailingStart = (clone $monday)->modify('-8 weeks');
-    $metrics = getWeeklyMetrics($pdo, $trailingStart->getTimestamp(), $monday->getTimestamp());
-    $fuelCostPerKm = (float) ($metrics['fuel_cost_per_km'] ?? 0);
-
-    $bookingFuelForecast = 0.0;
-    $bookingFuelDetails = [];
-    foreach ($upcomingBookings as $b) {
-        $estimate = estimateBookingFuelCost($b, $fuelCostPerKm);
-        $bookingFuelDetails[] = array_merge(['booking_id' => $b['id'], 'trip_date' => $b['trip_date']], $estimate);
-        if ($estimate['fuel_cost'] !== null) {
-            $bookingFuelForecast += $estimate['fuel_cost'];
-        }
-    }
-
-    // Rule of thumb: Uber fuel budget ~ 1/3 of car rental
     $uberFuelTarget = $carRental / 3;
 
-    // Running costs planned = trailing 8-week average weekly total from uber_additional_costs
-    $stmt = $pdo->prepare(
-        "SELECT COALESCE(AVG(weekly_total), 0) FROM (
-            SELECT uac.uber_income_id, SUM(uac.amount) AS weekly_total
-            FROM uber_additional_costs uac
-            JOIN uber_income ui ON ui.id = uac.uber_income_id
-            WHERE ui.week_start BETWEEN ? AND ?
-            GROUP BY uac.uber_income_id
-         ) weekly"
-    );
-    $stmt->execute([$trailingStart->getTimestamp(), $monday->getTimestamp()]);
-    $runningCostsPlanned = (float) $stmt->fetchColumn();
+    // Historical fuel_cost_per_km (trailing 8 weeks up to today)
+    $trailingStart = (clone $today)->modify('-8 weeks');
+    $metrics = getWeeklyMetrics($pdo, $trailingStart->getTimestamp(), $today->getTimestamp());
+    $fuelCostPerKm = (float) ($metrics['fuel_cost_per_km'] ?? 0);
 
-    $livingTarget = $livingDaily * 7;
+    $days = [];
+    $runningNet = 0.0;
 
-    // Total obligations always include car rental + Uber fuel as planned weekly
-    // costs, regardless of whether Uber's actually been logged yet this week.
-    $totalObligations = $rentTarget + $debtTarget + $carRental + $uberFuelTarget
-        + $bookingFuelForecast + $runningCostsPlanned + $livingTarget;
-    $totalIncome = $bookingIncomeTotal + ($uberIncomeSoFar ?? 0);
+    for ($i = 0; $i < 7; $i++) {
+        $date = (clone $today)->modify("+{$i} days");
+        $isSunday = ((int) $date->format('N')) === 7;
+
+        $stmt = $pdo->prepare(
+            "SELECT id, cost, status, original_pickup, original_destination
+             FROM bookings WHERE trip_date = ?"
+        );
+        $stmt->execute([$date->format('Y-m-d')]);
+        $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $bookingIncome = 0.0;
+        $bookingFuel = 0.0;
+        $bookingDetails = [];
+
+        foreach ($bookings as $b) {
+            $bookingIncome += (float) $b['cost'];
+            if ($b['status'] !== 'completed') {
+                $estimate = estimateBookingFuelCost($b, $fuelCostPerKm);
+                if ($estimate['fuel_cost'] !== null) {
+                    $bookingFuel += $estimate['fuel_cost'];
+                }
+                $bookingDetails[] = array_merge(['booking_id' => $b['id'], 'cost' => $b['cost']], $estimate);
+            }
+        }
+
+        $settlement = $isSunday ? ['car_rental' => $carRental, 'uber_fuel_target' => $uberFuelTarget] : null;
+        $dayOut = $bookingFuel + $livingDaily + ($isSunday ? $carRental + $uberFuelTarget : 0);
+        $dayNet = $bookingIncome - $dayOut;
+        $runningNet += $dayNet;
+
+        $days[] = [
+            'date' => $date->format('Y-m-d'),
+            'day_name' => $date->format('l'),
+            'is_sunday_settlement' => $isSunday,
+            'booking_income' => $bookingIncome,
+            'booking_fuel' => $bookingFuel,
+            'booking_details' => $bookingDetails,
+            'settlement' => $settlement,
+            'living_expense' => $livingDaily,
+            'day_net' => $dayNet,
+            'running_net' => $runningNet,
+        ];
+    }
 
     return [
-        'week_start' => $monday->format('Y-m-d'),
-        'rent' => ['target' => $rentTarget, 'earmarked' => $earmarkedRent, 'shortfall' => max(0, $rentTarget - $earmarkedRent)],
-        'debt' => ['target' => $debtTarget, 'earmarked' => $earmarkedDebt, 'shortfall' => max(0, $debtTarget - $earmarkedDebt)],
-        'car_rental' => ['amount' => $carRental, 'note' => 'Due Sunday via Uber payout'],
-        'fuel' => [
-            'uber_target' => $uberFuelTarget,
-            'booking_forecast' => $bookingFuelForecast,
-            'booking_details' => $bookingFuelDetails,
-            'total' => $uberFuelTarget + $bookingFuelForecast,
-        ],
-        'running_costs_planned' => $runningCostsPlanned,
-        'living_expenses_target' => $livingTarget,
-        'income' => [
-            'booking_income' => $bookingIncomeTotal,
-            'uber_logged' => $uberLogged,
-            'uber_income_so_far' => $uberIncomeSoFar,
-            'total' => $totalIncome,
-        ],
-        'total_obligations' => $totalObligations,
-        'buffer' => $totalIncome - $totalObligations,
+        'days' => $days,
+        'fuel_cost_per_km' => $fuelCostPerKm,
+        'final_net' => $runningNet,
     ];
 }
 
 /**
- * Substitute {{token}} placeholders in the DB-stored prompt template with
- * live values from the weekly budget plan.
+ * Monthly pace for a weekly-cadence obligation (rent or debt): "1 payment
+ * per week" is the expected baseline, tracked against Mondays elapsed this
+ * month, with a fixed monthly target (weekly rate x 4) rather than one that
+ * inflates in 5-Monday months.
  *
- * @param  string $template
- * @param  array  $plan  From getWeeklyBudgetPlan()
+ * @param  PDO    $pdo
+ * @param  string $systemVarName  'rent' or 'debt_payment'
+ * @param  string $bookingColumn  'earmarked_rent' or 'earmarked_debt'
+ * @return array
+ */
+function getMonthlyPaceFor(PDO $pdo, string $systemVarName, string $bookingColumn): array
+{
+    $tz = new DateTimeZone(TIME_ZONE);
+    $today = new DateTime('now', $tz);
+    $monthStart = (clone $today)->modify('first day of this month')->setTime(0, 0, 0);
+
+    $weeklyRate = (float) getSystemVariable($pdo, $systemVarName);
+    $monthlyTarget = $weeklyRate * 4;
+
+    // Count Mondays from month start through today, capped at 4
+    $mondaysSoFar = 0;
+    $cursor = clone $monthStart;
+    while ($cursor <= $today) {
+        if ((int) $cursor->format('N') === 1) {
+            $mondaysSoFar++;
+        }
+        $cursor->modify('+1 day');
+    }
+    $mondaysSoFar = min(4, $mondaysSoFar);
+    $targetToDate = $weeklyRate * $mondaysSoFar;
+
+    $monthEnd = (clone $monthStart)->modify('last day of this month')->setTime(23, 59, 59);
+    $stmt = $pdo->prepare(
+        "SELECT COALESCE(SUM({$bookingColumn}), 0) FROM bookings WHERE trip_date BETWEEN ? AND ?"
+    );
+    $stmt->execute([$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')]);
+    $actualToDate = (float) $stmt->fetchColumn();
+
+    $paymentsEquivalent = $weeklyRate > 0 ? round($actualToDate / $weeklyRate, 1) : 0;
+
+    return [
+        'weekly_rate' => $weeklyRate,
+        'monthly_target' => $monthlyTarget,
+        'expected_payments_so_far' => $mondaysSoFar,
+        'target_to_date' => $targetToDate,
+        'actual_to_date' => $actualToDate,
+        'payments_equivalent' => $paymentsEquivalent,
+        'behind_by' => max(0, $targetToDate - $actualToDate),
+    ];
+}
+
+/**
+ * @param  PDO $pdo
+ * @return array  ['rent' => ..., 'debt' => ...] each from getMonthlyPaceFor()
+ */
+function getMonthlyPace(PDO $pdo): array
+{
+    return [
+        'rent' => getMonthlyPaceFor($pdo, 'rent', 'earmarked_rent'),
+        'debt' => getMonthlyPaceFor($pdo, 'debt_payment', 'earmarked_debt'),
+    ];
+}
+
+/**
+ * Render the 7-day forecast + monthly pace as a plain-text fact block for
+ * the AI prompt — deterministic, no interpretation added here. The prompt
+ * template itself instructs the AI to only restate these, not advise.
+ *
+ * @param  array $forecast  From getSevenDayForecast()
+ * @param  array $pace      From getMonthlyPace()
  * @return string
  */
-function buildPromptFromBudgetPlan(string $template, array $plan): string
+function renderFactsBlock(array $forecast, array $pace): string
 {
-    $uberIncomeText = $plan['income']['uber_logged']
-        ? 'R' . number_format($plan['income']['uber_income_so_far'], 2)
-        : 'not logged yet this week (he logs Uber income/costs manually, usually on Sundays — do not treat this as zero income)';
+    $lines = [];
+    foreach ($forecast['days'] as $d) {
+        $line = "{$d['day_name']} ({$d['date']}): ";
+        $parts = [];
+        if ($d['booking_income'] > 0) {
+            $parts[] = "R" . number_format($d['booking_income'], 2) . " booking income";
+        }
+        if ($d['booking_fuel'] > 0) {
+            $parts[] = "R" . number_format($d['booking_fuel'], 2) . " est. booking fuel";
+        }
+        if ($d['is_sunday_settlement']) {
+            $parts[] = "R" . number_format($d['settlement']['car_rental'], 2) . " car rental due";
+            $parts[] = "R" . number_format($d['settlement']['uber_fuel_target'], 2) . " Uber fuel target";
+        }
+        $parts[] = "R" . number_format($d['living_expense'], 2) . " living";
+        $line .= implode(', ', $parts) . ". Day net: R" . number_format($d['day_net'], 2);
+        $lines[] = $line;
+    }
+    $lines[] = "7-day projected net: R" . number_format($forecast['final_net'], 2);
 
-    $replacements = [
-        '{{week_start}}'             => $plan['week_start'],
-        '{{rent_target}}'            => number_format($plan['rent']['target'], 2),
-        '{{rent_earmarked}}'         => number_format($plan['rent']['earmarked'], 2),
-        '{{rent_shortfall}}'         => number_format($plan['rent']['shortfall'], 2),
-        '{{debt_target}}'            => number_format($plan['debt']['target'], 2),
-        '{{debt_earmarked}}'         => number_format($plan['debt']['earmarked'], 2),
-        '{{debt_shortfall}}'         => number_format($plan['debt']['shortfall'], 2),
-        '{{car_rental}}'             => number_format($plan['car_rental']['amount'], 2) . ' (' . $plan['car_rental']['note'] . ')',
-        '{{uber_fuel_target}}'       => number_format($plan['fuel']['uber_target'], 2),
-        '{{booking_fuel_forecast}}'  => number_format($plan['fuel']['booking_forecast'], 2),
-        '{{fuel_total}}'             => number_format($plan['fuel']['total'], 2),
-        '{{running_costs_planned}}'  => number_format($plan['running_costs_planned'], 2),
-        '{{living_expenses_target}}' => number_format($plan['living_expenses_target'], 2),
-        '{{booking_income}}'         => number_format($plan['income']['booking_income'], 2),
-        '{{uber_income_so_far}}'     => $uberIncomeText,
-        '{{total_income}}'           => number_format($plan['income']['total'], 2),
-        '{{total_obligations}}'      => number_format($plan['total_obligations'], 2),
-        '{{buffer}}'                 => number_format($plan['buffer'], 2),
-    ];
+    $lines[] = '';
+    $lines[] = "Rent this month: {$pace['rent']['expected_payments_so_far']} payments expected so far, "
+        . "R" . number_format($pace['rent']['actual_to_date'], 2) . " actually earmarked "
+        . "(equivalent to {$pace['rent']['payments_equivalent']} payments) against "
+        . "R" . number_format($pace['rent']['target_to_date'], 2) . " target-to-date. "
+        . "Monthly target: R" . number_format($pace['rent']['monthly_target'], 2) . ".";
+    $lines[] = "Debt this month: {$pace['debt']['expected_payments_so_far']} payments expected so far, "
+        . "R" . number_format($pace['debt']['actual_to_date'], 2) . " actually earmarked "
+        . "(equivalent to {$pace['debt']['payments_equivalent']} payments) against "
+        . "R" . number_format($pace['debt']['target_to_date'], 2) . " target-to-date. "
+        . "Monthly target: R" . number_format($pace['debt']['monthly_target'], 2) . ".";
 
-    return strtr($template, $replacements);
+    return implode("\n", $lines);
 }
 
 /**
- * Get this week's AI budget briefing, using a cached result if the plan
- * hasn't changed and the cache isn't stale (24h). Calls the Claude API
- * only when the plan's hash differs or 24h have passed.
+ * Get the AI's factual restatement of the 7-day forecast + monthly pace,
+ * using a cached result if the facts haven't changed and the cache isn't
+ * stale (24h). Calls the Claude API only when the facts hash differs or
+ * 24h have passed.
  *
  * @param  PDO   $pdo
- * @param  array $plan          From getWeeklyBudgetPlan() — passed in so the
- *                               caller (the page) doesn't compute it twice
+ * @param  array $forecast
+ * @param  array $pace
  * @param  bool  $forceRefresh
  * @return array  ['success' => bool, 'message' => string, 'cached' => bool]
  */
-function getAiBudgetRecommendation(PDO $pdo, array $plan, bool $forceRefresh = false): array
+function getAiFactualBriefing(PDO $pdo, array $forecast, array $pace, bool $forceRefresh = false): array
 {
-    $hash = md5(json_encode($plan));
+    $factsBlock = renderFactsBlock($forecast, $pace);
+    $hash = md5($factsBlock);
 
     $stmt = $pdo->prepare(
         "SELECT recommendation, snapshot_hash, generated_at FROM ai_recommendations
-         WHERE type = 'weekly_budget' ORDER BY generated_at DESC LIMIT 1"
+         WHERE type = 'seven_day_forecast' ORDER BY generated_at DESC LIMIT 1"
     );
     $stmt->execute();
     $cached = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -230,11 +268,11 @@ function getAiBudgetRecommendation(PDO $pdo, array $plan, bool $forceRefresh = f
     }
 
     $template = getSystemVariable($pdo, 'ai_prompt_template');
-    $prompt = buildPromptFromBudgetPlan($template, $plan);
+    $prompt = strtr($template, ['{{facts_block}}' => $factsBlock]);
 
     $payload = [
         'model'      => 'claude-sonnet-5',
-        'max_tokens' => 350,
+        'max_tokens' => 400,
         'messages'   => [
             ['role' => 'user', 'content' => $prompt],
         ],
@@ -275,7 +313,7 @@ function getAiBudgetRecommendation(PDO $pdo, array $plan, bool $forceRefresh = f
     $text = trim($text);
     $stmt = $pdo->prepare(
         "INSERT INTO ai_recommendations (type, snapshot_hash, recommendation, generated_at)
-         VALUES ('weekly_budget', ?, ?, NOW())"
+         VALUES ('seven_day_forecast', ?, ?, NOW())"
     );
     $stmt->execute([$hash, $text]);
 
