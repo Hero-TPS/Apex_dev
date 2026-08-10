@@ -100,6 +100,20 @@ ALTER TABLE bookings
 
 ---
 
+### [Budgeting] Widen `system_variables.value` from VARCHAR(255) to TEXT
+
+- [x] Done on dev
+- [x] Done on live
+
+```sql
+ALTER TABLE system_variables
+    MODIFY COLUMN value TEXT NULL;
+```
+
+> Needed for `ai_prompt_template` — the AI prompt text is longer than 255 characters and was silently truncating on save.
+
+---
+
 ---
 
 **Notes:**
