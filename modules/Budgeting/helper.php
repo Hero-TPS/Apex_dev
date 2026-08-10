@@ -1,4 +1,5 @@
 <?php
+// modules/Budgeting/helper.php
 
 if (!defined('ROOT_DIR')) {
     die('Direct access not allowed');
@@ -246,7 +247,10 @@ function renderFactsBlock(array $forecast, array $pace): string
 function getAiFactualBriefing(PDO $pdo, array $forecast, array $pace, bool $forceRefresh = false): array
 {
     $factsBlock = renderFactsBlock($forecast, $pace);
-    $hash = md5($factsBlock);
+    $template = getSystemVariable($pdo, 'ai_prompt_template');
+    // Hash covers both the data AND the prompt wording — editing the template
+    // in Maintenance must invalidate old cache the same way changed numbers do.
+    $hash = md5($factsBlock . '|' . $template);
 
     $stmt = $pdo->prepare(
         "SELECT recommendation, snapshot_hash, generated_at FROM ai_recommendations
@@ -267,7 +271,6 @@ function getAiFactualBriefing(PDO $pdo, array $forecast, array $pace, bool $forc
         return ['success' => false, 'message' => 'ANTHROPIC_API_KEY not configured', 'cached' => false];
     }
 
-    $template = getSystemVariable($pdo, 'ai_prompt_template');
     $prompt = strtr($template, ['{{facts_block}}' => $factsBlock]);
 
     $payload = [
