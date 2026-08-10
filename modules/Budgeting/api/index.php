@@ -34,8 +34,9 @@ function handleGetRecommendation()
 
     $forceRefresh = !empty($_POST['force_refresh']);
 
-    $plan = getWeeklyBudgetPlan($pdo);
-    $result = getAiBudgetRecommendation($pdo, $plan, $forceRefresh);
+    $forecast = getSevenDayForecast($pdo);
+    $pace = getMonthlyPace($pdo);
+    $result = getAiFactualBriefing($pdo, $forecast, $pace, $forceRefresh);
 
     jsonResponse($result);
 }
