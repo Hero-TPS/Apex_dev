@@ -8,6 +8,8 @@
 - Don't assume the next priority — confirm before building past what was asked.
 - add a comment at the top (if not already added) to every file with path from root. Most files have it. ex: modules/Bookings/api/index.php
 
+- Discuss before building code. ask first. or when you are explicitly told to build code.
+
 ## Conventions
 - PHP/MySQL. Timezone always `Africa/Johannesburg` — use the `TIME_ZONE` constant.
 - All styles in `assets/css/styles.css`, no inline styles. Module-specific classes use an `at-` prefix.
