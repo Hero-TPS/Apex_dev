@@ -310,6 +310,9 @@ function getAiFactualBriefing(PDO $pdo, array $forecast, array $pace, bool $forc
     $text = $data['content'][0]['text'] ?? null;
 
     if (!$text) {
+        logCritical('BUDGETING_AI', 'Unexpected AI response format', [
+            'raw_response' => substr($response, 0, 2000),
+        ]);
         return ['success' => false, 'message' => 'Unexpected AI response format', 'cached' => false];
     }
 
