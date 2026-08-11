@@ -6,7 +6,7 @@
 - New SQL migration entries always show the full, updated `LIVE_MIGRATION.md` file (not just the new entry) so it stays trackable across separate chats. New entries' checkboxes stay unchecked — never auto-mark "Done on dev"/"Done on live", that's his call.
 - CSS changes are delivered as a snippet (not the whole `styles.css`, which is large), but always as a `.css` file — never `.txt` — so it opens for copying instead of forcing a download.
 - Don't assume the next priority — confirm before building past what was asked.
-- add a comment at the top (if not already added) to every file with path from root. Most files have it. ex: modules/Bookings/api/index.php
+- add a comment at the top (if not already added) to every file with path from root. Most files have it. ex: modules/Bookings/api/index.php. Do it only for files that are updated during chats. No need to rescan all files in the repo.
 
 - Discuss before building code. ask first. or when you are explicitly told to build code.
 
