@@ -275,7 +275,7 @@ function getAiFactualBriefing(PDO $pdo, array $forecast, array $pace, bool $forc
 
     $payload = [
         'model'      => 'claude-sonnet-5',
-        'max_tokens' => 400,
+        'max_tokens' => 1024,
         'messages'   => [
             ['role' => 'user', 'content' => $prompt],
         ],
@@ -307,7 +307,13 @@ function getAiFactualBriefing(PDO $pdo, array $forecast, array $pace, bool $forc
     }
 
     $data = json_decode($response, true);
-    $text = $data['content'][0]['text'] ?? null;
+    $text = null;
+    foreach (($data['content'] ?? []) as $block) {
+        if (($block['type'] ?? '') === 'text') {
+            $text = $block['text'];
+            break;
+        }
+    }
 
     if (!$text) {
         logCritical('BUDGETING_AI', 'Unexpected AI response format', [
