@@ -102,8 +102,8 @@ $current_balance = getCurrentUberBalance($pdo);
             <h3>🏠 Rental Shortfall</h3>
             <p class="at-help-text">Record-keeping only — never used in Financials or Budgeting reports.</p>
 
-            <div class="metric-row"><span>Outstanding Balance (before this week)</span><strong>R <span id="shortfallBalanceBefore"><?= number_format($current_balance, 2) ?></span></strong></div>
-            <p class="at-help-text">As of the most recently recorded week. Recalculates automatically once this week is saved — order doesn't matter.</p>
+            <div class="metric-row"><span>Balance (before this week)</span><strong>R <span id="shortfallBalanceBefore"><?= number_format($current_balance, 2) ?></span></strong></div>
+            <p class="at-help-text">As of the most recently recorded week. Positive = you owe the rental company, negative = they owe you. Recalculates automatically once this week is saved — order doesn't matter.</p>
 
             <div class="metric-row"><span>Card Income (Total Income − Cash)</span><span>R <span id="shortfallCardIncome">0.00</span></span></div>
             <div class="metric-row"><span>Car Rental (weekly)</span><span>R <span id="shortfallCarRental"><?= number_format($car_rental_price, 2) ?></span></span></div>
@@ -117,8 +117,7 @@ $current_balance = getCurrentUberBalance($pdo);
                 <p class="at-help-text">Only fill this in if you actually paid money toward the balance this week.</p>
             </div>
 
-            <div class="metric-row"><span>Balance After This Week</span><strong>R <span id="shortfallBalanceAfter">0.00</span></strong></div>
-            <div class="metric-row" id="shortfallPaidOutRow" style="display:none;"><span>Paid Out To You</span><strong>R <span id="shortfallPaidOut">0.00</span></strong></div>
+            <div class="metric-row"><span>Balance (after this week)</span><strong><span id="shortfallBalanceAfter">R 0.00</span></strong></div>
         </div>
 
         <button type="submit" class="btn" id="submitBtn">💾 Save Income</button>
@@ -175,22 +174,13 @@ $current_balance = getCurrentUberBalance($pdo);
         const net = cardIncome - deductions;
         const paid = parseFloat($('#shortfall_paid').val()) || 0;
 
-        const balanceAfterDeduction = Math.max(balanceBefore - net, 0);
-        const paidOut = Math.max(net - balanceBefore, 0);
-        const balanceAfter = Math.max(balanceAfterDeduction - paid, 0);
+        const balanceAfter = balanceBefore - net - paid;
 
         $('#shortfallCardIncome').text(cardIncome.toFixed(2));
         $('#shortfallFines').text(fines.toFixed(2));
         $('#shortfallRepairs').text(repairs.toFixed(2));
         $('#shortfallNet').text(net.toFixed(2));
-        $('#shortfallBalanceAfter').text(balanceAfter.toFixed(2));
-
-        if (paidOut > 0) {
-            $('#shortfallPaidOutRow').show();
-            $('#shortfallPaidOut').text(paidOut.toFixed(2));
-        } else {
-            $('#shortfallPaidOutRow').hide();
-        }
+        $('#shortfallBalanceAfter').text('R ' + balanceAfter.toFixed(2));
     }
 
     $(document).ready(function () {
