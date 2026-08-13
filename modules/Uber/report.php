@@ -51,7 +51,6 @@ $report = getUberLedgerReport($pdo, $monthsBack);
             <div class="metric-row"><span>Total Card Income:</span> <strong>R<?= number_format($m['totals']['card_income'], 2) ?></strong></div>
             <div class="metric-row"><span>Total Net:</span> <strong>R<?= number_format($m['totals']['net'], 2) ?></strong></div>
             <div class="metric-row"><span>Total Paid In:</span> <span>R<?= number_format($m['totals']['shortfall_paid'], 2) ?></span></div>
-            <div class="metric-row"><span>Total Paid Out To You:</span> <span>R<?= number_format($m['totals']['paid_out'], 2) ?></span></div>
             <div class="metric-row"><span>Balance At Month End:</span> <strong>R<?= number_format($m['balance_at_month_end'], 2) ?></strong></div>
 
             <table style="width:100%; border-collapse:collapse; font-size:0.85em; margin-top:10px;">
@@ -64,7 +63,6 @@ $report = getUberLedgerReport($pdo, $monthsBack);
                         <th style="text-align:right; padding:4px 8px;">Repairs</th>
                         <th style="text-align:right; padding:4px 8px;">Net</th>
                         <th style="text-align:right; padding:4px 8px;">Paid In</th>
-                        <th style="text-align:right; padding:4px 8px;">Paid Out</th>
                         <th style="text-align:right; padding:4px 8px;">Balance</th>
                     </tr>
                 </thead>
@@ -78,7 +76,6 @@ $report = getUberLedgerReport($pdo, $monthsBack);
                             <td style="text-align:right; padding:4px 8px;">R<?= number_format($w['vehicle_repairs'], 2) ?></td>
                             <td style="text-align:right; padding:4px 8px;">R<?= number_format($w['net'], 2) ?></td>
                             <td style="text-align:right; padding:4px 8px;">R<?= number_format($w['shortfall_paid'], 2) ?></td>
-                            <td style="text-align:right; padding:4px 8px;">R<?= number_format($w['paid_out'], 2) ?></td>
                             <td style="text-align:right; padding:4px 8px;"><strong>R<?= number_format($w['balance_after'], 2) ?></strong></td>
                         </tr>
                     <?php endforeach; ?>
@@ -123,14 +120,13 @@ $report = getUberLedgerReport($pdo, $monthsBack);
                         'R' + w.vehicle_repairs.toFixed(2),
                         'R' + w.net.toFixed(2),
                         'R' + w.shortfall_paid.toFixed(2),
-                        'R' + w.paid_out.toFixed(2),
                         'R' + w.balance_after.toFixed(2)
                     ];
                 });
 
                 doc.autoTable({
                     startY: y + 4,
-                    head: [['Week', 'Card Income', 'Rental', 'Fines', 'Repairs', 'Net', 'Paid In', 'Paid Out', 'Balance']],
+                    head: [['Week', 'Card Income', 'Rental', 'Fines', 'Repairs', 'Net', 'Paid In', 'Balance']],
                     body: rows,
                     styles: { fontSize: 8 },
                     headStyles: { fillColor: [60, 60, 60] },
