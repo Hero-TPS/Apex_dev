@@ -9,16 +9,14 @@
 //   deductions  = car_rental + fines + vehicle_repairs
 //   net         = card_income - deductions
 //
-// That net first settles whatever balance is already outstanding:
-//   - if net clears the outstanding balance with some left over, the
-//     rental company pays the excess out (balance floors at 0 — they are
-//     not a bank, no running credit is carried forward)
-//   - if net doesn't fully cover the outstanding balance, the balance
-//     just shrinks by that amount
-//   - if net itself is negative, the balance grows
+// balance_after = balance_before - net - shortfall_paid
 //
-// Any actual payment made (shortfall_paid) then further reduces the
-// balance, whenever it happens - not necessarily "the week after".
+// The balance is signed and carries forward exactly as computed:
+//   - positive  = Quentin owes the rental company
+//   - negative  = the rental company owes Quentin (a credit), which
+//                 automatically reduces what's owed the following week
+// There is no floor at zero and no separate "paid out" event — a
+// negative balance IS the credit, carried forward like anything else.
 //
 // The balance is a genuine running total computed live by walking every
 // week in order — nothing is stored per-week except the raw inputs
@@ -46,7 +44,6 @@
  *     deductions: float,
  *     net: float,
  *     balance_before: float,
- *     paid_out: float,
  *     shortfall_paid: float,
  *     balance_after: float
  * }>  Keyed by uber_income.id, in week order.
@@ -102,14 +99,8 @@ function calculateUberLedger(PDO $pdo): array
         $net        = $cardIncome - $deductions;
 
         $balanceBefore = $balance;
-
-        // Net first settles the outstanding balance. Floors at 0 — any
-        // excess is paid out to Quentin, never carried as a credit.
-        $balanceAfterDeduction = max($balanceBefore - $net, 0.0);
-        $paidOut = max($net - $balanceBefore, 0.0);
-
         $paid = (float) $week['shortfall_paid'];
-        $balanceAfterPayment = max($balanceAfterDeduction - $paid, 0.0);
+        $balanceAfter = $balanceBefore - $net - $paid;
 
         $ledger[$id] = [
             'id'              => $id,
@@ -122,12 +113,11 @@ function calculateUberLedger(PDO $pdo): array
             'deductions'      => $deductions,
             'net'             => $net,
             'balance_before'  => $balanceBefore,
-            'paid_out'        => $paidOut,
             'shortfall_paid'  => $paid,
-            'balance_after'   => $balanceAfterPayment,
+            'balance_after'   => $balanceAfter,
         ];
 
-        $balance = $balanceAfterPayment;
+        $balance = $balanceAfter;
     }
 
     return $ledger;
@@ -148,9 +138,10 @@ function getUberLedgerEntry(PDO $pdo, int $recordId): ?array
 }
 
 /**
- * Get the current outstanding balance — i.e. balance_after of the most
- * recently dated week on record. Used as an informational display when
- * logging a new week; 0 if there's no history yet.
+ * Get the current balance — i.e. balance_after of the most recently
+ * dated week on record. Signed: positive means Quentin owes the rental
+ * company, negative means they owe him. Used as an informational
+ * display when logging a new week; 0 if there's no history yet.
  *
  * @param PDO $pdo
  * @return float
@@ -182,12 +173,24 @@ function getCurrentUberBalance(PDO $pdo): float
  *         year: int,
  *         month: int,
  *         weeks: array,
- *         totals: array{card_income: float, net: float, shortfall_paid: float, paid_out: float},
+ *         totals: array{card_income: float, net: float, shortfall_paid: float},
  *         balance_at_month_end: float
  *     }>,
  *     current_balance: float
  * }
  */
+/**
+ * Format a signed balance as "R 123.45" or "R -123.45" — used everywhere
+ * the ledger balance is displayed so positive/negative read consistently.
+ *
+ * @param float $amount
+ * @return string
+ */
+function formatUberBalance(float $amount): string
+{
+    return 'R ' . number_format($amount, 2);
+}
+
 function getUberLedgerReport(PDO $pdo, int $monthsBack): array
 {
     $ledger = calculateUberLedger($pdo);
@@ -217,7 +220,7 @@ function getUberLedgerReport(PDO $pdo, int $monthsBack): array
                 'year'   => (int) $dt->format('Y'),
                 'month'  => (int) $dt->format('n'),
                 'weeks'  => [],
-                'totals' => ['card_income' => 0.0, 'net' => 0.0, 'shortfall_paid' => 0.0, 'paid_out' => 0.0],
+                'totals' => ['card_income' => 0.0, 'net' => 0.0, 'shortfall_paid' => 0.0],
                 'balance_at_month_end' => 0.0,
             ];
         }
@@ -231,7 +234,6 @@ function getUberLedgerReport(PDO $pdo, int $monthsBack): array
         $months[$key]['totals']['card_income']    += $entry['card_income'];
         $months[$key]['totals']['net']             += $entry['net'];
         $months[$key]['totals']['shortfall_paid']  += $entry['shortfall_paid'];
-        $months[$key]['totals']['paid_out']        += $entry['paid_out'];
         $months[$key]['balance_at_month_end'] = $entry['balance_after'];
     }
 
