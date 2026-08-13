@@ -109,6 +109,11 @@ include ROOT_DIR . '/includes/header.php';
 </div>
 
 <script>
+    function formatBalance(v) {
+        v = parseFloat(v || 0);
+        return 'R ' + v.toFixed(2);
+    }
+
     function buildWeekBlock(log) {
         let costsHtml = '—';
         if (log.additional_costs && log.additional_costs.length > 0) {
@@ -135,8 +140,7 @@ include ROOT_DIR . '/includes/header.php';
                 <div class="metric-row"><span>Additional Costs:</span><span>${costsHtml}</span></div>
                 <div class="metric-row"><span>Net This Week:</span><span>R${parseFloat(log.ledger.net || 0).toFixed(2)}</span></div>
                 <div class="metric-row"><span>Paid In:</span><span>R${parseFloat(log.ledger.shortfall_paid || 0).toFixed(2)}</span></div>
-                ${parseFloat(log.ledger.paid_out || 0) > 0 ? `<div class="metric-row"><span>Paid Out To You:</span><strong>R${parseFloat(log.ledger.paid_out).toFixed(2)}</strong></div>` : ''}
-                ${parseFloat(log.ledger.balance_after || 0) > 0 ? `<div class="metric-row"><span>Outstanding Balance:</span><strong>R${parseFloat(log.ledger.balance_after).toFixed(2)}</strong></div>` : ''}
+                <div class="metric-row"><span>Balance:</span><strong>${formatBalance(log.ledger.balance_after)}</strong></div>
                 <div class="metric-row">
                     <span></span>
                     <span>
