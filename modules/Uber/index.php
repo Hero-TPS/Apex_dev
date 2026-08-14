@@ -43,6 +43,8 @@ $currentWeekSunday->modify('+6 days');
 $currentWeekSunday->setTime(23, 59, 59);
 
 include ROOT_DIR . '/includes/header.php';
+
+$carRentalPrice = (float) getSystemVariable($pdo, 'car_rental_price');
 ?>
 
 <div class="financial-dashboard">
@@ -61,7 +63,9 @@ include ROOT_DIR . '/includes/header.php';
             "SELECT COALESCE(SUM(total_income), 0)     AS total_income,
                     COALESCE(SUM(cash_received), 0)     AS cash_received,
                     COALESCE(SUM(total_trips), 0)       AS total_trips,
-                    COALESCE(SUM(total_time_online), 0) AS total_time_online
+                    COALESCE(SUM(total_time_online), 0) AS total_time_online,
+                    COALESCE(SUM(shortfall_paid), 0)    AS shortfall_paid,
+                    COUNT(*)                            AS week_count
              FROM uber_income
              WHERE week_start BETWEEN ? AND ?"
         );
@@ -78,7 +82,20 @@ include ROOT_DIR . '/includes/header.php';
         $costStmt->execute([$startUnix, $endUnix]);
         $row['additional_costs'] = (float) $costStmt->fetchColumn();
 
+        // Fines + Vehicle Repairs only, for the Total Net calc — matches
+        // calculateUberWeekFinancials() in helper.php
+        $shortfallCostStmt = $pdo->prepare(
+            "SELECT COALESCE(SUM(uac.amount), 0) AS amount
+             FROM uber_additional_costs uac
+             JOIN uber_income ui ON uac.uber_income_id = ui.id
+             WHERE ui.week_start BETWEEN ? AND ?
+             AND uac.reason IN ('Fines', 'Vehicle Repairs')"
+        );
+        $shortfallCostStmt->execute([$startUnix, $endUnix]);
+        $finesAndRepairs = (float) $shortfallCostStmt->fetchColumn();
+
         $cardIncome = $row['total_income'] - $row['cash_received'];
+        $totalNet   = $cardIncome - ($carRentalPrice * $row['week_count']) - $finesAndRepairs;
         $monthLabel = date('F Y', mktime(0, 0, 0, $m['month'], 1, $m['year']));
 
         $monthStart = new DateTime("{$m['year']}-{$m['month']}-01", $tz);
@@ -99,6 +116,8 @@ include ROOT_DIR . '/includes/header.php';
             <div class="metric-row"><span>Total Trips:</span>        <strong><?= (int) $row['total_trips'] ?></strong></div>
             <div class="metric-row"><span>Time Online:</span>        <span><?= number_format($row['total_time_online'], 1) ?> hrs</span></div>
             <div class="metric-row"><span>Additional Costs:</span>   <span>R<?= number_format($row['additional_costs'], 2) ?></span></div>
+            <div class="metric-row"><span>Total Net:</span>          <strong class="net-amount <?= $totalNet >= 0 ? 'profit' : 'loss' ?>">R<?= number_format($totalNet, 2) ?></strong></div>
+            <div class="metric-row"><span>Total Paid In:</span>      <span>R<?= number_format($row['shortfall_paid'], 2) ?></span></div>
 
             <button class="toggle-weeks-btn" data-year="<?= $m['year'] ?>" data-month="<?= $m['month'] ?>">
                 🔽 View Weeks
@@ -109,11 +128,6 @@ include ROOT_DIR . '/includes/header.php';
 </div>
 
 <script>
-    function formatBalance(v) {
-        v = parseFloat(v || 0);
-        return 'R ' + v.toFixed(2);
-    }
-
     function buildWeekBlock(log) {
         let costsHtml = '—';
         if (log.additional_costs && log.additional_costs.length > 0) {
@@ -138,9 +152,11 @@ include ROOT_DIR . '/includes/header.php';
                 <div class="metric-row"><span>Total Trips:</span>     <strong>${log.total_trips}</strong></div>
                 <div class="metric-row"><span>Time Online:</span>     <span>${parseFloat(log.total_time_online || 0).toFixed(1)} hrs</span></div>
                 <div class="metric-row"><span>Additional Costs:</span><span>${costsHtml}</span></div>
-                <div class="metric-row"><span>Net This Week:</span><span>R${parseFloat(log.ledger.net || 0).toFixed(2)}</span></div>
-                <div class="metric-row"><span>Paid In:</span><span>R${parseFloat(log.ledger.shortfall_paid || 0).toFixed(2)}</span></div>
-                <div class="metric-row"><span>Balance:</span><strong>${formatBalance(log.ledger.balance_after)}</strong></div>
+                <div class="metric-row"><span>Car Rental:</span><span>R${parseFloat(log.financials.car_rental || 0).toFixed(2)}</span></div>
+                <div class="metric-row"><span>Fines:</span><span>R${parseFloat(log.financials.fines || 0).toFixed(2)}</span></div>
+                <div class="metric-row"><span>Vehicle Repairs:</span><span>R${parseFloat(log.financials.vehicle_repairs || 0).toFixed(2)}</span></div>
+                <div class="metric-row"><span>Net This Week:</span><strong class="net-amount ${parseFloat(log.financials.net || 0) >= 0 ? 'profit' : 'loss'}">R${parseFloat(log.financials.net || 0).toFixed(2)}</strong></div>
+                <div class="metric-row"><span>Paid In:</span><span>R${parseFloat(log.financials.shortfall_paid || 0).toFixed(2)}</span></div>
                 <div class="metric-row">
                     <span></span>
                     <span>
@@ -247,4 +263,3 @@ include ROOT_DIR . '/includes/header.php';
 </script>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>
-
