@@ -247,3 +247,4 @@ include ROOT_DIR . '/includes/header.php';
 </script>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>
+
