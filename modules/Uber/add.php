@@ -45,11 +45,6 @@ $cost_reasons = fetchColumn($pdo, 'uber_cost_reasons', 'reason', 'reason ASC');
 
 // Current car rental price, used for the shortfall calculation display
 $car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
-
-// Current outstanding balance as of the most recent recorded week —
-// informational only. The actual balance for whichever week you're
-// logging is computed live from full history once saved.
-$current_balance = getCurrentUberBalance($pdo);
 ?>
 
 <div class="form-container">
@@ -102,9 +97,6 @@ $current_balance = getCurrentUberBalance($pdo);
             <h3>🏠 Rental Shortfall</h3>
             <p class="at-help-text">Record-keeping only — never used in Financials or Budgeting reports.</p>
 
-            <div class="metric-row"><span>Balance (before this week)</span><strong>R <span id="shortfallBalanceBefore"><?= number_format($current_balance, 2) ?></span></strong></div>
-            <p class="at-help-text">As of the most recently recorded week. Positive = you owe the rental company, negative = they owe you. Recalculates automatically once this week is saved — order doesn't matter.</p>
-
             <div class="metric-row"><span>Card Income (Total Income − Cash)</span><span>R <span id="shortfallCardIncome">0.00</span></span></div>
             <div class="metric-row"><span>Car Rental (weekly)</span><span>R <span id="shortfallCarRental"><?= number_format($car_rental_price, 2) ?></span></span></div>
             <div class="metric-row"><span>Fines (Additional Costs)</span><span>R <span id="shortfallFines">0.00</span></span></div>
@@ -114,10 +106,8 @@ $current_balance = getCurrentUberBalance($pdo);
             <div class="form-group">
                 <label for="shortfall_paid">Amount Paid In (R)</label>
                 <input type="number" id="shortfall_paid" name="shortfall_paid" step="0.01" min="0" value="0">
-                <p class="at-help-text">Only fill this in if you actually paid money toward the balance this week.</p>
+                <p class="at-help-text">Only fill this in if you actually paid money toward the rental company this week.</p>
             </div>
-
-            <div class="metric-row"><span>Balance (after this week)</span><strong><span id="shortfallBalanceAfter">R 0.00</span></strong></div>
         </div>
 
         <button type="submit" class="btn" id="submitBtn">💾 Save Income</button>
@@ -151,8 +141,6 @@ $current_balance = getCurrentUberBalance($pdo);
         $('#additional-costs-container').append(row);
     }
 
-    const balanceBefore = <?= json_encode($current_balance) ?>;
-
     function recalcShortfall() {
         const totalIncome = parseFloat($('#total_income').val()) || 0;
         const cashReceived = parseFloat($('#cash_received').val()) || 0;
@@ -172,15 +160,11 @@ $current_balance = getCurrentUberBalance($pdo);
 
         const deductions = carRentalPrice + fines + repairs;
         const net = cardIncome - deductions;
-        const paid = parseFloat($('#shortfall_paid').val()) || 0;
-
-        const balanceAfter = balanceBefore - net - paid;
 
         $('#shortfallCardIncome').text(cardIncome.toFixed(2));
         $('#shortfallFines').text(fines.toFixed(2));
         $('#shortfallRepairs').text(repairs.toFixed(2));
         $('#shortfallNet').text(net.toFixed(2));
-        $('#shortfallBalanceAfter').text('R ' + balanceAfter.toFixed(2));
     }
 
     $(document).ready(function () {
