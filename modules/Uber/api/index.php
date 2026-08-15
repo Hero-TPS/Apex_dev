@@ -33,9 +33,6 @@ try {
         case 'get_by_month':
             handleGetByMonth();
             break;
-        case 'get_current_balance':
-            handleGetCurrentBalance();
-            break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
     }
@@ -267,20 +264,6 @@ function handleDelete()
     } catch (PDOException $e) {
         logError('UBER', 'Failed to delete Uber income', ['error' => $e->getMessage(), 'record_id' => $id]);
         jsonResponse(['success' => false, 'message' => 'Failed to delete Uber income'], 500);
-    }
-}
-
-function handleGetCurrentBalance()
-{
-    global $pdo;
-
-    try {
-        $balance = getCurrentUberBalance($pdo);
-        jsonResponse(['success' => true, 'balance' => $balance]);
-
-    } catch (PDOException $e) {
-        logError('UBER', 'Failed to fetch current balance', ['error' => $e->getMessage()]);
-        jsonResponse(['success' => false, 'message' => 'Database error'], 500);
     }
 }
 
