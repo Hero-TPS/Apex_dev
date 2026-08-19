@@ -73,7 +73,7 @@ include ROOT_DIR . '/includes/header.php';
         <div id="financials-section" class="menu-content">
             <a href="<?= BASE_URL ?>/modules/Financials/" class="dashboard-button db-reports">Financial Summary</a>
             <a href="<?= BASE_URL ?>/modules/Financials/balance_sheet.php" class="dashboard-button db-balance-sheet">Balance Sheet</a>
-            <a href="<?= BASE_URL ?>/modules/Budgeting/ai_advisor.php" class="dashboard-button db-budgeting">Weekly Budget Plan</a>
+            <!-- <a href="<?= BASE_URL ?>/modules/Budgeting/ai_advisor.php" class="dashboard-button db-budgeting">Weekly Budget Plan</a> -->
         </div>
     </div>
 
