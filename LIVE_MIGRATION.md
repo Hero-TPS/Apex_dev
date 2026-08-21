@@ -114,6 +114,21 @@ ALTER TABLE system_variables
 
 ---
 
+### [uber_income] Add balance correction columns
+
+- [ ] Done on dev
+- [ ] Done on live
+
+```sql
+ALTER TABLE uber_income
+    ADD COLUMN IF NOT EXISTS balance_override DECIMAL(10,2) NULL DEFAULT NULL,
+    ADD COLUMN IF NOT EXISTS balance_override_at DATETIME NULL DEFAULT NULL;
+```
+
+> `balance_override`: manually set on a week to seed or correct the running Balance shown in Uber Reports. NULL on every week except one you've explicitly corrected. `balance_override_at`: timestamp of when the correction was made (for your own audit trail / to show the rental company when a fix was applied). See `modules/Uber/helper.php` — `calculateUberBalanceWalk()`. Record-keeping only — never referenced by Financials/Budgeting.
+
+---
+
 ---
 
 **Notes:**
