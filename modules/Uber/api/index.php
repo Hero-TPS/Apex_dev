@@ -33,6 +33,9 @@ try {
         case 'get_by_month':
             handleGetByMonth();
             break;
+        case 'set_balance_override':
+            handleSetBalanceOverride();
+            break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
     }
@@ -54,6 +57,9 @@ function handleGetAll()
         $stmt = $pdo->query("SELECT * FROM uber_income ORDER BY week_start DESC");
         $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // Computed once per request, not per record.
+        $balanceWalk = calculateUberBalanceWalk($pdo);
+
         // For each record, add week_display and fetch additional costs
         foreach ($records as &$record) {
             if (isset($record['week_start']) && $record['week_start'] > 0) {
@@ -73,6 +79,8 @@ function handleGetAll()
             $record['additional_costs'] = $costStmt->fetchAll(PDO::FETCH_ASSOC);
 
             $record['financials'] = calculateUberWeekFinancials($pdo, $record);
+            $record['balance'] = $balanceWalk[(int) $record['id']]
+                ?? ['balance' => null, 'is_override' => false, 'override_at' => null];
         }
 
         jsonResponse(['success' => true, 'data' => $records]);
@@ -108,6 +116,10 @@ function handleGetSingle()
         $record['additional_costs'] = $costStmt->fetchAll(PDO::FETCH_ASSOC);
 
         $record['financials'] = calculateUberWeekFinancials($pdo, $record);
+
+        $balanceWalk = calculateUberBalanceWalk($pdo);
+        $record['balance'] = $balanceWalk[(int) $record['id']]
+            ?? ['balance' => null, 'is_override' => false, 'override_at' => null];
 
         jsonResponse(['success' => true, 'record' => $record]);
 
@@ -267,6 +279,51 @@ function handleDelete()
     }
 }
 
+/**
+ * Save (or clear) a manual balance correction on a single week. This is
+ * deliberately narrow — it only ever touches balance_override and
+ * balance_override_at, never total_income, cash_received, or any other
+ * field on the record.
+ *
+ * POST id: the uber_income record to correct
+ * POST value: the corrected balance, or '' (empty string) to clear an
+ *             existing correction back to none
+ */
+function handleSetBalanceOverride()
+{
+    global $pdo;
+
+    $id = intval($_POST['id'] ?? 0);
+    $valueRaw = $_POST['value'] ?? '';
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid record ID'], 400);
+    }
+
+    try {
+        if ($valueRaw === '') {
+            $stmt = $pdo->prepare("UPDATE uber_income SET balance_override = NULL, balance_override_at = NULL WHERE id = ?");
+            $stmt->execute([$id]);
+
+            logDebug('UBER', 'Balance correction cleared', ['record_id' => $id]);
+            jsonResponse(['success' => true, 'message' => 'Balance correction cleared']);
+            return;
+        }
+
+        $value = floatval($valueRaw);
+
+        $stmt = $pdo->prepare("UPDATE uber_income SET balance_override = ?, balance_override_at = NOW() WHERE id = ?");
+        $stmt->execute([$value, $id]);
+
+        logDebug('UBER', 'Balance correction set', ['record_id' => $id, 'value' => $value]);
+        jsonResponse(['success' => true, 'message' => 'Balance correction saved']);
+
+    } catch (PDOException $e) {
+        logError('UBER', 'Failed to save balance correction', ['error' => $e->getMessage(), 'record_id' => $id]);
+        jsonResponse(['success' => false, 'message' => 'Database error'], 500);
+    }
+}
+
 // ========== HELPERS ==========
 
 function saveAdditionalCosts(PDO $pdo, int $uberIncomeId, array $reasons, array $amounts): void
@@ -310,6 +367,9 @@ function handleGetByMonth()
         $today   = new DateTime('now', $tz);
         $todayTs = $today->getTimestamp();
 
+        // Computed once per request, not per record.
+        $balanceWalk = calculateUberBalanceWalk($pdo);
+
         foreach ($records as &$record) {
             if (isset($record['week_start']) && $record['week_start'] > 0) {
                 $start = new DateTime();
@@ -331,6 +391,8 @@ function handleGetByMonth()
             $record['additional_costs'] = $costStmt->fetchAll(PDO::FETCH_ASSOC);
 
             $record['financials'] = calculateUberWeekFinancials($pdo, $record);
+            $record['balance'] = $balanceWalk[(int) $record['id']]
+                ?? ['balance' => null, 'is_override' => false, 'override_at' => null];
         }
 
         jsonResponse(['success' => true, 'data' => $records]);
