@@ -6,6 +6,7 @@ $show_breadcrumb = true;
 require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
+require_once __DIR__ . '/helper.php';
 $breadcrumb = buildBreadcrumb([['label' => 'Uber']]);
 
 $monthsBack = (int) getSystemVariable($pdo, 'financial_months_back');
@@ -45,6 +46,10 @@ $currentWeekSunday->setTime(23, 59, 59);
 include ROOT_DIR . '/includes/header.php';
 
 $carRentalPrice = (float) getSystemVariable($pdo, 'car_rental_price');
+
+// Computed once for the whole page — every month's "Balance" row looks
+// up its own entry from this rather than recomputing.
+$balanceWalk = calculateUberBalanceWalk($pdo);
 ?>
 
 <div class="financial-dashboard">
@@ -98,6 +103,20 @@ $carRentalPrice = (float) getSystemVariable($pdo, 'car_rental_price');
         $totalNet   = $cardIncome - ($carRentalPrice * $row['week_count']) - $finesAndRepairs;
         $monthLabel = date('F Y', mktime(0, 0, 0, $m['month'], 1, $m['year']));
 
+        // === BALANCE (last resolved week in this month, if any) ===
+        $lastWeekStmt = $pdo->prepare(
+            "SELECT id FROM uber_income WHERE week_start BETWEEN ? AND ? ORDER BY week_start DESC LIMIT 1"
+        );
+        $lastWeekStmt->execute([$startUnix, $endUnix]);
+        $lastWeekId = $lastWeekStmt->fetchColumn();
+        $monthBalance = $lastWeekId ? ($balanceWalk[(int) $lastWeekId]['balance'] ?? null) : null;
+
+        $correctionStmt = $pdo->prepare(
+            "SELECT COUNT(*) FROM uber_income WHERE week_start BETWEEN ? AND ? AND balance_override IS NOT NULL"
+        );
+        $correctionStmt->execute([$startUnix, $endUnix]);
+        $monthHasCorrection = (int) $correctionStmt->fetchColumn() > 0;
+
         $monthStart = new DateTime("{$m['year']}-{$m['month']}-01", $tz);
         $monthEnd   = clone $monthStart;
         $monthEnd->modify('last day of this month');
@@ -118,6 +137,12 @@ $carRentalPrice = (float) getSystemVariable($pdo, 'car_rental_price');
             <div class="metric-row"><span>Additional Costs:</span>   <span>R<?= number_format($row['additional_costs'], 2) ?></span></div>
             <div class="metric-row"><span>Total Net:</span>          <strong class="net-amount <?= $totalNet >= 0 ? 'profit' : 'loss' ?>">R<?= number_format($totalNet, 2) ?></strong></div>
             <div class="metric-row"><span>Total Paid In:</span>      <span>R<?= number_format($row['shortfall_paid'], 2) ?></span></div>
+            <?php if ($monthBalance !== null): ?>
+                <div class="metric-row"><span>Balance:</span> <strong>R<?= number_format($monthBalance, 2) ?></strong></div>
+            <?php endif; ?>
+            <?php if ($monthHasCorrection): ?>
+                <div class="metric-row"><span></span><span class="at-balance-flag">⚠️ Balance manually corrected this month</span></div>
+            <?php endif; ?>
 
             <button class="toggle-weeks-btn" data-year="<?= $m['year'] ?>" data-month="<?= $m['month'] ?>">
                 🔽 View Weeks
@@ -140,6 +165,19 @@ $carRentalPrice = (float) getSystemVariable($pdo, 'car_rental_price');
             ? '<span class="week-in-progress">⏳ In Progress</span>'
             : '';
 
+        let balanceRowsHtml = '';
+        const bal = log.balance || { balance: null, is_override: false, override_at: null };
+        if (bal.balance !== null) {
+            balanceRowsHtml = `<div class="metric-row"><span>Balance:</span><strong>R${parseFloat(bal.balance).toFixed(2)}</strong></div>`;
+            if (bal.is_override) {
+                const d = bal.override_at ? new Date(bal.override_at.replace(' ', 'T')) : null;
+                const dateStr = d ? d.toLocaleDateString() : '';
+                balanceRowsHtml += `<div class="metric-row"><span></span><span class="at-balance-flag">⚠️ Balance manually corrected${dateStr ? ' on ' + dateStr : ''}</span></div>`;
+            }
+        }
+
+        const currentBalanceForInput = bal.balance !== null ? bal.balance : '';
+
         return `
             <div class="weekly-block${log.in_progress ? ' week-in-progress-block' : ''}">
                 <div class="week-header">
@@ -157,6 +195,19 @@ $carRentalPrice = (float) getSystemVariable($pdo, 'car_rental_price');
                 <div class="metric-row"><span>Vehicle Repairs:</span><span>R${parseFloat(log.financials.vehicle_repairs || 0).toFixed(2)}</span></div>
                 <div class="metric-row"><span>Net This Week:</span><strong class="net-amount ${parseFloat(log.financials.net || 0) >= 0 ? 'profit' : 'loss'}">R${parseFloat(log.financials.net || 0).toFixed(2)}</strong></div>
                 <div class="metric-row"><span>Paid In:</span><span>R${parseFloat(log.financials.shortfall_paid || 0).toFixed(2)}</span></div>
+                ${balanceRowsHtml}
+                <div class="metric-row">
+                    <span></span>
+                    <span>
+                        <button type="button" class="action-btn correct-balance-btn" data-id="${log.id}" data-current="${currentBalanceForInput}" data-has-override="${bal.is_override}">⚙️ Correct Balance</button>
+                    </span>
+                </div>
+                <div class="balance-correction-form hidden" data-id="${log.id}">
+                    <input type="number" step="0.01" class="balance-correction-input" placeholder="Corrected balance">
+                    <button type="button" class="action-btn save-correction-btn" data-id="${log.id}">💾 Save</button>
+                    ${bal.is_override ? `<button type="button" class="action-btn delete-btn clear-correction-btn" data-id="${log.id}">🗑️ Clear</button>` : ''}
+                    <button type="button" class="action-btn cancel-correction-btn">✖ Cancel</button>
+                </div>
                 <div class="metric-row">
                     <span></span>
                     <span>
@@ -218,7 +269,7 @@ $carRentalPrice = (float) getSystemVariable($pdo, 'car_rental_price');
         });
 
         // Delete handler for Uber records inside weekly blocks
-        $(document).on('click', '.delete-btn', function () {
+        $(document).on('click', '.delete-btn:not(.clear-correction-btn)', function () {
             if (!confirm('Delete this week\'s income?')) return;
             const id = $(this).data('id');
 
@@ -248,6 +299,58 @@ $carRentalPrice = (float) getSystemVariable($pdo, 'car_rental_price');
                 }
             });
         });
+
+        // Open the correction form for a week
+        $(document).on('click', '.correct-balance-btn', function () {
+            const id = $(this).data('id');
+            const current = $(this).data('current');
+            const form = $('.balance-correction-form[data-id="' + id + '"]');
+            form.find('.balance-correction-input').val(current);
+            form.removeClass('hidden');
+        });
+
+        $(document).on('click', '.cancel-correction-btn', function () {
+            $(this).closest('.balance-correction-form').addClass('hidden');
+        });
+
+        $(document).on('click', '.save-correction-btn', function () {
+            const id = $(this).data('id');
+            const form = $(this).closest('.balance-correction-form');
+            const value = form.find('.balance-correction-input').val();
+
+            if (value === '' || isNaN(parseFloat(value))) {
+                showNotification('✗ Enter a value first', 'error');
+                return;
+            }
+
+            saveBalanceCorrection(id, value);
+        });
+
+        $(document).on('click', '.clear-correction-btn', function () {
+            const id = $(this).data('id');
+            if (!confirm('Clear this correction? The balance will go back to being calculated normally.')) return;
+            saveBalanceCorrection(id, '');
+        });
+
+        function saveBalanceCorrection(id, value) {
+            $.ajax({
+                url: '<?= BASE_URL ?>/modules/Uber/api/index.php',
+                type: 'POST',
+                data: { action: 'set_balance_override', id: id, value: value },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.success) {
+                        showNotification('✓ ' + res.message + ' — reloading…', 'success');
+                        setTimeout(function () { location.reload(); }, 1200);
+                    } else {
+                        showNotification('✗ ' + res.message, 'error');
+                    }
+                },
+                error: function () {
+                    showNotification('❌ Failed to save correction', 'error');
+                }
+            });
+        }
 
         function showNotification(message, type) {
             const className = type === 'success' ? 'success-message' : 'error-message';
