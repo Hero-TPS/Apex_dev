@@ -2479,11 +2479,14 @@ body:not(.home-page) .floating-menu-toggle {
 .cancel-correction-btn:hover { background-color: #7f8c8d; }
 
 .balance-correction-form {
-    display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
     margin: 8px 0 12px;
+}
+
+.balance-correction-form:not(.hidden) {
+    display: flex;
 }
 
 .balance-correction-form .balance-correction-input {
