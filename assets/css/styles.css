@@ -2452,3 +2452,44 @@ body:not(.home-page) .floating-menu-toggle {
 /* db-budgeting was missing a background — caused white text on white/transparent
    background. Add this next to the other .db-* rules (e.g. near .db-reports). */
 .db-budgeting { background: linear-gradient(135deg, #11998e, #38ef7d); }
+
+/* modules/Uber — balance correction buttons/form
+   Add this block into assets/css/styles.css, near the other .db-* /
+   button color rules (e.g. after .view-details-btn).
+
+   Fix: these new buttons inherited .action-btn's fixed 95px width +
+   text-ellipsis (labels were getting clipped) and had no background
+   color assigned at all (Save/Cancel were rendering as invisible white
+   text on a white button). */
+
+.correct-balance-btn,
+.save-correction-btn,
+.cancel-correction-btn {
+    width: auto;
+    white-space: normal;
+}
+
+.correct-balance-btn { background-color: #7f8c8d; }
+.correct-balance-btn:hover { background-color: #6c7a7a; }
+
+.save-correction-btn { background-color: #27ae60; }
+.save-correction-btn:hover { background-color: #229954; }
+
+.cancel-correction-btn { background-color: #95a5a6; }
+.cancel-correction-btn:hover { background-color: #7f8c8d; }
+
+.balance-correction-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 12px;
+}
+
+.balance-correction-form .balance-correction-input {
+    flex: 1 1 140px;
+    min-width: 100px;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
