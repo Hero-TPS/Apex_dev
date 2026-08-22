@@ -2504,3 +2504,19 @@ body:not(.home-page) .floating-menu-toggle {
     width: 100%;
     margin: 0 0 4px;
 }
+/* modules/Uber — export-since-correction button
+   Add this block into assets/css/styles.css, near the other button
+   color rules (e.g. next to .correct-balance-btn).
+
+   Same bug as before: .action-btn alone has color:white but NO
+   background color and a fixed 95px width — needs its own class for
+   both, or it renders invisible (white on white) and clipped. */
+
+.export-since-correction-btn {
+    width: auto;
+    white-space: normal;
+    background-color: #2980b9;
+    margin-bottom: 12px;
+}
+.export-since-correction-btn:hover { background-color: #1f6391;
+                                   }
