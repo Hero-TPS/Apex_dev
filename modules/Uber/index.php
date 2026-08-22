@@ -105,7 +105,7 @@ if ($lastOverrideId !== null) {
     <h2>🚗 Uber Reports (Last <?= htmlspecialchars($monthsBack) ?> Months)</h2>
 
     <?php if (!empty($exportRows)): ?>
-        <button type="button" id="exportSinceCorrectionBtn" class="action-btn">📄 Export Since Last Correction (PDF)</button>
+        <button type="button" id="exportSinceCorrectionBtn" class="action-btn export-since-correction-btn">📄 Export Since Last Correction (PDF)</button>
     <?php endif; ?>
 
     <?php foreach ($months as $m):
