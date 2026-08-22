@@ -50,10 +50,63 @@ $carRentalPrice = (float) getSystemVariable($pdo, 'car_rental_price');
 // Computed once for the whole page — every month's "Balance" row looks
 // up its own entry from this rather than recomputing.
 $balanceWalk = calculateUberBalanceWalk($pdo);
+
+// === EXPORT SINCE LAST CORRECTION ===
+// Finds the most recent week with a correction set, then gathers every
+// week from that point forward (inclusive) for the PDF export button.
+$lastOverrideId = null;
+foreach ($balanceWalk as $wid => $entry) {
+    if ($entry['is_override']) {
+        $lastOverrideId = $wid; // last one wins — walk is in week order
+    }
+}
+
+$exportRows = [];
+if ($lastOverrideId !== null) {
+    $walkIds = array_keys($balanceWalk);
+    $startIndex = array_search($lastOverrideId, $walkIds, true);
+    $relevantIds = array_slice($walkIds, $startIndex);
+
+    $placeholders = implode(',', array_fill(0, count($relevantIds), '?'));
+    $exportStmt = $pdo->prepare("SELECT * FROM uber_income WHERE id IN ($placeholders) ORDER BY week_start ASC, id ASC");
+    $exportStmt->execute($relevantIds);
+
+    foreach ($exportStmt->fetchAll(PDO::FETCH_ASSOC) as $wr) {
+        $fin = calculateUberWeekFinancials($pdo, $wr);
+
+        $wStart = new DateTime();
+        $wStart->setTimestamp((int) $wr['week_start']);
+        $wStart->setTimezone($tz);
+        $wEnd = new DateTime();
+        $wEnd->setTimestamp((int) $wr['week_end']);
+        $wEnd->setTimezone($tz);
+
+        $balEntry = $balanceWalk[(int) $wr['id']];
+
+        $exportRows[] = [
+            'week_display'    => $wStart->format('d M Y') . ' – ' . $wEnd->format('d M Y'),
+            'card_income'     => $fin['card_income'],
+            'car_rental'      => $fin['car_rental'],
+            'fines'           => $fin['fines'],
+            'vehicle_repairs' => $fin['vehicle_repairs'],
+            'net'             => $fin['net'],
+            'shortfall_paid'  => $fin['shortfall_paid'],
+            'balance'         => $balEntry['balance'],
+            'is_override'     => $balEntry['is_override'],
+        ];
+    }
+}
 ?>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
 <div class="financial-dashboard">
     <h2>🚗 Uber Reports (Last <?= htmlspecialchars($monthsBack) ?> Months)</h2>
+
+    <?php if (!empty($exportRows)): ?>
+        <button type="button" id="exportSinceCorrectionBtn" class="action-btn">📄 Export Since Last Correction (PDF)</button>
+    <?php endif; ?>
 
     <?php foreach ($months as $m):
         $startDate = new DateTime("{$m['year']}-{$m['month']}-01", $tz);
@@ -153,6 +206,43 @@ $balanceWalk = calculateUberBalanceWalk($pdo);
 </div>
 
 <script>
+    const exportRows = <?= json_encode($exportRows) ?>;
+
+    function exportSinceLastCorrection() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'landscape' });
+
+        doc.setFontSize(14);
+        doc.text('Uber Rental Balance — Since Last Correction', 14, 15);
+
+        const rows = exportRows.map(function (w) {
+            const balanceText = w.balance !== null
+                ? 'R' + parseFloat(w.balance).toFixed(2) + (w.is_override ? ' (corrected)' : '')
+                : '—';
+            return [
+                w.week_display,
+                'R' + parseFloat(w.card_income).toFixed(2),
+                'R' + parseFloat(w.car_rental).toFixed(2),
+                'R' + parseFloat(w.fines).toFixed(2),
+                'R' + parseFloat(w.vehicle_repairs).toFixed(2),
+                'R' + parseFloat(w.net).toFixed(2),
+                'R' + parseFloat(w.shortfall_paid).toFixed(2),
+                balanceText
+            ];
+        });
+
+        doc.autoTable({
+            startY: 22,
+            head: [['Week', 'Card Income', 'Rental', 'Fines', 'Repairs', 'Net', 'Paid In', 'Balance']],
+            body: rows,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [60, 60, 60] },
+            margin: { left: 14, right: 14 }
+        });
+
+        doc.save('uber-balance-since-last-correction.pdf');
+    }
+
     function buildWeekBlock(log) {
         let costsHtml = '—';
         if (log.additional_costs && log.additional_costs.length > 0) {
@@ -203,6 +293,7 @@ $balanceWalk = calculateUberBalanceWalk($pdo);
                     </span>
                 </div>
                 <div class="balance-correction-form hidden" data-id="${log.id}">
+                    <p class="at-balance-flag at-balance-correction-hint">Positive = you're ahead. Negative = you're behind.</p>
                     <input type="number" step="0.01" class="balance-correction-input" placeholder="Corrected balance">
                     <button type="button" class="action-btn save-correction-btn" data-id="${log.id}">💾 Save</button>
                     ${bal.is_override ? `<button type="button" class="action-btn delete-btn clear-correction-btn" data-id="${log.id}">🗑️ Clear</button>` : ''}
@@ -220,6 +311,7 @@ $balanceWalk = calculateUberBalanceWalk($pdo);
     }
 
     $(document).ready(function () {
+        $('#exportSinceCorrectionBtn').on('click', exportSinceLastCorrection);
         let currentlyOpenContainer = null;
 
         $(document).on('click', '.toggle-weeks-btn', function () {
