@@ -2496,3 +2496,11 @@ body:not(.home-page) .floating-menu-toggle {
     border: 1px solid #ccc;
     border-radius: 5px;
 }
+/* modules/Uber — correction-form reminder text
+   Add this block into assets/css/styles.css, next to the
+   .balance-correction-form rules already added there. */
+
+.at-balance-correction-hint {
+    width: 100%;
+    margin: 0 0 4px;
+}
