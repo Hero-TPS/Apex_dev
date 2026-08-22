@@ -74,13 +74,17 @@ function calculateUberWeekFinancials(PDO $pdo, array $record): array
 /**
  * Walk every week in order and resolve the Balance shown for each one.
  *
+ * Sign convention: POSITIVE = you're ahead (in credit with the rental
+ * company), NEGATIVE = you're behind (you owe them).
+ *
  * Balance is blank until the first manual correction ("seed") is set on
  * some week. From that week onward:
  *   - a week WITH its own correction shows that value, full stop —
  *     Net/Paid In for that week are ignored for balance purposes once a
  *     correction is set on it
  *   - a week WITHOUT one shows: previous week's resolved balance
- *     - this week's Net - this week's Paid In
+ *     + this week's Net + this week's Paid In (a good week or a payment
+ *     both move you further ahead / less behind)
  *
  * This intentionally does NOT touch total_income, cash_received, or any
  * other field — it only reads balance_override / balance_override_at,
@@ -156,7 +160,7 @@ function calculateUberBalanceWalk(PDO $pdo): array
         $net        = $cardIncome - ($carRental + $fines + $repairs);
         $paid       = (float) $week['shortfall_paid'];
 
-        $current = $current - $net - $paid;
+        $current = $current + $net + $paid;
 
         $result[$id] = [
             'balance'     => $current,
