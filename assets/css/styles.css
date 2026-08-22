@@ -632,6 +632,7 @@ textarea {
 .db-clients { background: linear-gradient(135deg, #f8cdda, #1d2b64); }
 .db-maintenance { background: linear-gradient(135deg, #6c757d, #343a40); }
 .db-reports { background: linear-gradient(135deg, #6a11cb, #2575fc); }
+.db-budgeting { background: linear-gradient(135deg, #11998e, #38ef7d); }
 
 .menu-content .dashboard-button {
   min-height: 50px;
@@ -1081,6 +1082,58 @@ body:not(.home-page) .floating-menu-toggle {
 .net-amount.profit { color: #27ae60; }
 .net-amount.loss { color: #e74c3c; }
 
+/* Uber — rental balance correction (correction form, buttons, hints) */
+.at-balance-flag {
+    color: #e67e22;
+    font-size: 0.85em;
+    font-style: italic;
+}
+
+.correct-balance-btn,
+.save-correction-btn,
+.cancel-correction-btn,
+.export-since-correction-btn {
+    width: auto;
+    white-space: normal;
+}
+
+.correct-balance-btn { background-color: #7f8c8d; }
+.correct-balance-btn:hover { background-color: #6c7a7a; }
+
+.save-correction-btn { background-color: #27ae60; }
+.save-correction-btn:hover { background-color: #229954; }
+
+.cancel-correction-btn { background-color: #95a5a6; }
+.cancel-correction-btn:hover { background-color: #7f8c8d; }
+
+.export-since-correction-btn {
+    background-color: #2980b9;
+    margin-bottom: 12px;
+}
+.export-since-correction-btn:hover { background-color: #1f6391; }
+
+.balance-correction-form {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 12px;
+}
+.balance-correction-form:not(.hidden) {
+    display: flex;
+}
+.balance-correction-form .balance-correction-input {
+    flex: 1 1 140px;
+    min-width: 100px;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.at-balance-correction-hint {
+    width: 100%;
+    margin: 0 0 4px;
+}
+
 .toggle-weeks-btn {
     background: #3498db;
     color: white;
@@ -1309,14 +1362,6 @@ body:not(.home-page) .floating-menu-toggle {
 .booking-completed .action-btn.completed {
     background-color: #27ae60;
     color: white;
-}
-
-/* Client Stats Grid */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-    margin-bottom: 20px;
 }
 
 .stat-card {
@@ -2365,69 +2410,6 @@ body:not(.home-page) .floating-menu-toggle {
     color: #888;
     margin: 2px 0 10px;
 }
-/* ===== Budgeting: weekly plan breakdown ===== */
-.at-budget-wrapper {
-    max-width: 700px;
-}
-.at-budget-week-label {
-    color: #667eea;
-    font-weight: 600;
-    margin-bottom: 12px;
-}
-.at-budget-section {
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 14px 16px;
-    margin-bottom: 12px;
-}
-.at-budget-section h3 {
-    margin: 0 0 8px 0;
-    font-size: 1rem;
-}
-.at-budget-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 4px 0;
-    font-size: 0.95rem;
-}
-.at-budget-row .label {
-    color: #555;
-}
-.at-budget-row .value {
-    font-weight: 600;
-}
-.at-budget-ok {
-    color: #15803d;
-}
-.at-budget-warn {
-    color: #b91c1c;
-}
-.at-budget-buffer {
-    font-size: 1.3rem;
-    text-align: center;
-    padding: 16px;
-    border-radius: 8px;
-    margin-top: 4px;
-    font-weight: 700;
-}
-.at-budget-buffer.positive {
-    background: #ecfdf5;
-    color: #15803d;
-}
-.at-budget-buffer.negative {
-    background: #fef2f2;
-    color: #b91c1c;
-}
-.at-budget-ai-box {
-    background: #eef2ff;
-    border: 1px solid #c7d2fe;
-    border-radius: 8px;
-    padding: 14px 16px;
-    margin-top: 8px;
-    line-height: 1.5;
-}
-
 /* ===== Bookings: earmark checkboxes ===== */
 .at-earmark-row {
     display: flex;
@@ -2448,75 +2430,3 @@ body:not(.home-page) .floating-menu-toggle {
     border: 1px solid #ccc;
     border-radius: 5px;
 }
-
-/* db-budgeting was missing a background — caused white text on white/transparent
-   background. Add this next to the other .db-* rules (e.g. near .db-reports). */
-.db-budgeting { background: linear-gradient(135deg, #11998e, #38ef7d); }
-
-/* modules/Uber — balance correction buttons/form
-   Add this block into assets/css/styles.css, near the other .db-* /
-   button color rules (e.g. after .view-details-btn).
-
-   Fix: these new buttons inherited .action-btn's fixed 95px width +
-   text-ellipsis (labels were getting clipped) and had no background
-   color assigned at all (Save/Cancel were rendering as invisible white
-   text on a white button). */
-
-.correct-balance-btn,
-.save-correction-btn,
-.cancel-correction-btn {
-    width: auto;
-    white-space: normal;
-}
-
-.correct-balance-btn { background-color: #7f8c8d; }
-.correct-balance-btn:hover { background-color: #6c7a7a; }
-
-.save-correction-btn { background-color: #27ae60; }
-.save-correction-btn:hover { background-color: #229954; }
-
-.cancel-correction-btn { background-color: #95a5a6; }
-.cancel-correction-btn:hover { background-color: #7f8c8d; }
-
-.balance-correction-form {
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    margin: 8px 0 12px;
-}
-
-.balance-correction-form:not(.hidden) {
-    display: flex;
-}
-
-.balance-correction-form .balance-correction-input {
-    flex: 1 1 140px;
-    min-width: 100px;
-    padding: 6px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-}
-/* modules/Uber — correction-form reminder text
-   Add this block into assets/css/styles.css, next to the
-   .balance-correction-form rules already added there. */
-
-.at-balance-correction-hint {
-    width: 100%;
-    margin: 0 0 4px;
-}
-/* modules/Uber — export-since-correction button
-   Add this block into assets/css/styles.css, near the other button
-   color rules (e.g. next to .correct-balance-btn).
-
-   Same bug as before: .action-btn alone has color:white but NO
-   background color and a fixed 95px width — needs its own class for
-   both, or it renders invisible (white on white) and clipped. */
-
-.export-since-correction-btn {
-    width: auto;
-    white-space: normal;
-    background-color: #2980b9;
-    margin-bottom: 12px;
-}
-.export-since-correction-btn:hover { background-color: #1f6391;
-                                   }
