@@ -373,6 +373,30 @@ function getHistoricalVariable(PDO $pdo, string $name, string $asOfDate): mixed
 }
 
 /**
+ * Resolve car_rental_price for a single week, applying the agreed
+ * precedence: a one-off weekly override (if set) always wins; otherwise
+ * fall through to the historical rate for that week's as-of date (which
+ * itself falls back to the current live value if no history exists yet).
+ *
+ * Set only from Uber (uber_income.rental_override), but read here by
+ * both Uber and Financials so an override made in Uber is automatically
+ * reflected in Financials too.
+ *
+ * @param PDO        $pdo
+ * @param mixed      $rentalOverride  uber_income.rental_override for
+ *                                    this week, or null if not set
+ * @param string     $asOfDate        Date string 'Y-m-d' for this week
+ *                                    (used only when there's no override)
+ */
+function resolveCarRentalForWeek(PDO $pdo, $rentalOverride, string $asOfDate): float
+{
+    if ($rentalOverride !== null) {
+        return (float) $rentalOverride;
+    }
+    return (float) getHistoricalVariable($pdo, 'car_rental_price', $asOfDate);
+}
+
+/**
  * Calculate the Apex booking fee from a trip cost and fee percentage.
  * Returns 0.0 if cost or pct is zero/negative.
  * Used by: modules/Bookings/api/index.php
