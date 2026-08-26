@@ -185,6 +185,7 @@ try {
 
         $updatedCount = 0;
         $historyLoggedFor = [];
+        $diagnostics = [];
         $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
 
         foreach ($variables as $name => $value) {
@@ -197,6 +198,8 @@ try {
             ");
             $stmt->execute([$name, $value]);
             $updatedCount++;
+            $rowCount = $stmt->rowCount();
+            $diagnostics[$name] = $rowCount; // TEMP: remove once history logging is confirmed working
 
             // rowCount() is 1 for a genuine insert (variable didn't exist
             // before), 2 for an update where the value actually changed,
@@ -205,7 +208,7 @@ try {
             // get a history row — this is the single mechanism that both
             // seeds history for a brand-new variable and logs every future
             // rate change, for any variable.
-            if ($stmt->rowCount() > 0) {
+            if ($rowCount > 0) {
                 $histStmt = $pdo->prepare("
                     INSERT INTO system_variable_history (variable_name, value, effective_from)
                     VALUES (?, ?, ?)
@@ -220,7 +223,8 @@ try {
 
         logInfo('MAINTENANCE', 'System variables updated', [
             'variables' => array_keys($variables),
-            'history_logged_for' => $historyLoggedFor
+            'history_logged_for' => $historyLoggedFor,
+            'row_counts' => $diagnostics // TEMP: remove once history logging is confirmed working
         ]);
 
     } elseif ($action === 'mark_overdue_complete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
