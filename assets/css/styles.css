@@ -2430,3 +2430,46 @@ body:not(.home-page) .floating-menu-toggle {
     border: 1px solid #ccc;
     border-radius: 5px;
 }
+
+/*
+  PASTE LOCATION: assets/css/styles.css
+  Right after the existing ".at-balance-correction-hint { ... }" block
+  (the one ending just before ".toggle-weeks-btn"), i.e. immediately
+  before ".toggle-weeks-btn". Mirrors the balance-correction styling
+  above it — same pattern, new class names for the rental override UI.
+*/
+
+.correct-rental-btn,
+.save-rental-btn,
+.clear-rental-btn,
+.cancel-rental-btn {
+    width: auto;
+    white-space: normal;
+}
+
+.correct-rental-btn { background-color: #7f8c8d; }
+.correct-rental-btn:hover { background-color: #6c7a7a; }
+
+.save-rental-btn { background-color: #27ae60; }
+.save-rental-btn:hover { background-color: #229954; }
+
+.cancel-rental-btn { background-color: #95a5a6; }
+.cancel-rental-btn:hover { background-color: #7f8c8d; }
+
+.rental-correction-form {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 12px;
+}
+.rental-correction-form:not(.hidden) {
+    display: flex;
+}
+.rental-correction-form .rental-correction-input {
+    flex: 1 1 140px;
+    min-width: 100px;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 5
+       px;
+}
