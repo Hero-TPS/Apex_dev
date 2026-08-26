@@ -17,6 +17,23 @@
 // pulled into Financials, Budgeting, or any other reporting module.
 
 /**
+ * Resolve the Sunday date (Y-m-d) for a week record — used as the
+ * as-of date for historical rate lookups. Uber reporting treats each
+ * week's Sunday as "the date this week's figures belong to."
+ *
+ * @param array $week  A row from uber_income (must include week_start,
+ *                      a Unix timestamp for that week's Monday)
+ */
+function resolveUberWeekSunday(array $week): string
+{
+    $sunday = new DateTime();
+    $sunday->setTimestamp((int) $week['week_start']);
+    $sunday->setTimezone(new DateTimeZone(TIME_ZONE));
+    $sunday->modify('+6 days');
+    return $sunday->format('Y-m-d');
+}
+
+/**
  * Compute the rental shortfall figures for a single uber_income record.
  *
  * @param PDO   $pdo
@@ -34,7 +51,8 @@
  */
 function calculateUberWeekFinancials(PDO $pdo, array $record): array
 {
-    $carRental = (float) getSystemVariable($pdo, 'car_rental_price');
+    $asOfDate  = resolveUberWeekSunday($record);
+    $carRental = (float) getHistoricalVariable($pdo, 'car_rental_price', $asOfDate);
 
     // Fines and Vehicle Repairs are whatever has been logged under
     // Additional Costs for this week with those exact reasons.
@@ -100,10 +118,8 @@ function calculateUberWeekFinancials(PDO $pdo, array $record): array
  */
 function calculateUberBalanceWalk(PDO $pdo): array
 {
-    $carRental = (float) getSystemVariable($pdo, 'car_rental_price');
-
     $stmt = $pdo->query("
-        SELECT id, total_income, cash_received, shortfall_paid,
+        SELECT id, week_start, total_income, cash_received, shortfall_paid,
                balance_override, balance_override_at
         FROM uber_income
         ORDER BY week_start ASC, id ASC
@@ -157,6 +173,8 @@ function calculateUberBalanceWalk(PDO $pdo): array
         $fines      = $costsByWeek[$id]['Fines'] ?? 0.0;
         $repairs    = $costsByWeek[$id]['Vehicle Repairs'] ?? 0.0;
         $cardIncome = (float) $week['total_income'] - (float) $week['cash_received'];
+        $asOfDate   = resolveUberWeekSunday($week);
+        $carRental  = (float) getHistoricalVariable($pdo, 'car_rental_price', $asOfDate);
         $net        = $cardIncome - ($carRental + $fines + $repairs);
         $paid       = (float) $week['shortfall_paid'];
 
