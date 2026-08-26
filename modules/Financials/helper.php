@@ -139,8 +139,8 @@ function getWeeklyMetrics(PDO $pdo, int $startUnix, int $endUnix): array
     // === KM driven: odometer delta (avoids trip_km boundary distortion) ===
     $totalTripKm = getOdoKmForPeriod($pdo, $fuelStart, $fuelEnd);
 
-    // === CAR RENTAL (weekly rate from system variables) ===
-    $carRental = (float) getSystemVariable($pdo, 'car_rental_price');
+    // === CAR RENTAL (rate as it stood this week — historical lookup) ===
+    $carRental = (float) getHistoricalVariable($pdo, 'car_rental_price', $endDateStr);
 
     // === CALCULATIONS ===
     $totalIncome    = $bookingIncome + $uberIncome;
@@ -239,12 +239,16 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
     $stmt->execute([$startUnix, $endUnix]);
     $uberAdditionalCosts = (float) $stmt->fetchColumn();
 
-    // === FUEL: cost and litres summed across billing weeks whose Monday falls
-    //     in this month. The full Mon–Sun range is used per week (no month-end
-    //     cap) so fill-ups in the next calendar month that belong to a billing
-    //     week starting this month are correctly attributed here.
+    // === FUEL and CAR RENTAL: summed across billing weeks whose Monday falls
+    //     in this month. Fuel uses the full Mon–Sun range per week (no
+    //     month-end cap) so fill-ups in the next calendar month that belong
+    //     to a billing week starting this month are correctly attributed
+    //     here. Car rental is resolved per-week (not rate × week-count) so
+    //     that a rate change partway through the month prices each week at
+    //     whatever was actually in effect for it.
     $fuelCost   = 0.0;
     $fuelLiters = 0.0;
+    $carRental  = 0.0;
 
     $fuelWeekCurrent = new DateTime("$year-$month-01", $tz);
     if ($fuelWeekCurrent->format('N') !== '1') {
@@ -270,6 +274,8 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
         $fuelCost   += (float) $fRow['cost'];
         $fuelLiters += (float) $fRow['liters'];
 
+        $carRental += (float) getHistoricalVariable($pdo, 'car_rental_price', $wSunday->format('Y-m-d'));
+
         $fuelWeekCurrent->modify('+1 week');
     }
 
@@ -277,9 +283,6 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
     //     Uses the last odo reading on/before month end minus the last odo
     //     reading before month start — unaffected by fill-up timing.
     $totalTripKm = getOdoKmForPeriod($pdo, $startUnix, $endUnix);
-
-    // === CAR RENTAL (weekly rate × number of billing weeks in month) ===
-    $carRental = (float) getSystemVariable($pdo, 'car_rental_price') * getWeeksInMonth($year, $month);
 
     // === CALCULATIONS ===
     $totalIncome    = $bookingIncome + $uberIncome;
