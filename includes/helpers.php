@@ -340,6 +340,39 @@ function getSystemVariable(PDO $pdo, string $name): mixed
 }
 
 /**
+ * Get the value a system variable held as of a given date, using
+ * system_variable_history. Past periods keep the rate that was in
+ * effect at the time — changing the current rate never rewrites them.
+ *
+ * Lookup rule: the most recent history row for this variable with
+ * effective_from <= $asOfDate. If no history rows exist yet for this
+ * variable, falls back to the current live system_variables value
+ * (via getSystemVariable) — this is what protects existing history
+ * before any rows have been logged; nothing gets backfilled.
+ *
+ * Used by: modules/Uber/helper.php, modules/Financials/helper.php
+ *
+ * @param PDO    $pdo
+ * @param string $name      Key matching a SYSTEM_VARIABLES entry
+ * @param string $asOfDate  Date string 'Y-m-d' for the period in question
+ * @return mixed            Historical value if one exists on/before that
+ *                          date, otherwise the current live value
+ */
+function getHistoricalVariable(PDO $pdo, string $name, string $asOfDate): mixed
+{
+    $stmt = $pdo->prepare(
+        "SELECT value FROM system_variable_history
+         WHERE variable_name = ? AND effective_from <= ?
+         ORDER BY effective_from DESC, id DESC
+         LIMIT 1"
+    );
+    $stmt->execute([$name, $asOfDate]);
+    $result = $stmt->fetchColumn();
+
+    return ($result !== false) ? $result : getSystemVariable($pdo, $name);
+}
+
+/**
  * Calculate the Apex booking fee from a trip cost and fee percentage.
  * Returns 0.0 if cost or pct is zero/negative.
  * Used by: modules/Bookings/api/index.php
