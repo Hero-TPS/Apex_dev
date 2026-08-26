@@ -129,18 +129,10 @@ ALTER TABLE uber_income
 
 ---
 
----
-
-**Notes:**
-- Each entry requires two checkboxes: **Done on dev** and **Done on live**
-- Always run on dev first and verify before running on live
-- Move completed items to the Completed section with the date done
-
-
 ### [system_variables] Add `system_variable_history` table for rate history
 
-- [x] Done on dev
-- [x] Done on live
+- [ ] Done on dev
+- [ ] Done on live
 
 ```sql
 CREATE TABLE IF NOT EXISTS system_variable_history (
@@ -154,6 +146,29 @@ CREATE TABLE IF NOT EXISTS system_variable_history (
 ```
 
 > Generic history table for any rate-type system variable, not just `car_rental_price`. Lookup rule: most recent row where `effective_from <= asOfDate` for that variable. If no rows exist yet for a variable, callers fall back to the current live `system_variables` value — this is what protects existing history from being retroactively rewritten. See `getHistoricalVariable()` in `includes/helpers.php`. First variable wired up: `car_rental_price`, in `modules/Uber/helper.php` and `modules/Financials/helper.php`.
-
+>
+> A one-off seed script (`maintenance/seed_variable_history_ONEOFF.php`, deleted after use) anchors every `SYSTEM_VARIABLES` key with its current value dated 1 Dec 2025 — this predates any reportable week, so it prevents the fallback from silently inheriting a *later* rate for periods before it existed. Also wired into `maintenance/api/index.php`'s `update_variables` action: any variable's first-ever save or genuine value change auto-logs a history row dated that day — this is both the ongoing rate-change mechanism and the auto-anchor for any future new variable.
 
 ---
+
+### [uber_income] Add rental override columns
+
+- [ ] Done on dev
+- [ ] Done on live
+
+```sql
+ALTER TABLE uber_income
+    ADD COLUMN IF NOT EXISTS rental_override DECIMAL(10,2) NULL DEFAULT NULL,
+    ADD COLUMN IF NOT EXISTS rental_override_at DATETIME NULL DEFAULT NULL;
+```
+
+> `rental_override`: manually set on a single week to override that week's car rental figure outright (e.g. a discounted week for repairs/service). NULL on every week except one you've explicitly overridden. `rental_override_at`: timestamp of when the override was set, for your own reference. Precedence per week: this override → `system_variable_history` lookup → flat `system_variables` value as ultimate fallback. Set only in Uber (see `modules/Uber/api/index.php` — `handleSetRentalOverride()`), but read by both `modules/Uber/helper.php` and `modules/Financials/helper.php` so the change reflects automatically in Financials too.
+
+---
+
+---
+
+**Notes:**
+- Each entry requires two checkboxes: **Done on dev** and **Done on live**
+- Always run on dev first and verify before running on live
+- Move completed items to the Completed section with the date done
