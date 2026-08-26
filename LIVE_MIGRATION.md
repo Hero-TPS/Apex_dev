@@ -131,8 +131,8 @@ ALTER TABLE uber_income
 
 ### [system_variables] Add `system_variable_history` table for rate history
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 ```sql
 CREATE TABLE IF NOT EXISTS system_variable_history (
@@ -153,8 +153,8 @@ CREATE TABLE IF NOT EXISTS system_variable_history (
 
 ### [uber_income] Add rental override columns
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 ```sql
 ALTER TABLE uber_income
