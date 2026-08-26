@@ -36,6 +36,9 @@ try {
         case 'set_balance_override':
             handleSetBalanceOverride();
             break;
+        case 'set_rental_override':
+            handleSetRentalOverride();
+            break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
     }
@@ -320,6 +323,57 @@ function handleSetBalanceOverride()
 
     } catch (PDOException $e) {
         logError('UBER', 'Failed to save balance correction', ['error' => $e->getMessage(), 'record_id' => $id]);
+        jsonResponse(['success' => false, 'message' => 'Database error'], 500);
+    }
+}
+
+/**
+ * Save (or clear) a one-off car rental override on a single week. This
+ * overrides that week's rental figure outright (e.g. a discounted week
+ * for repairs/service) — it takes precedence over both the historical
+ * rate and the current live rate for that week only. Deliberately
+ * narrow — it only ever touches rental_override and rental_override_at,
+ * never any other field on the record.
+ *
+ * Set only here in Uber, but read by both Uber and Financials
+ * (see resolveCarRentalForWeek() in includes/helpers.php) so the
+ * override is automatically reflected in Financials too.
+ *
+ * POST id: the uber_income record to override
+ * POST value: the overridden rental amount, or '' (empty string) to
+ *             clear an existing override back to none
+ */
+function handleSetRentalOverride()
+{
+    global $pdo;
+
+    $id = intval($_POST['id'] ?? 0);
+    $valueRaw = $_POST['value'] ?? '';
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid record ID'], 400);
+    }
+
+    try {
+        if ($valueRaw === '') {
+            $stmt = $pdo->prepare("UPDATE uber_income SET rental_override = NULL, rental_override_at = NULL WHERE id = ?");
+            $stmt->execute([$id]);
+
+            logDebug('UBER', 'Rental override cleared', ['record_id' => $id]);
+            jsonResponse(['success' => true, 'message' => 'Rental override cleared']);
+            return;
+        }
+
+        $value = floatval($valueRaw);
+
+        $stmt = $pdo->prepare("UPDATE uber_income SET rental_override = ?, rental_override_at = NOW() WHERE id = ?");
+        $stmt->execute([$value, $id]);
+
+        logDebug('UBER', 'Rental override set', ['record_id' => $id, 'value' => $value]);
+        jsonResponse(['success' => true, 'message' => 'Rental override saved']);
+
+    } catch (PDOException $e) {
+        logError('UBER', 'Failed to save rental override', ['error' => $e->getMessage(), 'record_id' => $id]);
         jsonResponse(['success' => false, 'message' => 'Database error'], 500);
     }
 }
