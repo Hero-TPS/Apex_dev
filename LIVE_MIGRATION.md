@@ -135,3 +135,25 @@ ALTER TABLE uber_income
 - Each entry requires two checkboxes: **Done on dev** and **Done on live**
 - Always run on dev first and verify before running on live
 - Move completed items to the Completed section with the date done
+
+
+### [system_variables] Add `system_variable_history` table for rate history
+
+- [x] Done on dev
+- [x] Done on live
+
+```sql
+CREATE TABLE IF NOT EXISTS system_variable_history (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    variable_name  VARCHAR(100) NOT NULL,
+    value          TEXT NOT NULL,
+    effective_from DATE NOT NULL,
+    created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_variable_effective (variable_name, effective_from)
+);
+```
+
+> Generic history table for any rate-type system variable, not just `car_rental_price`. Lookup rule: most recent row where `effective_from <= asOfDate` for that variable. If no rows exist yet for a variable, callers fall back to the current live `system_variables` value — this is what protects existing history from being retroactively rewritten. See `getHistoricalVariable()` in `includes/helpers.php`. First variable wired up: `car_rental_price`, in `modules/Uber/helper.php` and `modules/Financials/helper.php`.
+
+
+---
