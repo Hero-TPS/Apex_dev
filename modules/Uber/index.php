@@ -1,4 +1,5 @@
 <?php
+// modules/Uber/index.php
 $page_title = 'Uber Reports';
 $page_subtitle = 'Monthly Summary';
 $show_breadcrumb = true;
@@ -281,6 +282,7 @@ if ($lastOverrideId !== null) {
                 <div class="metric-row"><span>Time Online:</span>     <span>${parseFloat(log.total_time_online || 0).toFixed(1)} hrs</span></div>
                 <div class="metric-row"><span>Additional Costs:</span><span>${costsHtml}</span></div>
                 <div class="metric-row"><span>Car Rental:</span><span>R${parseFloat(log.financials.car_rental || 0).toFixed(2)}</span></div>
+                ${log.financials.car_rental_is_override ? `<div class="metric-row"><span></span><span class="at-balance-flag">⚠️ Rental overridden this week${log.financials.car_rental_override_at ? ' on ' + new Date(log.financials.car_rental_override_at.replace(' ', 'T')).toLocaleDateString() : ''}</span></div>` : ''}
                 <div class="metric-row"><span>Fines:</span><span>R${parseFloat(log.financials.fines || 0).toFixed(2)}</span></div>
                 <div class="metric-row"><span>Vehicle Repairs:</span><span>R${parseFloat(log.financials.vehicle_repairs || 0).toFixed(2)}</span></div>
                 <div class="metric-row"><span>Net This Week:</span><strong class="net-amount ${parseFloat(log.financials.net || 0) >= 0 ? 'profit' : 'loss'}">R${parseFloat(log.financials.net || 0).toFixed(2)}</strong></div>
@@ -290,6 +292,7 @@ if ($lastOverrideId !== null) {
                     <span></span>
                     <span>
                         <button type="button" class="action-btn correct-balance-btn" data-id="${log.id}" data-current="${currentBalanceForInput}" data-has-override="${bal.is_override}">⚙️ Correct Balance</button>
+                        <button type="button" class="action-btn correct-rental-btn" data-id="${log.id}" data-current="${log.financials.car_rental_is_override ? log.financials.car_rental : ''}" data-has-override="${log.financials.car_rental_is_override}">🔧 Override Rental</button>
                     </span>
                 </div>
                 <div class="balance-correction-form hidden" data-id="${log.id}">
@@ -298,6 +301,13 @@ if ($lastOverrideId !== null) {
                     <button type="button" class="action-btn save-correction-btn" data-id="${log.id}">💾 Save</button>
                     ${bal.is_override ? `<button type="button" class="action-btn delete-btn clear-correction-btn" data-id="${log.id}">🗑️ Clear</button>` : ''}
                     <button type="button" class="action-btn cancel-correction-btn">✖ Cancel</button>
+                </div>
+                <div class="rental-correction-form hidden" data-id="${log.id}">
+                    <p class="at-balance-flag at-balance-correction-hint">One-off rental amount for this week only. Clears back to the normal rate.</p>
+                    <input type="number" step="0.01" class="rental-correction-input" placeholder="Overridden rental for this week">
+                    <button type="button" class="action-btn save-rental-btn" data-id="${log.id}">💾 Save</button>
+                    ${log.financials.car_rental_is_override ? `<button type="button" class="action-btn delete-btn clear-rental-btn" data-id="${log.id}">🗑️ Clear</button>` : ''}
+                    <button type="button" class="action-btn cancel-rental-btn">✖ Cancel</button>
                 </div>
                 <div class="metric-row">
                     <span></span>
@@ -440,6 +450,58 @@ if ($lastOverrideId !== null) {
                 },
                 error: function () {
                     showNotification('❌ Failed to save correction', 'error');
+                }
+            });
+        }
+
+        // Open the rental override form for a week
+        $(document).on('click', '.correct-rental-btn', function () {
+            const id = $(this).data('id');
+            const current = $(this).data('current');
+            const form = $('.rental-correction-form[data-id="' + id + '"]');
+            form.find('.rental-correction-input').val(current);
+            form.removeClass('hidden');
+        });
+
+        $(document).on('click', '.cancel-rental-btn', function () {
+            $(this).closest('.rental-correction-form').addClass('hidden');
+        });
+
+        $(document).on('click', '.save-rental-btn', function () {
+            const id = $(this).data('id');
+            const form = $(this).closest('.rental-correction-form');
+            const value = form.find('.rental-correction-input').val();
+
+            if (value === '' || isNaN(parseFloat(value))) {
+                showNotification('✗ Enter a value first', 'error');
+                return;
+            }
+
+            saveRentalOverride(id, value);
+        });
+
+        $(document).on('click', '.clear-rental-btn', function () {
+            const id = $(this).data('id');
+            if (!confirm('Clear this override? Rental for this week will go back to the normal rate.')) return;
+            saveRentalOverride(id, '');
+        });
+
+        function saveRentalOverride(id, value) {
+            $.ajax({
+                url: '<?= BASE_URL ?>/modules/Uber/api/index.php',
+                type: 'POST',
+                data: { action: 'set_rental_override', id: id, value: value },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.success) {
+                        showNotification('✓ ' + res.message + ' — reloading…', 'success');
+                        setTimeout(function () { location.reload(); }, 1200);
+                    } else {
+                        showNotification('✗ ' + res.message, 'error');
+                    }
+                },
+                error: function () {
+                    showNotification('❌ Failed to save rental override', 'error');
                 }
             });
         }
