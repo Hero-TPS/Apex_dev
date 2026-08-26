@@ -1,4 +1,5 @@
 <?php
+// modules/Financials/helper.php
 
 if (!defined('ROOT_DIR')) {
     die('Direct access not allowed');
@@ -98,7 +99,7 @@ function getWeeklyMetrics(PDO $pdo, int $startUnix, int $endUnix): array
 
     // === UBER income ===
     $stmt = $pdo->prepare(
-        "SELECT id, total_income, cash_received, total_trips
+        "SELECT id, total_income, cash_received, total_trips, rental_override
          FROM uber_income WHERE week_start = ?"
     );
     $stmt->execute([$startUnix]);
@@ -139,8 +140,9 @@ function getWeeklyMetrics(PDO $pdo, int $startUnix, int $endUnix): array
     // === KM driven: odometer delta (avoids trip_km boundary distortion) ===
     $totalTripKm = getOdoKmForPeriod($pdo, $fuelStart, $fuelEnd);
 
-    // === CAR RENTAL (rate as it stood this week — historical lookup) ===
-    $carRental = (float) getHistoricalVariable($pdo, 'car_rental_price', $endDateStr);
+    // === CAR RENTAL (override, if set in Uber for this week — else the
+    //     rate as it stood this week via historical lookup) ===
+    $carRental = resolveCarRentalForWeek($pdo, $uber['rental_override'] ?? null, $endDateStr);
 
     // === CALCULATIONS ===
     $totalIncome    = $bookingIncome + $uberIncome;
@@ -274,7 +276,14 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
         $fuelCost   += (float) $fRow['cost'];
         $fuelLiters += (float) $fRow['liters'];
 
-        $carRental += (float) getHistoricalVariable($pdo, 'car_rental_price', $wSunday->format('Y-m-d'));
+        $overrideStmt = $pdo->prepare("SELECT rental_override FROM uber_income WHERE week_start = ?");
+        $overrideStmt->execute([$wMonday->getTimestamp()]);
+        $rentalOverride = $overrideStmt->fetchColumn();
+        $carRental += resolveCarRentalForWeek(
+            $pdo,
+            $rentalOverride === false ? null : $rentalOverride,
+            $wSunday->format('Y-m-d')
+        );
 
         $fuelWeekCurrent->modify('+1 week');
     }
