@@ -184,6 +184,9 @@ try {
         }
 
         $updatedCount = 0;
+        $historyLoggedFor = [];
+        $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
+
         foreach ($variables as $name => $value) {
             if (!array_key_exists($name, SYSTEM_VARIABLES))
                 continue;
@@ -194,13 +197,30 @@ try {
             ");
             $stmt->execute([$name, $value]);
             $updatedCount++;
+
+            // rowCount() is 1 for a genuine insert (variable didn't exist
+            // before), 2 for an update where the value actually changed,
+            // and 0 for a resave with no real change. Only the first two
+            // represent an actual new value taking effect, so only those
+            // get a history row — this is the single mechanism that both
+            // seeds history for a brand-new variable and logs every future
+            // rate change, for any variable.
+            if ($stmt->rowCount() > 0) {
+                $histStmt = $pdo->prepare("
+                    INSERT INTO system_variable_history (variable_name, value, effective_from)
+                    VALUES (?, ?, ?)
+                ");
+                $histStmt->execute([$name, $value, $today]);
+                $historyLoggedFor[] = $name;
+            }
         }
 
         $response['success'] = true;
         $response['message'] = "✅ Updated {$updatedCount} variable(s)";
 
         logInfo('MAINTENANCE', 'System variables updated', [
-            'variables' => array_keys($variables)
+            'variables' => array_keys($variables),
+            'history_logged_for' => $historyLoggedFor
         ]);
 
     } elseif ($action === 'mark_overdue_complete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
