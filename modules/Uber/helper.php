@@ -52,7 +52,7 @@ function resolveUberWeekSunday(array $week): string
 function calculateUberWeekFinancials(PDO $pdo, array $record): array
 {
     $asOfDate  = resolveUberWeekSunday($record);
-    $carRental = (float) getHistoricalVariable($pdo, 'car_rental_price', $asOfDate);
+    $carRental = resolveCarRentalForWeek($pdo, $record['rental_override'] ?? null, $asOfDate);
 
     // Fines and Vehicle Repairs are whatever has been logged under
     // Additional Costs for this week with those exact reasons.
@@ -79,13 +79,15 @@ function calculateUberWeekFinancials(PDO $pdo, array $record): array
     $net        = $cardIncome - $deductions;
 
     return [
-        'car_rental'      => $carRental,
-        'fines'           => $fines,
-        'vehicle_repairs' => $repairs,
-        'card_income'     => $cardIncome,
-        'deductions'      => $deductions,
-        'net'             => $net,
-        'shortfall_paid'  => (float) ($record['shortfall_paid'] ?? 0),
+        'car_rental'             => $carRental,
+        'car_rental_is_override' => ($record['rental_override'] ?? null) !== null,
+        'car_rental_override_at' => $record['rental_override_at'] ?? null,
+        'fines'                  => $fines,
+        'vehicle_repairs'        => $repairs,
+        'card_income'            => $cardIncome,
+        'deductions'             => $deductions,
+        'net'                    => $net,
+        'shortfall_paid'         => (float) ($record['shortfall_paid'] ?? 0),
     ];
 }
 
@@ -120,7 +122,7 @@ function calculateUberBalanceWalk(PDO $pdo): array
 {
     $stmt = $pdo->query("
         SELECT id, week_start, total_income, cash_received, shortfall_paid,
-               balance_override, balance_override_at
+               balance_override, balance_override_at, rental_override
         FROM uber_income
         ORDER BY week_start ASC, id ASC
     ");
@@ -174,7 +176,7 @@ function calculateUberBalanceWalk(PDO $pdo): array
         $repairs    = $costsByWeek[$id]['Vehicle Repairs'] ?? 0.0;
         $cardIncome = (float) $week['total_income'] - (float) $week['cash_received'];
         $asOfDate   = resolveUberWeekSunday($week);
-        $carRental  = (float) getHistoricalVariable($pdo, 'car_rental_price', $asOfDate);
+        $carRental  = resolveCarRentalForWeek($pdo, $week['rental_override'] ?? null, $asOfDate);
         $net        = $cardIncome - ($carRental + $fines + $repairs);
         $paid       = (float) $week['shortfall_paid'];
 
