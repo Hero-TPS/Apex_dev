@@ -159,7 +159,7 @@ if (isset($_GET['id'])) {
             <?php endif; ?>
         </div>
         <div class="detail-item full-width">
-            <strong>Notes:</strong> <?= htmlspecialchars($booking['description'] ?: 'None') ?>
+            <strong>Notes:</strong> <?= htmlspecialchars(appendAirportPickupNotice($pdo, $booking['pickup_location'], $booking['description']) ?: 'None') ?>
         </div>
         <div class="detail-item" id="status-display">
             <strong>Status:</strong>
@@ -224,9 +224,9 @@ if (isset($_GET['id'])) {
                 <?= $booking['status'] === 'completed' ? 'Undo Done' : 'Mark Done' ?>
             </button>
         <?php endif; ?>
-        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($booking)) ?>"
+        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($pdo, $booking)) ?>"
             target="_blank" class="page-action-btn whatsapp"
-            onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= htmlspecialchars(json_encode(createWhatsAppMessage($booking)), ENT_QUOTES) ?>, 'confirmation')">💬
+            onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= htmlspecialchars(json_encode(createWhatsAppMessage($pdo, $booking)), ENT_QUOTES) ?>, 'confirmation')">💬
             Send Confirmation</a>
         <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode('Hi ' . $booking['client_name']."\n") ?>"
             target="_blank" class="page-action-btn whatsapp"
