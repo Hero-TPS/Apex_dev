@@ -94,7 +94,11 @@ $overdueCount = (int) $overdueStmt->fetchColumn();
                 <?php elseif ($def['type'] === 'textarea'): ?>
                     <textarea name="variables[<?= htmlspecialchars($name) ?>]" rows="12"
                         style="width: 100%; font-family: monospace;" required><?= htmlspecialchars($value) ?></textarea>
-                    <small>Placeholders like <code>{{car_rental}}</code> are filled in automatically — keep the token names intact.</small>
+                    <?php if ($name === 'ai_prompt_template'): ?>
+                        <small>Placeholders like <code>{{car_rental}}</code> are filled in automatically — keep the token names intact.</small>
+                    <?php else: ?>
+                        <small>Default: <?= htmlspecialchars($def['default']) ?></small>
+                    <?php endif; ?>
                 <?php else: ?>
                     <input type="text" name="variables[<?= htmlspecialchars($name) ?>]"
                         value="<?= htmlspecialchars($value) ?>" required>
