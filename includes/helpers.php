@@ -161,12 +161,13 @@ function createEveningConfirmationMessage(array $bookingDetails): string
  * Detects new vs. updated booking from the presence of updated_at.
  * Used by: modules/Bookings/view.php
  *
+ * @param PDO   $pdo
  * @param array $bookingDetails  Must contain: trip_date, start_time, client_name,
  *                               pickup_location, destination, cost, and optionally
  *                               flight_number, description, updated_at, date_created,
  *                               driver_name, driver_phone
  */
-function createWhatsAppMessage(array $bookingDetails): string
+function createWhatsAppMessage(PDO $pdo, array $bookingDetails): string
 {
     $timezone = new DateTimeZone(TIME_ZONE);
 
@@ -180,8 +181,9 @@ function createWhatsAppMessage(array $bookingDetails): string
         ? "💰 Cost: R" . number_format($bookingDetails['cost'], 2) . "\n" : '';
     $paymentReceivedInfo = !empty($bookingDetails['payment_received'])
         ? "✅ Payment Received\n" : '';
-    $notesInfo = !empty($bookingDetails['description'])
-        ? "📝 Notes: " . $bookingDetails['description'] . "\n" : '';
+    $displayNotes = appendAirportPickupNotice($pdo, $bookingDetails['pickup_location'] ?? '', $bookingDetails['description'] ?? '');
+    $notesInfo = !empty($displayNotes)
+        ? "📝 Notes: " . $displayNotes . "\n" : '';
 
     $driverInfo = '';
     if (!empty($bookingDetails['driver_name'])) {
@@ -310,6 +312,11 @@ const SYSTEM_VARIABLES = [
     'rent' => ['label' => 'Rent (R/week)', 'type' => 'number', 'default' => 0],
     'debt_payment' => ['label' => 'Debt Payment (R/week)', 'type' => 'number', 'default' => 0],
     'living_expenses_daily' => ['label' => 'Living Expenses (R/day)', 'type' => 'number', 'default' => 120],
+    'airport_pickup_notice' => [
+        'label' => 'Cape Town Airport Pickup Notice',
+        'type' => 'textarea',
+        'default' => "Please ensure that your phone is on and connected after you've landed.",
+    ],
     'ai_prompt_template' => [
         'label' => 'AI Budget Prompt Template',
         'type' => 'textarea',
@@ -340,6 +347,38 @@ function getSystemVariable(PDO $pdo, string $name): mixed
     $stmt->execute([$name]);
     $result = $stmt->fetchColumn();
     return ($result !== false) ? $result : (SYSTEM_VARIABLES[$name]['default'] ?? null);
+}
+
+/**
+ * Returns booking notes with the Cape Town Airport pickup reminder
+ * appended on its own line, when the effective pickup location is
+ * an airport. The reminder text itself lives in the airport_pickup_notice
+ * system variable (editable via maintenance/index.php) — it is never
+ * written into bookings.description. It's appended here, at render
+ * time only, so repeated edits/renders never duplicate it in storage.
+ *
+ * Used by: createWhatsAppMessage(), modules/Bookings/view.php
+ *
+ * @param PDO    $pdo
+ * @param string $pickup  Effective pickup location — caller must already
+ *                        have resolved this for was_swapped
+ * @param string $notes   Raw stored notes/description text
+ * @return string          Notes text ready for display
+ */
+function appendAirportPickupNotice(PDO $pdo, string $pickup, ?string $notes): string
+{
+    $notes = $notes ?? '';
+
+    if (stripos($pickup, 'airport') === false) {
+        return $notes;
+    }
+
+    $notice = trim((string) getSystemVariable($pdo, 'airport_pickup_notice'));
+    if ($notice === '' || stripos($notes, $notice) !== false) {
+        return $notes;
+    }
+
+    return trim($notes) === '' ? $notice : rtrim($notes) . "\n" . $notice;
 }
 
 /**
