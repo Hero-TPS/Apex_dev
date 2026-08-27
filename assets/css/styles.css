@@ -2473,3 +2473,39 @@ body:not(.home-page) .floating-menu-toggle {
     border-radius: 5
        px;
 }
+
+/*
+  PASTE LOCATION: assets/css/styles.css
+  Right after the .bookings-table block (ends just before
+  ".client-subline"). Reuses the same table look as bookings-table for
+  visual consistency, with its own class since this table is Uber-specific.
+*/
+
+.uber-since-correction-container {
+    margin-top: 12px;
+}
+.uber-since-correction-container.hidden {
+    display: none;
+}
+.uber-since-correction-container .export-since-correction-btn {
+    margin-bottom: 10px;
+}
+
+.uber-since-correction-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+.uber-since-correction-table th,
+.uber-since-correction-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e1e8ed;
+}
+.uber-since-correction-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+.uber-since-correction-table tr:hover {
+    background-color: #f5f5f5;
+}
