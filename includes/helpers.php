@@ -178,6 +178,8 @@ function createWhatsAppMessage(array $bookingDetails): string
         ? "✈️ Flight Number: " . $bookingDetails['flight_number'] . "\n" : '';
     $costInfo = $bookingDetails['cost'] > 0
         ? "💰 Cost: R" . number_format($bookingDetails['cost'], 2) . "\n" : '';
+    $paymentReceivedInfo = !empty($bookingDetails['payment_received'])
+        ? "✅ Payment Received\n" : '';
     $notesInfo = !empty($bookingDetails['description'])
         ? "📝 Notes: " . $bookingDetails['description'] . "\n" : '';
 
@@ -208,6 +210,7 @@ function createWhatsAppMessage(array $bookingDetails): string
         "📅 Date: " . $forDate . " at " . $startTime . "\n" .
         "🎯 Destination: " . $bookingDetails['destination'] . "\n" .
         $costInfo .
+        $paymentReceivedInfo .
         $flightInfo .
         $notesInfo .
         $driverInfo .
