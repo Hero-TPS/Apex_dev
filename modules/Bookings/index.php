@@ -93,7 +93,7 @@ include ROOT_DIR . '/includes/header.php';
                                 '<td data-label="Client">' + escapeHtml(booking.client_name) + '</td>' +
                                 '<td data-label="Pickup">' + escapeHtml(booking.pickup_location) + '</td>' +
                                 '<td data-label="Destination">' + escapeHtml(booking.destination) + '</td>' +
-                                '<td data-label="Cost">' + escapeHtml(booking.cost) + '</td>' +
+                                '<td data-label="Cost">' + escapeHtml(booking.cost) + (booking.payment_received ? ' <span title="Payment received">✅</span>' : '') + '</td>' +
                                 '<td data-label="Distance">' + (booking.distance ? escapeHtml(booking.distance) : '<span style="color:#aaa;">—</span>') + '</td>' +
                                 '<td data-label="Calc. Cost">' + (booking.calculated_cost ? escapeHtml(booking.calculated_cost) : '<span style="color:#aaa;">—</span>') + '</td>' +
                                 '<td data-label="Driver">' + (booking.driver_name ? escapeHtml(booking.driver_name) : '<span style="color:#aaa;">—</span>') + '</td>' +
