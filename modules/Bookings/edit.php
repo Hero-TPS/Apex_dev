@@ -180,6 +180,15 @@ if (isset($_GET['id'])) {
                 </label>
             </div>
 
+            <!-- Payment Received -->
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="payment_received" name="payment_received" value="1"
+                           <?= !empty($booking['payment_received']) ? 'checked' : '' ?>>
+                    Payment Received
+                </label>
+            </div>
+
             <div class="form-group">
                 <label for="flightNumber">Flight Number (if applicable)</label>
                 <input type="text" id="flightNumber" name="flight_number" value="<?php echo htmlspecialchars($booking['flight_number']); ?>">
@@ -449,7 +458,8 @@ $(document).ready(function () {
 
         // ✅ Get payment method
         var paymentMethod = $('#payment_method').is(':checked') ? 'eft' : 'cash';
-        var formData = $(this).serialize() + '&payment_method=' + paymentMethod;
+        var paymentReceived = $('#payment_received').is(':checked') ? '1' : '0';
+        var formData = $(this).serialize() + '&payment_method=' + paymentMethod + '&payment_received=' + paymentReceived;
 
         $.ajax({
             type: 'POST',
