@@ -144,6 +144,10 @@ if (isset($_GET['id'])) {
             <?= $booking['payment_method'] === 'eft' ? 'EFT' : 'Cash' ?>
         </div>
         <div class="detail-item">
+            <strong>Payment Received:</strong>
+            <?= !empty($booking['payment_received']) ? '✅ Yes' : '❌ No' ?>
+        </div>
+        <div class="detail-item">
             <strong>Flight:</strong>
             <?php
             if (!empty($booking['flight_number'])):
