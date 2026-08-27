@@ -109,6 +109,7 @@ function handleGetBookings()
                 SELECT 
                     b.id, b.contact_id, b.trip_date, b.start_time, b.end_time, b.status,
                     b.original_pickup, b.original_destination, b.was_swapped, b.cost,
+                    b.payment_received,
                     b.driver_id, b.booking_fee, b.distance_km, b.is_round_trip,
                     c.name AS client_name, c.phone AS client_phone,
                     d.name AS driver_name
@@ -127,6 +128,7 @@ function handleGetBookings()
                 SELECT 
                     b.id, b.contact_id, b.trip_date, b.start_time, b.end_time, b.status,
                     b.original_pickup, b.original_destination, b.was_swapped, b.cost,
+                    b.payment_received,
                     b.driver_id, b.booking_fee, b.distance_km, b.is_round_trip,
                     c.name AS client_name, c.phone AS client_phone,
                     d.name AS driver_name
@@ -173,6 +175,7 @@ function handleGetBookings()
                 'pickup_location' => $pickup,
                 'destination' => $destination,
                 'cost' => 'R' . number_format((float) $row['cost'], 2),
+                'payment_received' => (bool) $row['payment_received'],
                 'distance' => $distanceKm !== null
                     ? number_format($distanceKm, 1) . ' km' . (!empty($row['is_round_trip']) ? ' (RT)' : '')
                     : null,
@@ -226,6 +229,7 @@ function handleAddBooking()
         $original_destination = $_POST['original_destination'] ?? '';
         $cost = $_POST['cost'] ?? '';
         $payment_method = $_POST['payment_method'] ?? 'cash';
+        $payment_received = isset($_POST['payment_received']) && $_POST['payment_received'] == '1' ? 1 : 0;
         $was_swapped = isset($_POST['swap_locations']) ? 1 : 0; // ✅ FIX
 
         // Capture flag before resolving 'other'
@@ -304,10 +308,10 @@ function handleAddBooking()
         $stmt = $pdo->prepare("
             INSERT INTO bookings (
                 contact_id, trip_date, start_time, end_time,
-                original_pickup, original_destination, was_swapped, cost, payment_method,
+                original_pickup, original_destination, was_swapped, cost, payment_method, payment_received,
                 flight_number, description, driver_id, booking_fee, no_booking_fee, driver_notes,
                 pickup_is_custom, distance_km, is_round_trip
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -320,6 +324,7 @@ function handleAddBooking()
             $was_swapped,
             $cost,
             $payment_method,
+            $payment_received,
             $flight_number,
             $description,
             $driver_id,
@@ -447,6 +452,7 @@ function handleUpdateBooking()
             $flight_number = trim($_REQUEST['flight_number'] ?? '');
             $description_input = trim($_REQUEST['description'] ?? '');
             $payment_method = trim($_REQUEST['payment_method'] ?? 'cash');
+            $payment_received = isset($_REQUEST['payment_received']) && $_REQUEST['payment_received'] == '1' ? 1 : 0;
             $swap_locations = isset($_REQUEST['swap_locations']);
             $driver_id = intval($_REQUEST['driver_id'] ?? 0) ?: null;
             $no_booking_fee = isset($_REQUEST['no_booking_fee']) ? 1 : 0;
@@ -526,7 +532,7 @@ function handleUpdateBooking()
             $sql = "UPDATE bookings SET 
                 contact_id = ?, trip_date = ?, start_time = ?, end_time = ?,
                 original_pickup = ?, original_destination = ?, was_swapped = ?,
-                cost = ?, flight_number = ?, description = ?, payment_method = ?,
+                cost = ?, flight_number = ?, description = ?, payment_method = ?, payment_received = ?,
                 driver_id = ?, booking_fee = ?, no_booking_fee = ?, driver_notes = ?,
                 pickup_is_custom = ?, distance_km = ?, is_round_trip = ?,
                 last_confirmed_at = NULL,
@@ -546,6 +552,7 @@ function handleUpdateBooking()
                 $flight_number,
                 $description_to_save,
                 $payment_method,
+                $payment_received,
                 $driver_id,
                 $booking_fee,
                 $no_booking_fee,
