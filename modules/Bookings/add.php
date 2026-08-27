@@ -29,6 +29,9 @@ $drivers = $driversStmt->fetchAll(PDO::FETCH_ASSOC);
 // Booking fee percentage for JS calculation
 $booking_fee_pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
 
+// Cape Town Airport pickup reminder — shown as a live hint only; never saved into description
+$airport_pickup_notice = (string) getSystemVariable($pdo, 'airport_pickup_notice');
+
 // Prefill contact if passed via URL
 $prefill_contact_id = null;
 $prefill_contact_name = '';
@@ -195,6 +198,7 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
         <div class="form-group">
             <label for="description">Additional Notes</label>
             <textarea id="description" name="description" placeholder="Any special instructions..."><?= $prefill_description ?></textarea>
+            <small id="airportNoticeHint" class="at-help-text hidden">✈️ Airport pickup detected — this will be added to the notes automatically: "<?= htmlspecialchars($airport_pickup_notice) ?>"</small>
         </div>
 
         <!-- Driver Allocation -->
@@ -385,6 +389,18 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
                 $('#otherDestination').prop('required', false);
             }
         });
+
+        // ✈️ Airport pickup notice hint (preview only — never written into #description)
+        function updateAirportNoticeHint() {
+            var swapped = $('#swapLocations').is(':checked');
+            var pickupVal = $('#pickup').val() === 'other' ? $('#otherPickup').val() : $('#pickup').val();
+            var destVal = $('#destination').val() === 'other' ? $('#otherDestination').val() : $('#destination').val();
+            var effectivePickup = swapped ? destVal : pickupVal;
+            var isAirport = (effectivePickup || '').toLowerCase().indexOf('airport') !== -1;
+            $('#airportNoticeHint').toggleClass('hidden', !isAirport);
+        }
+        $('#pickup, #destination, #swapLocations').on('change', updateAirportNoticeHint);
+        $('#otherPickup, #otherDestination').on('input', updateAirportNoticeHint);
 
         $('#cost').on('change', function () {
             if ($(this).val() === 'other') {
