@@ -396,7 +396,10 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
             var pickupVal = $('#pickup').val() === 'other' ? $('#otherPickup').val() : $('#pickup').val();
             var destVal = $('#destination').val() === 'other' ? $('#otherDestination').val() : $('#destination').val();
             var effectivePickup = swapped ? destVal : pickupVal;
-            var isAirport = (effectivePickup || '').toLowerCase().indexOf('airport') !== -1;
+            var pickupLower = (effectivePickup || '').toLowerCase();
+            var isAirport = pickupLower.indexOf('cape town') !== -1
+                && pickupLower.indexOf('airport') !== -1
+                && pickupLower.indexOf('pickup') !== -1;
             $('#airportNoticeHint').toggleClass('hidden', !isAirport);
         }
         $('#pickup, #destination, #swapLocations').on('change', updateAirportNoticeHint);
