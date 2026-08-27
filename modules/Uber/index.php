@@ -106,7 +106,12 @@ if ($lastOverrideId !== null) {
     <h2>🚗 Uber Reports (Last <?= htmlspecialchars($monthsBack) ?> Months)</h2>
 
     <?php if (!empty($exportRows)): ?>
-        <button type="button" id="exportSinceCorrectionBtn" class="action-btn export-since-correction-btn">📄 Export Since Last Correction (PDF)</button>
+        <button type="button" id="viewSinceCorrectionBtn" class="action-btn export-since-correction-btn">👁️ View Since Last Correction</button>
+
+        <div id="sinceCorrectionTableContainer" class="uber-since-correction-container hidden">
+            <button type="button" id="exportSinceCorrectionBtn" class="action-btn export-since-correction-btn">📄 Export to PDF</button>
+            <div id="sinceCorrectionTable"></div>
+        </div>
     <?php endif; ?>
 
     <?php foreach ($months as $m):
@@ -244,6 +249,44 @@ if ($lastOverrideId !== null) {
         doc.save('uber-balance-since-last-correction.pdf');
     }
 
+    function renderSinceCorrectionTable() {
+        const rowsHtml = exportRows.map(function (w) {
+            const balanceText = w.balance !== null
+                ? 'R' + parseFloat(w.balance).toFixed(2) + (w.is_override ? ' (corrected)' : '')
+                : '—';
+            return `
+                <tr>
+                    <td>${w.week_display}</td>
+                    <td>R${parseFloat(w.card_income).toFixed(2)}</td>
+                    <td>R${parseFloat(w.car_rental).toFixed(2)}</td>
+                    <td>R${parseFloat(w.fines).toFixed(2)}</td>
+                    <td>R${parseFloat(w.vehicle_repairs).toFixed(2)}</td>
+                    <td>R${parseFloat(w.net).toFixed(2)}</td>
+                    <td>R${parseFloat(w.shortfall_paid).toFixed(2)}</td>
+                    <td>${balanceText}</td>
+                </tr>
+            `;
+        }).join('');
+
+        $('#sinceCorrectionTable').html(`
+            <table class="uber-since-correction-table">
+                <thead>
+                    <tr>
+                        <th>Week</th>
+                        <th>Card Income</th>
+                        <th>Rental</th>
+                        <th>Fines</th>
+                        <th>Repairs</th>
+                        <th>Net</th>
+                        <th>Paid In</th>
+                        <th>Balance</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+        `);
+    }
+
     function buildWeekBlock(log) {
         let costsHtml = '—';
         if (log.additional_costs && log.additional_costs.length > 0) {
@@ -322,6 +365,13 @@ if ($lastOverrideId !== null) {
 
     $(document).ready(function () {
         $('#exportSinceCorrectionBtn').on('click', exportSinceLastCorrection);
+        $('#viewSinceCorrectionBtn').on('click', function () {
+            const container = $('#sinceCorrectionTableContainer');
+            if (container.hasClass('hidden')) {
+                renderSinceCorrectionTable();
+            }
+            container.toggleClass('hidden');
+        });
         let currentlyOpenContainer = null;
 
         $(document).on('click', '.toggle-weeks-btn', function () {
