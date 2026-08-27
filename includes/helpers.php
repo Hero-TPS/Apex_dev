@@ -350,12 +350,29 @@ function getSystemVariable(PDO $pdo, string $name): mixed
 }
 
 /**
+ * True when a location name identifies the Cape Town Airport pickup point
+ * specifically — not just any location whose name happens to mention the
+ * airport (e.g. an airport drop-off/departure entry). Requires all three
+ * keywords present independently (case-insensitive); each is checked on
+ * its own rather than against one concatenated phrase, since saved
+ * location names don't always put them in the same order or adjacent.
+ *
+ * @param string $location
+ */
+function isAirportPickupLocation(string $location): bool
+{
+    return stripos($location, 'Cape Town') !== false
+        && stripos($location, 'Airport') !== false
+        && stripos($location, 'Pickup') !== false;
+}
+
+/**
  * Returns booking notes with the Cape Town Airport pickup reminder
- * appended on its own line, when the effective pickup location is
- * an airport. The reminder text itself lives in the airport_pickup_notice
- * system variable (editable via maintenance/index.php) — it is never
- * written into bookings.description. It's appended here, at render
- * time only, so repeated edits/renders never duplicate it in storage.
+ * appended on its own line, when the effective pickup location matches
+ * isAirportPickupLocation(). The reminder text itself lives in the
+ * airport_pickup_notice system variable (editable via maintenance/index.php)
+ * — it is never written into bookings.description. It's appended here, at
+ * render time only, so repeated edits/renders never duplicate it in storage.
  *
  * Used by: createWhatsAppMessage(), modules/Bookings/view.php
  *
@@ -369,7 +386,7 @@ function appendAirportPickupNotice(PDO $pdo, string $pickup, ?string $notes): st
 {
     $notes = $notes ?? '';
 
-    if (stripos($pickup, 'airport') === false) {
+    if (!isAirportPickupLocation($pickup)) {
         return $notes;
     }
 
