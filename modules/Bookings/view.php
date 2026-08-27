@@ -228,9 +228,9 @@ if (isset($_GET['id'])) {
             target="_blank" class="page-action-btn whatsapp"
             onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= htmlspecialchars(json_encode(createWhatsAppMessage($pdo, $booking)), ENT_QUOTES) ?>, 'confirmation')">💬
             Send Confirmation</a>
-        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode('Hi ' . $booking['client_name']."\n") ?>"
+        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>"
             target="_blank" class="page-action-btn whatsapp"
-            onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= htmlspecialchars(json_encode('Hi ' . $booking['client_name']), ENT_QUOTES) ?>, 'message')">💬
+            onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, '', 'message')">💬
             Send Message</a>
         <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
             Edit Booking</a>
