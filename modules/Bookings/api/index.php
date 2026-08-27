@@ -588,7 +588,7 @@ function handleUpdateBooking()
                 updateBookingInGoogleCalendar($bookingDetails, $start_datetime, $end_datetime);
             }
 
-            $fullMessage = createWhatsAppMessage($bookingDetails);
+            $fullMessage = createWhatsAppMessage($pdo, $bookingDetails);
 
             jsonResponse([
                 'success' => true,
