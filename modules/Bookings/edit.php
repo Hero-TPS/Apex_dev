@@ -46,6 +46,9 @@ if (isset($_GET['id'])) {
 
             // Booking fee percentage for JS calculation
             $booking_fee_pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
+
+            // Cape Town Airport pickup reminder — shown as a live hint only; never saved into description
+            $airport_pickup_notice = (string) getSystemVariable($pdo, 'airport_pickup_notice');
         } catch (PDOException $e) {
             error_log('Edit form DB error: ' . $e->getMessage());
             $error_message = "Failed to load data.";
@@ -196,6 +199,7 @@ if (isset($_GET['id'])) {
             <div class="form-group">
                 <label for="description">Additional Notes</label>
                 <textarea id="description" name="description"><?php echo htmlspecialchars($booking['description']); ?></textarea>
+                <small id="airportNoticeHint" class="at-help-text hidden">✈️ Airport pickup detected — this will be added to the notes automatically: "<?= htmlspecialchars($airport_pickup_notice ?? '') ?>"</small>
             </div>
 
             <!-- Driver Allocation -->
@@ -383,6 +387,19 @@ $(document).ready(function () {
         $('#addToDestinationGroup').removeClass('hidden');
         $('#otherDestination').prop('required', true);
     }
+
+    // ✈️ Airport pickup notice hint (preview only — never written into #description)
+    function updateAirportNoticeHint() {
+        var swapped = $('#swapLocations').is(':checked');
+        var pickupVal = $('#pickup').val() === 'other' ? $('#otherPickup').val() : $('#pickup').val();
+        var destVal = $('#destination').val() === 'other' ? $('#otherDestination').val() : $('#destination').val();
+        var effectivePickup = swapped ? destVal : pickupVal;
+        var isAirport = (effectivePickup || '').toLowerCase().indexOf('airport') !== -1;
+        $('#airportNoticeHint').toggleClass('hidden', !isAirport);
+    }
+    $('#pickup, #destination, #swapLocations').on('change', updateAirportNoticeHint);
+    $('#otherPickup, #otherDestination').on('input', updateAirportNoticeHint);
+    updateAirportNoticeHint();
 
     // ✅ Handle cost "other" option toggle
     $('#cost').on('change', function () {
