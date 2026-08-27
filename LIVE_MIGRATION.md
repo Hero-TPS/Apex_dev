@@ -9,8 +9,8 @@ Run in order. Check off each one after executing.
 
 ### [bookings] Add `payment_received` column
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 ```sql
 ALTER TABLE bookings
