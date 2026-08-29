@@ -100,6 +100,11 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
             </select>
         </div>
 
+        <!-- Overlap Warning (soft — never blocks saving) -->
+        <div class="form-group hidden" id="overlapWarningGroup">
+            <div class="at-overlap-warning" id="overlapWarningBox"></div>
+        </div>
+
         <!-- Pickup -->
         <div class="form-group">
             <label for="pickup">Pickup Location <span class="required">*</span></label>
@@ -248,6 +253,52 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
 <script>
     $(document).ready(function () {
         document.getElementById('date').min = new Date().toISOString().split('T')[0];
+
+        // ⚠️ Overlap check — soft warning only, never blocks saving
+        var overlapCheckTimer = null;
+        function checkOverlap() {
+            var date = $('#date').val();
+            var time = $('#startTime').val();
+            var duration = $('#duration').val();
+            var warningGroup = $('#overlapWarningGroup');
+            var warningBox = $('#overlapWarningBox');
+
+            if (!date || !time || !duration) {
+                warningGroup.addClass('hidden');
+                warningBox.html('');
+                return;
+            }
+
+            clearTimeout(overlapCheckTimer);
+            overlapCheckTimer = setTimeout(function () {
+                $.ajax({
+                    type: 'GET',
+                    url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                    data: { action: 'check_overlap', trip_date: date, start_time: time, duration: duration },
+                    dataType: 'json',
+                    success: function (response) {
+                        if (response.success && response.overlaps && response.overlaps.length > 0) {
+                            var items = response.overlaps.map(function (o) {
+                                var driverText = o.driver_name ? ('Driver: ' + escapeHtml(o.driver_name)) : 'No driver assigned';
+                                return '<div class="at-overlap-item">' + o.start_time + '–' + o.end_time +
+                                    ' — ' + escapeHtml(o.client_name) + ' (' + driverText + ')</div>';
+                            }).join('');
+                            warningBox.html('⚠️ Overlaps with existing booking(s):' + items);
+                            warningGroup.removeClass('hidden');
+                        } else {
+                            warningGroup.addClass('hidden');
+                            warningBox.html('');
+                        }
+                    },
+                    error: function () {
+                        warningGroup.addClass('hidden');
+                        warningBox.html('');
+                    }
+                });
+            }, 250);
+        }
+        $('#date, #startTime, #duration').on('change', checkOverlap);
+        checkOverlap();
 
         // Prefill from prebooking conversion
         var prefillTime  = <?= json_encode($prefill_start_time) ?>;
