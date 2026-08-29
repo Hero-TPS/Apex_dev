@@ -1,0 +1,204 @@
+/* ========================
+   Clients module
+   Loaded via @import from the base styles.css
+   Covers: client index stat cards, client info/detail cards,
+   and the Duplicate Client Management feature.
+======================== */
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-number {
+    font-size: 36px;
+    font-weight: bold;
+    color: #3498db;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.client-info-card {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.client-info-card h3 {
+  margin-top: 0;
+  color: #2c3e50;
+}
+
+.client-detail {
+  margin: 10px 0;
+  display: flex;
+  gap: 10px;
+}
+
+.client-detail strong {
+  min-width: 120px;
+  color: #666;
+}
+
+/* ========================
+   Duplicate Client Management
+======================== */
+
+.dup-stats-bar {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    background: #f0f4f8;
+    border: 1px solid #d0dce8;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 0.9em;
+}
+
+.dup-stat {
+    color: #555;
+}
+
+.dup-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.dup-tab-btn {
+    padding: 8px 18px;
+    border: 1px solid #bbb;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.dup-tab-btn:hover {
+    background: #f0f4f8;
+}
+
+.dup-tab-btn.active {
+    background: #2c7be5;
+    color: #fff;
+    border-color: #2c7be5;
+}
+
+.dup-cluster {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 16px;
+    background: #fafafa;
+}
+
+.dup-cards-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.dup-card {
+    flex: 1;
+    min-width: 220px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 10px 14px;
+}
+
+.dup-card-name {
+    font-weight: 700;
+    font-size: 1em;
+    margin-bottom: 6px;
+}
+
+.dup-card-detail {
+    font-size: 0.85em;
+    color: #555;
+    margin-bottom: 3px;
+}
+
+.dup-card-date {
+    color: #999;
+}
+
+.dup-badge {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border-radius: 10px;
+    padding: 1px 8px;
+    font-size: 0.82em;
+    font-weight: 600;
+}
+
+.dup-badge-red {
+    background: #ffebee;
+    color: #c62828;
+    border-radius: 10px;
+    padding: 1px 8px;
+    font-size: 0.82em;
+    font-weight: 600;
+}
+
+.dup-linked-badge {
+    background: #e3f2fd;
+    color: #1565c0;
+    border-radius: 10px;
+    padding: 1px 8px;
+    font-size: 0.8em;
+    margin-left: 6px;
+}
+
+.dup-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.dup-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.dup-modal-inner {
+    background: #fff;
+    border-radius: 8px;
+    padding: 28px 32px;
+    max-width: 480px;
+    width: 90%;
+    text-align: center;
+}
+
+.dup-modal-inner p {
+    margin-bottom: 20px;
+    font-size: 1em;
+    line-height: 1.5;
+}
