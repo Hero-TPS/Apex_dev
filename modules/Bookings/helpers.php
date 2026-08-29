@@ -1,4 +1,5 @@
 <?php
+// modules/Bookings/helpers.php
 /**
  * Booking helper functions
  * Assumes: 
@@ -6,6 +7,63 @@
  * - TIME_ZONE and CUSTOM_CALENDAR_ID are defined in config
  * - getGoogleAccessToken() is available
  */
+
+/**
+ * For a set of trip dates, find every pair of bookings on those dates whose
+ * time ranges overlap — checked against ALL bookings regardless of status or
+ * driver assignment. Back-to-back bookings that only touch at the boundary
+ * are not considered an overlap.
+ *
+ * Used by add.php/edit.php (via the check_overlap API action), view.php,
+ * index.php, and reports.php so every page applies the same definition of
+ * "overlap".
+ *
+ * @param string[] $tripDates Y-m-d dates to check
+ * @return array<int, array<int, array{id:int,start_time:string,end_time:string,client_name:string,driver_name:?string}>>
+ *         Keyed by booking id => list of the *other* bookings it overlaps with.
+ */
+function getBookingOverlapsForDates(PDO $pdo, array $tripDates): array
+{
+    $tripDates = array_values(array_unique(array_filter($tripDates)));
+    if (empty($tripDates)) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($tripDates), '?'));
+    $sql = "
+        SELECT
+            b1.id AS booking_id,
+            b2.id AS other_id,
+            b2.start_time AS other_start,
+            b2.end_time AS other_end,
+            c2.name AS other_client,
+            d2.name AS other_driver
+        FROM bookings b1
+        JOIN bookings b2
+            ON b1.trip_date = b2.trip_date
+           AND b1.id != b2.id
+           AND CAST(b1.start_time AS TIME) < CAST(b2.end_time AS TIME)
+           AND CAST(b1.end_time AS TIME) > CAST(b2.start_time AS TIME)
+        JOIN contacts c2 ON b2.contact_id = c2.id
+        LEFT JOIN drivers d2 ON b2.driver_id = d2.id
+        WHERE b1.trip_date IN ($placeholders)
+        ORDER BY b1.id ASC, b2.start_time ASC
+    ";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($tripDates);
+
+    $map = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $map[(int) $row['booking_id']][] = [
+            'id'          => (int) $row['other_id'],
+            'start_time'  => date('H:i', strtotime($row['other_start'])),
+            'end_time'    => date('H:i', strtotime($row['other_end'])),
+            'client_name' => $row['other_client'],
+            'driver_name' => $row['other_driver'] ?? null,
+        ];
+    }
+    return $map;
+}
 
 /**
  * Fetch a full booking record by ID (with contact info and allocated driver)
