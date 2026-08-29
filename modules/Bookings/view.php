@@ -48,6 +48,9 @@ if (isset($_GET['id'])) {
                 $driversStmt = $pdo->query("SELECT id, name, phone FROM drivers WHERE active = 1 ORDER BY name ASC");
                 $drivers = $driversStmt->fetchAll(PDO::FETCH_ASSOC);
                 $booking_fee_pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
+
+                // Same "against all bookings" overlap rule as add/edit/index/reports
+                $bookingOverlaps = getBookingOverlapsForDates($pdo, [$booking['trip_date']])[$booking['id']] ?? [];
             } else {
                 $error_message = "Booking not found.";
             }
@@ -86,6 +89,19 @@ if (isset($_GET['id'])) {
         }
     }
     ?>
+
+    <?php if (!empty($bookingOverlaps)): ?>
+        <div class="at-overlap-warning" style="margin-bottom:16px;">
+            ⚠️ This booking overlaps with:
+            <?php foreach ($bookingOverlaps as $o): ?>
+                <div class="at-overlap-item">
+                    <?= htmlspecialchars($o['start_time']) ?>–<?= htmlspecialchars($o['end_time']) ?>
+                    — <?= htmlspecialchars($o['client_name']) ?>
+                    (<?= $o['driver_name'] ? 'Driver: ' . htmlspecialchars($o['driver_name']) : 'No driver assigned' ?>)
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 
     <div class="booking-detail-grid">
         <div class="detail-item">
