@@ -1,6 +1,8 @@
 @import url("modules/bookings.css");
 @import url("modules/dashboard.css");
 @import url("modules/financials.css");
+@import url("modules/clients.css");
+@import url("modules/uber.css");
 
 /* ========================
    Base & Layout
@@ -900,110 +902,7 @@ body:not(.home-page) .floating-menu-toggle {
 
 .highlight-row { background-color: #fff9c4 !important; transition: background-color 0.3s; }
 
-/* Uber — rental balance correction (correction form, buttons, hints)
-   Left in base for now — moves to modules/uber.css in that batch,
-   alongside the matching .correct-rental-btn override UI further down. */
-.at-balance-flag {
-    color: #e67e22;
-    font-size: 0.85em;
-    font-style: italic;
-}
-
-.correct-balance-btn,
-.save-correction-btn,
-.cancel-correction-btn,
-.export-since-correction-btn {
-    width: auto;
-    white-space: normal;
-}
-
-.correct-balance-btn { background-color: #7f8c8d; }
-.correct-balance-btn:hover { background-color: #6c7a7a; }
-
-.save-correction-btn { background-color: #27ae60; }
-.save-correction-btn:hover { background-color: #229954; }
-
-.cancel-correction-btn { background-color: #95a5a6; }
-.cancel-correction-btn:hover { background-color: #7f8c8d; }
-
-.export-since-correction-btn {
-    background-color: #2980b9;
-    margin-bottom: 12px;
-}
-.export-since-correction-btn:hover { background-color: #1f6391; }
-
-.balance-correction-form {
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    margin: 8px 0 12px;
-}
-.balance-correction-form:not(.hidden) {
-    display: flex;
-}
-.balance-correction-form .balance-correction-input {
-    flex: 1 1 140px;
-    min-width: 100px;
-    padding: 6px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-}
-
-.at-balance-correction-hint {
-    width: 100%;
-    margin: 0 0 4px;
-}
-
-.toggle-weeks-btn {
-    background: #3498db;
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    margin-top: 12px;
-    width: 100%;
-}
-.toggle-weeks-btn:hover {
-    background: #2980b9;
-}
-
-.week-in-progress {
-    font-size: 12px;
-    font-weight: 600;
-    color: #e67e22;
-    background: #fef3e2;
-    border: 1px solid #f0a500;
-    border-radius: 4px;
-    padding: 2px 6px;
-    margin-left: 6px;
-    white-space: nowrap;
-}
-
-.week-in-progress-block {
-    border-color: #f0a500;
-    background: #fffdf7;
-}
-
-/* ========================
-   System Logs Styles
-======================== */
-
-.logs-filters {
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-}
-
-.filter-row {
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-    align-items: end;
-}
-
+/* Shared across modules — used by both Clients and Maintenance/Logs filter bars */
 .filter-group {
     flex: 1;
     min-width: 150px;
@@ -1022,6 +921,37 @@ body:not(.home-page) .floating-menu-toggle {
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 4px;
+}
+
+/* Shared — used by Clients (bookings.php, edit.php) and Fuel/edit.php */
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+/* NEEDS YOUR CALL: maintenance/logs.php actually renders
+   .filters / .log-table / .log-level / .log-level-{LEVEL} / .log-context —
+   none of which match the classes below (.logs-filters / .filter-row /
+   .logs-table / .level-badge / .level-{LEVEL} / .context-btn / .context-modal
+   / .context-content). These look like leftovers from an older version of
+   the Logs page — the live page currently has NO styling for its table,
+   level badges, or filter wrapper. Left in place, unused, until you decide:
+   rename these to match the live markup (restores styling), or delete them
+   and style the current markup fresh. */
+.logs-filters {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.filter-row {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: end;
 }
 
 .logs-table {
@@ -1104,122 +1034,7 @@ body:not(.home-page) .floating-menu-toggle {
     overflow-x: auto;
 }
 
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-    margin-bottom: 20px;
-}
 
-.stat-card {
-    background: white;
-    padding: 15px;
-    border-radius: 8px;
-    border-left: 4px solid #3498db;
-}
-
-.stat-card h4 {
-    margin: 0 0 10px 0;
-    color: #666;
-    font-size: 14px;
-}
-
-.stat-card .number {
-    font-size: 24px;
-    font-weight: 700;
-    color: #2c3e50;
-}
-
-.actions-bar {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-}
-
-.actions-bar .btn {
-    width: auto;
-    padding: 10px 20px;
-    font-size: 14px;
-}
-
-.success-message {
-    background: #d4edda;
-    color: #155724;
-    padding: 12px;
-    border-radius: 4px;
-    margin-bottom: 20px;
-    border: 1px solid #c3e6cb;
-}
-
-/* Completed booking styling for "All Bookings" view */
-.booking-completed {
-    background-color: #f0f9ff !important;
-    opacity: 0.7;
-}
-
-.booking-completed td {
-    text-decoration: line-through;
-    color: #999;
-}
-
-.booking-completed .action-btn.completed {
-    background-color: #27ae60;
-    color: white;
-}
-
-.stat-card {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    text-align: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.stat-number {
-    font-size: 36px;
-    font-weight: bold;
-    color: #3498db;
-    margin-bottom: 5px;
-}
-
-.stat-label {
-    font-size: 14px;
-    color: #666;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.client-info-card {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.client-info-card h3 {
-  margin-top: 0;
-  color: #2c3e50;
-}
-
-.client-detail {
-  margin: 10px 0;
-  display: flex;
-  gap: 10px;
-}
-
-.client-detail strong {
-  min-width: 120px;
-  color: #666;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
-  flex-wrap: wrap;
-}
 /* ========================
    Custom WhatsApp Modal
 ======================== */
@@ -1236,151 +1051,6 @@ body:not(.home-page) .floating-menu-toggle {
 .whatsapp-btn:hover {
   background-color: #128c7e;
   color: white;
-}
-
-/* ============================================================
-   Duplicate Client Management
-   ============================================================ */
-
-.dup-stats-bar {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-    background: #f0f4f8;
-    border: 1px solid #d0dce8;
-    border-radius: 6px;
-    padding: 10px 16px;
-    margin-bottom: 16px;
-    font-size: 0.9em;
-}
-
-.dup-stat {
-    color: #555;
-}
-
-.dup-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-}
-
-.dup-tab-btn {
-    padding: 8px 18px;
-    border: 1px solid #bbb;
-    border-radius: 6px;
-    background: #fff;
-    cursor: pointer;
-    font-size: 0.9em;
-    transition: background 0.15s, border-color 0.15s;
-}
-
-.dup-tab-btn:hover {
-    background: #f0f4f8;
-}
-
-.dup-tab-btn.active {
-    background: #2c7be5;
-    color: #fff;
-    border-color: #2c7be5;
-}
-
-.dup-cluster {
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 14px;
-    margin-bottom: 16px;
-    background: #fafafa;
-}
-
-.dup-cards-row {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-}
-
-.dup-card {
-    flex: 1;
-    min-width: 220px;
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 10px 14px;
-}
-
-.dup-card-name {
-    font-weight: 700;
-    font-size: 1em;
-    margin-bottom: 6px;
-}
-
-.dup-card-detail {
-    font-size: 0.85em;
-    color: #555;
-    margin-bottom: 3px;
-}
-
-.dup-card-date {
-    color: #999;
-}
-
-.dup-badge {
-    background: #e8f5e9;
-    color: #2e7d32;
-    border-radius: 10px;
-    padding: 1px 8px;
-    font-size: 0.82em;
-    font-weight: 600;
-}
-
-.dup-badge-red {
-    background: #ffebee;
-    color: #c62828;
-    border-radius: 10px;
-    padding: 1px 8px;
-    font-size: 0.82em;
-    font-weight: 600;
-}
-
-.dup-linked-badge {
-    background: #e3f2fd;
-    color: #1565c0;
-    border-radius: 10px;
-    padding: 1px 8px;
-    font-size: 0.8em;
-    margin-left: 6px;
-}
-
-.dup-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.dup-modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.45);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
-
-.dup-modal-inner {
-    background: #fff;
-    border-radius: 8px;
-    padding: 28px 32px;
-    max-width: 480px;
-    width: 90%;
-    text-align: center;
-}
-
-.dup-modal-inner p {
-    margin-bottom: 20px;
-    font-size: 1em;
-    line-height: 1.5;
 }
 
 /* ========================
@@ -1836,82 +1506,3 @@ body:not(.home-page) .floating-menu-toggle {
     color: #888;
     margin: 2px 0 10px;
 }
-/*
-  PASTE LOCATION: assets/css/styles.css
-  Right after the existing ".at-balance-correction-hint { ... }" block
-  (the one ending just before ".toggle-weeks-btn"), i.e. immediately
-  before ".toggle-weeks-btn". Mirrors the balance-correction styling
-  above it — same pattern, new class names for the rental override UI.
-*/
-
-.correct-rental-btn,
-.save-rental-btn,
-.clear-rental-btn,
-.cancel-rental-btn {
-    width: auto;
-    white-space: normal;
-}
-
-.correct-rental-btn { background-color: #7f8c8d; }
-.correct-rental-btn:hover { background-color: #6c7a7a; }
-
-.save-rental-btn { background-color: #27ae60; }
-.save-rental-btn:hover { background-color: #229954; }
-
-.cancel-rental-btn { background-color: #95a5a6; }
-.cancel-rental-btn:hover { background-color: #7f8c8d; }
-
-.rental-correction-form {
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    margin: 8px 0 12px;
-}
-.rental-correction-form:not(.hidden) {
-    display: flex;
-}
-.rental-correction-form .rental-correction-input {
-    flex: 1 1 140px;
-    min-width: 100px;
-    padding: 6px;
-    border: 1px solid #ccc;
-    border-radius: 5
-       px;
-}
-
-/*
-  PASTE LOCATION: assets/css/styles.css
-  Right after the .bookings-table block (ends just before
-  ".client-subline"). Reuses the same table look as bookings-table for
-  visual consistency, with its own class since this table is Uber-specific.
-*/
-
-.uber-since-correction-container {
-    margin-top: 12px;
-}
-.uber-since-correction-container.hidden {
-    display: none;
-}
-.uber-since-correction-container .export-since-correction-btn {
-    margin-bottom: 10px;
-}
-
-.uber-since-correction-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-}
-.uber-since-correction-table th,
-.uber-since-correction-table td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #e1e8ed;
-}
-.uber-since-correction-table th {
-    background-color: #f8f9fa;
-    font-weight: 600;
-}
-.uber-since-correction-table tr:hover {
-    background-color: #f5f5f5;
-}
-
