@@ -66,6 +66,128 @@ function getBookingOverlapsForDates(PDO $pdo, array $tripDates): array
 }
 
 /**
+ * Find bookings that overlap with a candidate date/time range, for when the
+ * candidate isn't (yet) its own row in `bookings` — e.g. live-checking an
+ * add/edit form's in-progress values, or a tentative prebooking's slot.
+ * Same overlap definition as getBookingOverlapsForDates() above.
+ */
+function getOverlapsForCandidateSlot(PDO $pdo, string $tripDate, string $startTime, string $endTime, ?int $excludeBookingId = null): array
+{
+    $sql = "
+        SELECT b.id, b.start_time, b.end_time,
+               c.name AS client_name,
+               d.name AS driver_name
+        FROM bookings b
+        JOIN contacts c ON b.contact_id = c.id
+        LEFT JOIN drivers d ON b.driver_id = d.id
+        WHERE b.trip_date = ?
+          AND CAST(b.start_time AS TIME) < ?
+          AND CAST(b.end_time AS TIME) > ?
+    ";
+    $params = [$tripDate, $endTime, $startTime];
+
+    if ($excludeBookingId !== null) {
+        $sql .= " AND b.id != ?";
+        $params[] = $excludeBookingId;
+    }
+
+    $sql .= " ORDER BY b.start_time ASC";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    $overlaps = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $overlaps[] = [
+            'id' => (int) $row['id'],
+            'start_time' => date('H:i', strtotime($row['start_time'])),
+            'end_time' => date('H:i', strtotime($row['end_time'])),
+            'client_name' => $row['client_name'],
+            'driver_name' => $row['driver_name'] ?? null,
+        ];
+    }
+    return $overlaps;
+}
+
+/**
+ * Builds the Google Calendar event title for a booking:
+ * "{Client Name} {transport icon}{overlap icon if any}{driver icon if assigned}"
+ * — no cost in the title (that's already in the event description).
+ *
+ * Transport icon: ✈️ if "airport" appears in the pickup or destination text,
+ * otherwise 🚗. Overlap uses the same shared getBookingOverlapsForDates()
+ * definition as add/edit/view/index/reports.
+ */
+function buildBookingCalendarSummary(array $bookingData): string
+{
+    global $pdo;
+
+    $pickup = $bookingData['pickup_location'] ?? $bookingData['original_pickup'] ?? '';
+    $destination = $bookingData['destination'] ?? $bookingData['original_destination'] ?? '';
+    $isAirport = stripos($pickup, 'airport') !== false || stripos($destination, 'airport') !== false;
+
+    $icons = $isAirport ? '✈️' : '🚗';
+
+    $overlaps = [];
+    if (!empty($bookingData['id']) && !empty($bookingData['trip_date'])) {
+        $overlapMap = getBookingOverlapsForDates($pdo, [$bookingData['trip_date']]);
+        $overlaps = $overlapMap[(int) $bookingData['id']] ?? [];
+    }
+    if (!empty($overlaps)) {
+        $icons .= '⚠️';
+    }
+
+    if (!empty($bookingData['driver_id'])) {
+        $icons .= '👤';
+    }
+
+    return $bookingData['client_name'] . ' ' . $icons;
+}
+
+/**
+ * Same icon treatment as buildBookingCalendarSummary(), for a tentative
+ * prebooking's calendar title. Keeps the "TENTATIVE" prefix and the
+ * pickup → destination text, since those are still useful while details
+ * are unconfirmed. Driver icon only applies if $data has a driver_id set
+ * (prebookings usually won't yet). Overlap is only checked when a
+ * start_time is set — an "all day, time TBC" prebooking has nothing to
+ * compare against a defaulted 1-hour slot for.
+ */
+function buildPrebookingCalendarSummary(array $data, string $pickup, string $destination): string
+{
+    global $pdo;
+
+    $isAirport = stripos($pickup, 'airport') !== false || stripos($destination, 'airport') !== false;
+    $icons = $isAirport ? '✈️' : '🚗';
+
+    if (!empty($data['start_time']) && !empty($data['trip_date'])) {
+        $tz = new DateTimeZone(defined('TIME_ZONE') ? TIME_ZONE : 'UTC');
+        $start = new DateTime($data['trip_date'] . ' ' . $data['start_time'], $tz);
+        $end = clone $start;
+        $end->modify('+1 hour');
+        $overlaps = getOverlapsForCandidateSlot($pdo, $data['trip_date'], $start->format('H:i:s'), $end->format('H:i:s'));
+        if (!empty($overlaps)) {
+            $icons .= '⚠️';
+        }
+    }
+
+    if (!empty($data['driver_id'])) {
+        $icons .= '👤';
+    }
+
+    $summary = '📋 TENTATIVE: ' . $data['client_name'] . ' ' . $icons;
+    if ($pickup !== '' && $destination !== '') {
+        $summary .= ' ' . $pickup . ' → ' . $destination;
+    } elseif ($destination !== '') {
+        $summary .= ' → ' . $destination;
+    } elseif ($pickup !== '') {
+        $summary .= ' ' . $pickup . ' →';
+    }
+
+    return $summary;
+}
+
+/**
  * Fetch a full booking record by ID (with contact info and allocated driver)
  */
 function getBookingById(PDO $pdo, int $id): ?array
@@ -159,7 +281,7 @@ function updateBookingInGoogleCalendar(array $bookingData, DateTime $start, Date
     }
 
     $eventData = [
-        'summary' => '🚗 ' . $bookingData['client_name'] . ' - R' . number_format($bookingData['cost'], 2),
+        'summary' => buildBookingCalendarSummary($bookingData),
         'location' => $bookingData['was_swapped'] ? $bookingData['original_destination'] : $bookingData['original_pickup'],
         'description' => createEventDescription($bookingData),
         'start' => [
@@ -221,7 +343,7 @@ function createBookingInGoogleCalendar(array $bookingData, DateTime $start, Date
     }
 
     $eventData = [
-        'summary' => '🚗 ' . $bookingData['client_name'] . ' - R' . number_format($bookingData['cost'], 2),
+        'summary' => buildBookingCalendarSummary($bookingData),
         'location' => $bookingData['was_swapped'] ? $bookingData['original_destination'] : $bookingData['original_pickup'],
         'description' => createEventDescription($bookingData),
         'start' => [
@@ -288,14 +410,7 @@ function createPrebookingInGoogleCalendar(array $data): ?string
     $pickup      = $wasSwapped ? ($data['original_destination'] ?? '') : ($data['original_pickup'] ?? '');
     $destination = $wasSwapped ? ($data['original_pickup'] ?? '') : ($data['original_destination'] ?? '');
 
-    $summary = '📋 TENTATIVE: ' . $data['client_name'];
-    if ($pickup !== '' && $destination !== '') {
-        $summary .= ' ' . $pickup . ' → ' . $destination;
-    } elseif ($destination !== '') {
-        $summary .= ' → ' . $destination;
-    } elseif ($pickup !== '') {
-        $summary .= ' ' . $pickup . ' →';
-    }
+    $summary = buildPrebookingCalendarSummary($data, $pickup, $destination);
 
     $description = "📋 Tentative / Pre-booking\n";
     $description .= "👤 Client: " . $data['client_name'] . "\n";
