@@ -1,4 +1,5 @@
 <?php
+// modules/Bookings/reports.php
 //booking reports
 $page_title = 'Booking Reports';
 $page_subtitle = 'Monthly Summary';
@@ -17,12 +18,17 @@ if ($monthsBack < 1) {
     $monthsBack = 3;
 }
 
+// Booking Reports also looks 3 months into the future, on top of the shared
+// financial_months_back setting used for history. Hard-coded — this is scoped
+// to Booking Reports only, not the shared setting used by Uber/Financials/Fuel.
+$monthsAhead = 3;
+
 $months = [];
 $today        = new DateTime();
 $firstOfMonth = new DateTime($today->format('Y-m-01'));
-for ($i = 0; $i < $monthsBack; $i++) {
-    $date  = clone $firstOfMonth;
-    $date->modify("-$i months");
+for ($i = -$monthsAhead; $i < $monthsBack; $i++) {
+    $date = clone $firstOfMonth;
+    $date->modify(($i <= 0 ? '+' . abs($i) : '-' . $i) . ' months');
     $months[] = [
         'year'  => (int) $date->format('Y'),
         'month' => (int) $date->format('n'),
@@ -48,7 +54,7 @@ $currentWeekSunday->setTime(23, 59, 59);
 ?>
 
 <div class="financial-dashboard">
-    <h2>📊 Booking Reports (Last <?= htmlspecialchars($monthsBack) ?> Months)</h2>
+    <h2>📊 Booking Reports</h2>
 
     <?php foreach ($months as $m):
         $startDate = new DateTime("{$m['year']}-{$m['month']}-01");
@@ -153,6 +159,15 @@ $currentWeekSunday->setTime(23, 59, 59);
     }
 
     $(document).ready(function () {
+        // Scroll down to the current month on initial page load only —
+        // future months now sort above it, so it's no longer the top block.
+        var currentBlock = document.querySelector(
+            '.financial-month-block[data-year="<?= (int) $today->format('Y') ?>"][data-month="<?= (int) $today->format('n') ?>"]'
+        );
+        if (currentBlock) {
+            currentBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
         let currentlyOpenContainer = null;
         let currentlyOpenBookingsContainer = null;
 
