@@ -1,0 +1,157 @@
+/* ========================
+   Uber module
+   Loaded via @import from the base styles.css
+   Covers: weekly balance correction UI, rental override
+   correction UI (mirrors balance correction), and the
+   export-since-correction table.
+======================== */
+
+.at-balance-flag {
+    color: #e67e22;
+    font-size: 0.85em;
+    font-style: italic;
+}
+
+.correct-balance-btn,
+.save-correction-btn,
+.cancel-correction-btn,
+.export-since-correction-btn {
+    width: auto;
+    white-space: normal;
+}
+
+.correct-balance-btn { background-color: #7f8c8d; }
+.correct-balance-btn:hover { background-color: #6c7a7a; }
+
+.save-correction-btn { background-color: #27ae60; }
+.save-correction-btn:hover { background-color: #229954; }
+
+.cancel-correction-btn { background-color: #95a5a6; }
+.cancel-correction-btn:hover { background-color: #7f8c8d; }
+
+.export-since-correction-btn {
+    background-color: #2980b9;
+    margin-bottom: 12px;
+}
+.export-since-correction-btn:hover { background-color: #1f6391; }
+
+.balance-correction-form {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 12px;
+}
+.balance-correction-form:not(.hidden) {
+    display: flex;
+}
+.balance-correction-form .balance-correction-input {
+    flex: 1 1 140px;
+    min-width: 100px;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.at-balance-correction-hint {
+    width: 100%;
+    margin: 0 0 4px;
+}
+
+.toggle-weeks-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 12px;
+    width: 100%;
+}
+.toggle-weeks-btn:hover {
+    background: #2980b9;
+}
+
+.week-in-progress {
+    font-size: 12px;
+    font-weight: 600;
+    color: #e67e22;
+    background: #fef3e2;
+    border: 1px solid #f0a500;
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    white-space: nowrap;
+}
+
+.week-in-progress-block {
+    border-color: #f0a500;
+    background: #fffdf7;
+}
+
+/* Rental override correction — mirrors the balance-correction UI above,
+   same pattern, own class names */
+.correct-rental-btn,
+.save-rental-btn,
+.clear-rental-btn,
+.cancel-rental-btn {
+    width: auto;
+    white-space: normal;
+}
+
+.correct-rental-btn { background-color: #7f8c8d; }
+.correct-rental-btn:hover { background-color: #6c7a7a; }
+
+.save-rental-btn { background-color: #27ae60; }
+.save-rental-btn:hover { background-color: #229954; }
+
+.cancel-rental-btn { background-color: #95a5a6; }
+.cancel-rental-btn:hover { background-color: #7f8c8d; }
+
+.rental-correction-form {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 12px;
+}
+.rental-correction-form:not(.hidden) {
+    display: flex;
+}
+.rental-correction-form .rental-correction-input {
+    flex: 1 1 140px;
+    min-width: 100px;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* Export-since-correction table — reuses the bookings-table look
+   for visual consistency, own class since this table is Uber-specific */
+.uber-since-correction-container {
+    margin-top: 12px;
+}
+.uber-since-correction-container.hidden {
+    display: none;
+}
+.uber-since-correction-container .export-since-correction-btn {
+    margin-bottom: 10px;
+}
+
+.uber-since-correction-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+.uber-since-correction-table th,
+.uber-since-correction-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e1e8ed;
+}
+.uber-since-correction-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+.uber-since-correction-table tr:hover {
+    background-color: #f5f5f5;
+}
