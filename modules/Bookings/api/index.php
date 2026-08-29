@@ -151,6 +151,11 @@ function handleGetBookings()
         $today_str = $now->format('Y-m-d');
         $ratePerKm = (float) getSystemVariable($pdo, 'rate_per_km');
 
+        // Overlaps are checked against ALL bookings on the relevant dates,
+        // not just the ones in this filtered list (e.g. a completed booking
+        // can still overlap with an upcoming one).
+        $overlapMap = getBookingOverlapsForDates($pdo, array_column($bookings, 'trip_date'));
+
         foreach ($bookings as $row) {
             $pickup = $row['was_swapped'] ? $row['original_destination'] : $row['original_pickup'];
             $destination = $row['was_swapped'] ? $row['original_pickup'] : $row['original_destination'];
@@ -186,6 +191,7 @@ function handleGetBookings()
                 'client_name' => $row['client_name'],
                 'client_phone' => formatPhoneNumberForWhatsApp($row['client_phone'] ?? ''),
                 'driver_name' => $row['driver_name'] ?? null,
+                'overlaps' => $overlapMap[(int) $row['id']] ?? [],
             ];
         }
 
@@ -430,8 +436,8 @@ function handleCheckOverlap()
             JOIN contacts c ON b.contact_id = c.id
             LEFT JOIN drivers d ON b.driver_id = d.id
             WHERE b.trip_date = ?
-              AND b.start_time < ?
-              AND b.end_time > ?
+              AND CAST(b.start_time AS TIME) < ?
+              AND CAST(b.end_time AS TIME) > ?
         ";
         $params = [$trip_date, $new_end_time, $new_start_time];
 
@@ -1262,6 +1268,9 @@ function handleMonthlyBookingsList()
         $stmt->execute([$startDate, $endDate]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // Same "against all bookings" overlap rule as everywhere else.
+        $overlapMap = getBookingOverlapsForDates($pdo, array_column($rows, 'trip_date'));
+
         $bookings = [];
         foreach ($rows as $row) {
             $pickup      = $row['was_swapped'] ? $row['original_destination'] : $row['original_pickup'];
@@ -1276,6 +1285,7 @@ function handleMonthlyBookingsList()
                 'cost'        => (float) $row['cost'],
                 'booking_fee' => $row['booking_fee'] !== null ? (float) $row['booking_fee'] : null,
                 'driver_name' => $row['driver_name'] ?? null,
+                'overlaps'    => $overlapMap[(int) $row['id']] ?? [],
             ];
         }
 
