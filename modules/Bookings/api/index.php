@@ -77,6 +77,9 @@ try {
         case 'monthly_bookings_list':
             handleMonthlyBookingsList();
             break;
+        case 'check_overlap':
+            handleCheckOverlap();
+            break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action: ' . ($action ?? 'none')], 400);
     }
@@ -388,6 +391,83 @@ function handleAddBooking()
         ]);
         jsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
     }
+}
+
+function handleCheckOverlap()
+{
+    global $pdo;
+
+    $response = [
+        'success' => false,
+        'message' => '',
+        'overlaps' => []
+    ];
+
+    try {
+        $trip_date = $_REQUEST['trip_date'] ?? '';
+        $start_time = $_REQUEST['start_time'] ?? '';
+        $duration = $_REQUEST['duration'] ?? '';
+        $exclude_id = intval($_REQUEST['exclude_id'] ?? 0) ?: null;
+
+        if (empty($trip_date) || empty($start_time) || empty($duration) || !is_numeric($duration)) {
+            throw new Exception('trip_date, start_time and duration are required');
+        }
+
+        // Same calculation used when saving a booking
+        $start = new DateTime($trip_date . ' ' . $start_time, new DateTimeZone(TIME_ZONE));
+        $end = clone $start;
+        $end->modify("+" . (float) $duration . " hours");
+        $new_start_time = $start->format('H:i:s');
+        $new_end_time = $end->format('H:i:s');
+
+        // Standard interval overlap: existing.start < new.end AND existing.end > new.start
+        // (back-to-back bookings that only touch at the boundary are not flagged)
+        $sql = "
+            SELECT b.id, b.start_time, b.end_time,
+                   c.name AS client_name,
+                   d.name AS driver_name
+            FROM bookings b
+            JOIN contacts c ON b.contact_id = c.id
+            LEFT JOIN drivers d ON b.driver_id = d.id
+            WHERE b.trip_date = ?
+              AND b.start_time < ?
+              AND b.end_time > ?
+        ";
+        $params = [$trip_date, $new_end_time, $new_start_time];
+
+        if ($exclude_id !== null) {
+            $sql .= " AND b.id != ?";
+            $params[] = $exclude_id;
+        }
+
+        $sql .= " ORDER BY b.start_time ASC";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($rows as $row) {
+            $response['overlaps'][] = [
+                'id' => (int) $row['id'],
+                'start_time' => date('H:i', strtotime($row['start_time'])),
+                'end_time' => date('H:i', strtotime($row['end_time'])),
+                'client_name' => $row['client_name'],
+                'driver_name' => $row['driver_name'] ?? null,
+            ];
+        }
+
+        $response['success'] = true;
+
+    } catch (Exception $e) {
+        logError('BOOKING', 'Failed to check booking overlap', [
+            'error' => $e->getMessage(),
+            'trip_date' => $trip_date ?? null,
+            'start_time' => $start_time ?? null
+        ]);
+        $response['message'] = $e->getMessage();
+    }
+
+    jsonResponse($response);
 }
 
 function handleUpdateBooking()
