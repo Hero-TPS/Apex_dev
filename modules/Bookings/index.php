@@ -1,4 +1,5 @@
 <?php
+// modules/Bookings/index.php
 // BookingsView.php
 $page_title = 'Bookings';
 $page_subtitle = 'Bookings';
@@ -69,6 +70,13 @@ include ROOT_DIR . '/includes/header.php';
         var modal = $('#deleteConfirmationModal');
         var bookingIdToDelete = null;
         var showAll = false;
+        var overlapsById = {};
+
+        function renderOverlapBadge(booking) {
+            if (!booking.overlaps || booking.overlaps.length === 0) return '';
+            overlapsById[booking.id] = booking.overlaps;
+            return ' <span class="at-overlap-badge" data-booking-id="' + booking.id + '" title="Overlaps with another booking — tap for details">⚠️</span>';
+        }
 
         function loadBookings() {
             tableBody.html('<tr><td colspan="10" style="text-align:center;">Loading bookings...</td></tr>');
@@ -79,6 +87,7 @@ include ROOT_DIR . '/includes/header.php';
                 dataType: 'json',
                 success: function (response) {
                     tableBody.empty();
+                    overlapsById = {};
                     if (response.success && response.bookings.length > 0) {
                         $.each(response.bookings, function (index, booking) {
                             var rowClass = booking.is_overdue ? 'booking-overdue' : '';
@@ -89,7 +98,7 @@ include ROOT_DIR . '/includes/header.php';
                                 'data-name="' + escapeHtml(booking.client_name.toLowerCase()) + '" ' +
                                 'data-date="' + escapeHtml(booking.trip_date_raw) + '">' +
                                 '<td data-label="Date">' + escapeHtml(booking.trip_date) + '</td>' +
-                                '<td data-label="Time">' + escapeHtml(booking.start_time) + '</td>' +
+                                '<td data-label="Time">' + escapeHtml(booking.start_time) + renderOverlapBadge(booking) + '</td>' +
                                 '<td data-label="Client">' + escapeHtml(booking.client_name) + '</td>' +
                                 '<td data-label="Pickup">' + escapeHtml(booking.pickup_location) + '</td>' +
                                 '<td data-label="Destination">' + escapeHtml(booking.destination) + '</td>' +
@@ -460,6 +469,24 @@ include ROOT_DIR . '/includes/header.php';
                     btn.prop('disabled', false).text('🗑️ Delete');
                 }
             });
+        });
+
+        // Tap an overlap badge to reveal which booking(s) it conflicts with
+        $(document).on('click', '.at-overlap-badge', function () {
+            var badge = $(this);
+            var existing = badge.next('.at-overlap-detail');
+            if (existing.length) {
+                existing.remove();
+                return;
+            }
+            $('.at-overlap-detail').remove();
+            var overlaps = overlapsById[badge.data('booking-id')] || [];
+            var html = overlaps.map(function (o) {
+                var driverText = o.driver_name ? ('Driver: ' + escapeHtml(o.driver_name)) : 'No driver assigned';
+                return '<div>' + escapeHtml(o.start_time) + '–' + escapeHtml(o.end_time) +
+                    ' — ' + escapeHtml(o.client_name) + ' (' + driverText + ')</div>';
+            }).join('');
+            badge.after('<div class="at-overlap-detail">' + html + '</div>');
         });
 
         function showNotification(message, type) {
