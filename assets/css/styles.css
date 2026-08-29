@@ -2509,3 +2509,25 @@ body:not(.home-page) .floating-menu-toggle {
 .uber-since-correction-table tr:hover {
     background-color: #f5f5f5;
 }
+
+/* Add to assets/css/styles.css — under the "Notifications" section,
+   near .success-message / .error-message.
+   Used by: modules/Bookings/add.php and modules/Bookings/edit.php
+   (#overlapWarningBox) for the soft overlap warning. */
+
+.at-overlap-warning {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 0.9em;
+}
+
+.at-overlap-item {
+  padding: 4px 0;
+}
+
+.at-overlap-item + .at-overlap-item {
+  border-top: 1px solid #ffeeba;
+}
