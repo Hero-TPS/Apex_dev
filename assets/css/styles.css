@@ -2531,3 +2531,44 @@ body:not(.home-page) .floating-menu-toggle {
 .at-overlap-item + .at-overlap-item {
   border-top: 1px solid #ffeeba;
 }
+
+/* Add to assets/css/styles.css — under the "Notifications" section,
+   near .success-message / .error-message.
+   Used by:
+   - modules/Bookings/add.php + edit.php  (#overlapWarningBox banner)
+   - modules/Bookings/view.php            (.at-overlap-warning banner)
+   - modules/Bookings/index.php + reports.php (.at-overlap-badge + .at-overlap-item detail) */
+
+.at-overlap-warning {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 0.9em;
+}
+
+.at-overlap-item {
+  padding: 4px 0;
+}
+
+.at-overlap-item + .at-overlap-item {
+  border-top: 1px solid #ffeeba;
+}
+
+/* Tappable badge used in list/table rows (Overview + Reports) */
+.at-overlap-badge {
+  cursor: pointer;
+  font-size: 1em;
+}
+
+/* Detail popover shown under a badge when tapped */
+.at-overlap-detail {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-top: 4px;
+  font-size: 0.85em;
+}
