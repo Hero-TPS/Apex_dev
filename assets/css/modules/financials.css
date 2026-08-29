@@ -1,0 +1,300 @@
+/* ========================
+   Financials module
+   Loaded via @import from the base styles.css
+   Covers: financial dashboard (month/week breakdown, metric
+   rows), and the Balance Sheet page.
+======================== */
+
+.financial-dashboard {
+    margin: 20px 0;
+}
+
+.financial-month-block,
+.weekly-block {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.month-header,
+.week-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.month-header h3,
+.week-header strong {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+.metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 6px 0;
+    font-size: 14px;
+    color: #555;
+}
+
+.metric-row span:first-child {
+    flex: 1;
+    text-align: left;
+    padding-right: 12px;
+    word-break: break-word;
+}
+
+.metric-row span:last-child,
+.metric-row strong:last-child {
+    text-align: right;
+    font-weight: normal;
+    min-width: 80px;
+    white-space: nowrap;
+}
+
+.metric-row strong:last-child {
+    font-weight: 600;
+    color: #333;
+}
+
+.net-amount {
+    font-weight: bold;
+    font-size: 16px;
+}
+.net-amount.profit { color: #27ae60; }
+.net-amount.loss { color: #e74c3c; }
+
+@media (max-width: 600px) {
+    .metric-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .metric-row span:first-child {
+        padding-right: 0;
+        margin-bottom: 2px;
+    }
+    .metric-row span:last-child,
+    .metric-row strong:last-child {
+        text-align: left;
+        min-width: auto;
+    }
+}
+
+/* ========================
+   Balance Sheet
+======================== */
+
+.balance-sheet-page {
+    margin: 0;
+}
+
+.bs-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #ddd;
+}
+
+.bs-top-bar h2 {
+    margin: 0;
+    font-size: 22px;
+}
+
+.bs-print-btn {
+    background: #2c3e50;
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.bs-print-btn:hover {
+    background: #1a252f;
+}
+
+.bs-month-block {
+    margin-bottom: 32px;
+}
+
+.bs-month-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #2c3e50;
+    color: white;
+    padding: 10px 14px;
+    border-radius: 4px 4px 0 0;
+}
+
+.bs-month-name {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.bs-net {
+    font-size: 15px;
+    font-weight: bold;
+}
+
+.bs-net.profit { color: #2ecc71; }
+.bs-net.loss   { color: #e74c3c; }
+
+.bs-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 0;
+    font-size: 13px;
+    table-layout: fixed;
+}
+
+.bs-table th,
+.bs-table td {
+    border: 1px solid #ddd;
+    padding: 6px 10px;
+    vertical-align: middle;
+    overflow: hidden;
+}
+
+.bs-section-head {
+    text-align: left;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    padding: 7px 10px;
+    color: white;
+}
+
+.bs-credit-head { background: #27ae60; }
+.bs-debit-head  { background: #c0392b; }
+
+.bs-col-head th {
+    background: #f5f5f5;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: #555;
+    border: 1px solid #ddd;
+}
+
+.bs-col-date   { width: 105px; }
+.bs-col-desc   { width: auto;  }
+.bs-col-method { width: 72px;  text-align: center; }
+.bs-col-amt    { width: 115px; text-align: right;  }
+
+.bs-table td.bs-amt {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.bs-method {
+    text-align: center;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.bs-eft  { color: #1a6faf; }
+.bs-cash { color: #7d3c98; }
+
+.bs-total-row td {
+    background: #f0f0f0;
+    font-weight: bold;
+    border-top: 2px solid #bbb;
+}
+
+.bs-total-label {
+    text-align: right;
+    font-size: 13px;
+    color: #333;
+    padding-right: 12px;
+}
+
+.bs-total-amt {
+    font-size: 14px;
+    color: #222;
+}
+
+.bs-empty {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+    padding: 12px;
+}
+
+.bs-net-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-radius: 0 0 4px 4px;
+    font-weight: bold;
+    font-size: 15px;
+    border: 2px solid transparent;
+    border-top: none;
+}
+
+.bs-net-summary.profit {
+    background: #eafaf1;
+    border-color: #27ae60;
+    color: #1e8449;
+}
+
+.bs-net-summary.loss {
+    background: #fdedec;
+    border-color: #c0392b;
+    color: #c0392b;
+}
+
+.bs-net-label {
+    font-size: 14px;
+    letter-spacing: 0.5px;
+}
+
+.bs-net-value {
+    font-size: 16px;
+}
+
+/* ---- Balance Sheet Summary Block ---- */
+
+.bs-summary-tables {
+    display: flex;
+    gap: 0;
+    margin-bottom: 0;
+}
+
+.bs-summary-table {
+    flex: 1;
+    border-collapse: collapse;
+    font-size: 13px;
+    table-layout: fixed;
+}
+
+.bs-summary-table th,
+.bs-summary-table td {
+    border: 1px solid #ddd;
+    padding: 6px 10px;
+    vertical-align: middle;
+    overflow: hidden;
+}
+
+.bs-summary-table td.bs-amt {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    width: 120px;
+}
