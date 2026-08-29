@@ -115,6 +115,8 @@ $currentWeekSunday->setTime(23, 59, 59);
         `;
     }
 
+    var reportOverlapsById = {};
+
     function buildBookingsTable(bookings) {
         if (!bookings || bookings.length === 0) {
             return '<p style="color:#999; font-style:italic; padding:8px 0;">No bookings for this month.</p>';
@@ -126,9 +128,14 @@ $currentWeekSunday->setTime(23, 59, 59);
             var feeCell = b.booking_fee !== null && b.booking_fee !== undefined
                 ? 'R' + parseFloat(b.booking_fee).toFixed(2)
                 : '<span style="color:#aaa;">—</span>';
+            var overlapBadge = '';
+            if (b.overlaps && b.overlaps.length > 0) {
+                reportOverlapsById[b.id] = b.overlaps;
+                overlapBadge = ' <span class="at-overlap-badge" data-booking-id="' + b.id + '" title="Overlaps with another booking — tap for details">⚠️</span>';
+            }
             return '<tr>' +
                 '<td><a href="<?= BASE_URL ?>/modules/Bookings/view.php?id=' + b.id + '" style="text-decoration:none;">' + escapeHtml(b.trip_date) + '</a></td>' +
-                '<td>' + escapeHtml(b.start_time) + '</td>' +
+                '<td>' + escapeHtml(b.start_time) + overlapBadge + '</td>' +
                 '<td>' + escapeHtml(b.client_name) + '</td>' +
                 '<td>' + escapeHtml(b.pickup) + '</td>' +
                 '<td>' + escapeHtml(b.destination) + '</td>' +
@@ -211,6 +218,23 @@ $currentWeekSunday->setTime(23, 59, 59);
                 button.text('📋 View Bookings');
                 currentlyOpenBookingsContainer = null;
             }
+        });
+
+        $(document).on('click', '.at-overlap-badge', function () {
+            var badge = $(this);
+            var existing = badge.next('.at-overlap-detail');
+            if (existing.length) {
+                existing.remove();
+                return;
+            }
+            $('.at-overlap-detail').remove();
+            var overlaps = reportOverlapsById[badge.data('booking-id')] || [];
+            var html = overlaps.map(function (o) {
+                var driverText = o.driver_name ? ('Driver: ' + escapeHtml(o.driver_name)) : 'No driver assigned';
+                return '<div>' + escapeHtml(o.start_time) + '–' + escapeHtml(o.end_time) +
+                    ' — ' + escapeHtml(o.client_name) + ' (' + driverText + ')</div>';
+            }).join('');
+            badge.after('<div class="at-overlap-detail">' + html + '</div>');
         });
 
         $(document).on('click', '.toggle-weeks-btn', function () {
