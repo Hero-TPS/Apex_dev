@@ -160,6 +160,22 @@
 .driver-edit-result { margin-top: 8px; }
 .cleanup-info { margin: 0.25rem 0 0.75rem; }
 
+/* Completed booking styling for "All Bookings" view */
+.booking-completed {
+    background-color: #f0f9ff !important;
+    opacity: 0.7;
+}
+
+.booking-completed td {
+    text-decoration: line-through;
+    color: #999;
+}
+
+.booking-completed .action-btn.completed {
+    background-color: #27ae60;
+    color: white;
+}
+
 /* Earmark checkboxes (rent/debt earmarking on a booking) */
 .at-earmark-row {
     display: flex;
@@ -219,4 +235,3 @@
   margin-top: 4px;
   font-size: 0.85em;
 }
-
