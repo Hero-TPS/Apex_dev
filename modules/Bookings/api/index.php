@@ -423,45 +423,14 @@ function handleCheckOverlap()
         $start = new DateTime($trip_date . ' ' . $start_time, new DateTimeZone(TIME_ZONE));
         $end = clone $start;
         $end->modify("+" . (float) $duration . " hours");
-        $new_start_time = $start->format('H:i:s');
-        $new_end_time = $end->format('H:i:s');
 
-        // Standard interval overlap: existing.start < new.end AND existing.end > new.start
-        // (back-to-back bookings that only touch at the boundary are not flagged)
-        $sql = "
-            SELECT b.id, b.start_time, b.end_time,
-                   c.name AS client_name,
-                   d.name AS driver_name
-            FROM bookings b
-            JOIN contacts c ON b.contact_id = c.id
-            LEFT JOIN drivers d ON b.driver_id = d.id
-            WHERE b.trip_date = ?
-              AND CAST(b.start_time AS TIME) < ?
-              AND CAST(b.end_time AS TIME) > ?
-        ";
-        $params = [$trip_date, $new_end_time, $new_start_time];
-
-        if ($exclude_id !== null) {
-            $sql .= " AND b.id != ?";
-            $params[] = $exclude_id;
-        }
-
-        $sql .= " ORDER BY b.start_time ASC";
-
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($rows as $row) {
-            $response['overlaps'][] = [
-                'id' => (int) $row['id'],
-                'start_time' => date('H:i', strtotime($row['start_time'])),
-                'end_time' => date('H:i', strtotime($row['end_time'])),
-                'client_name' => $row['client_name'],
-                'driver_name' => $row['driver_name'] ?? null,
-            ];
-        }
-
+        $response['overlaps'] = getOverlapsForCandidateSlot(
+            $pdo,
+            $trip_date,
+            $start->format('H:i:s'),
+            $end->format('H:i:s'),
+            $exclude_id
+        );
         $response['success'] = true;
 
     } catch (Exception $e) {
