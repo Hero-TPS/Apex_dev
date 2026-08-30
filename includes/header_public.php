@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="assets/css/frontend.css">
     <link rel="icon" href="assets/favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+    <script>window.APP_BASE_URL = "<?= BASE_URL ?>";</script>
+    <script src="<?= BASE_URL ?>/assets/js/error-logging.js"></script>
 </head>
 <body class="pub-body">
 <div class="pub-wrapper">
