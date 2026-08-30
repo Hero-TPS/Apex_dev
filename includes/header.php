@@ -15,6 +15,8 @@
     <link rel="apple-touch-icon" href="<?= BASE_URL ?>/assets/apple-touch-icon.png">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js" crossorigin="anonymous"></script>
     <!--        <script src="assets/js/jquery-3.7.1.min.js"></script>-->
+    <script>window.APP_BASE_URL = "<?= BASE_URL ?>";</script>
+    <script src="<?= BASE_URL ?>/assets/js/error-logging.js"></script>
 </head>
 
 <body>
