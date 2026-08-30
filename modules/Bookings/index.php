@@ -1,6 +1,5 @@
 <?php
 // modules/Bookings/index.php
-// BookingsView.php
 $page_title = 'Bookings';
 $page_subtitle = 'Bookings';
 $show_breadcrumb = true;
@@ -171,10 +170,15 @@ include ROOT_DIR . '/includes/header.php';
                         errorMsg = xhr.statusText || error || 'Unknown error occurred';
                     }
 
-                    // Log to console for debugging
+                    // Log to console for debugging, and to system_logs since
+                    // console isn't visible during mobile-only development
                     console.error('Booking load error:', {
                         status: xhr.status,
                         error: errorMsg,
+                        response: xhr.responseText
+                    });
+                    logJsError('ERROR', 'Booking load error: ' + errorMsg, {
+                        status: xhr.status,
                         response: xhr.responseText
                     });
 
