@@ -1,6 +1,5 @@
 <?php
 // modules/Bookings/reports.php
-//booking reports
 $page_title = 'Booking Reports';
 $page_subtitle = 'Monthly Summary';
 $show_breadcrumb = true;
