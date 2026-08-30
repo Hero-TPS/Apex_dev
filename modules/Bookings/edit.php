@@ -3,6 +3,7 @@
 //booking edit
 // Shared includes
 require_once __DIR__ . '/../../config.php';
+require_once ROOT_DIR . '/includes/logger.php';
 require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once __DIR__ . '/helpers.php';
@@ -51,7 +52,7 @@ if (isset($_GET['id'])) {
             // Cape Town Airport pickup reminder — shown as a live hint only; never saved into description
             $airport_pickup_notice = (string) getSystemVariable($pdo, 'airport_pickup_notice');
         } catch (PDOException $e) {
-            error_log('Edit form DB error: ' . $e->getMessage());
+            logError('BOOKINGS', 'Edit form DB error: ' . $e->getMessage());
             $error_message = "Failed to load data.";
         }
     } else {
