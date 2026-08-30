@@ -239,7 +239,7 @@ function handleAddBooking()
         $cost = $_POST['cost'] ?? '';
         $payment_method = $_POST['payment_method'] ?? 'cash';
         $payment_received = isset($_POST['payment_received']) && $_POST['payment_received'] == '1' ? 1 : 0;
-        $was_swapped = isset($_POST['swap_locations']) ? 1 : 0; // ✅ FIX
+        $was_swapped = isset($_POST['swap_locations']) ? 1 : 0;
 
         // Capture flag before resolving 'other'
         $pickup_is_custom = ($original_pickup === 'other') ? 1 : 0;
@@ -769,7 +769,7 @@ function handleSetEarmark()
 }
 
 
-function handleUpdateGateCode()  // ✅ NEW
+function handleUpdateGateCode()
 {
     global $pdo;
 
@@ -993,7 +993,7 @@ function handleTomorrowsBookings()
         $stmt = $pdo->query($sql);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d'); // ✅ FIX
+        $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
 
         $bookings = [];
         foreach ($rows as $row) {
@@ -1005,7 +1005,7 @@ function handleTomorrowsBookings()
             $row['message_content'] = $message;
             $row['already_confirmed'] = (
                 !empty($row['last_confirmed_at']) &&
-                substr($row['last_confirmed_at'], 0, 10) === $today // ✅ FIX: was $tomorrow
+                substr($row['last_confirmed_at'], 0, 10) === $today
             );
             $bookings[] = $row;
         }
