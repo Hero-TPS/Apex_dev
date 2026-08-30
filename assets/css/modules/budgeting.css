@@ -1,0 +1,68 @@
+/* ========================
+   Budgeting module (archived/paused — kept for when this
+   is revisited)
+   Loaded via @import from the base styles.css
+   Covers: weekly plan breakdown display.
+======================== */
+
+.at-budget-wrapper {
+    max-width: 700px;
+}
+.at-budget-week-label {
+    color: #667eea;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+.at-budget-section {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+}
+.at-budget-section h3 {
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+}
+.at-budget-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 0.95rem;
+}
+.at-budget-row .label {
+    color: #555;
+}
+.at-budget-row .value {
+    font-weight: 600;
+}
+.at-budget-ok {
+    color: #15803d;
+}
+.at-budget-warn {
+    color: #b91c1c;
+}
+.at-budget-buffer {
+    font-size: 1.3rem;
+    text-align: center;
+    padding: 16px;
+    border-radius: 8px;
+    margin-top: 4px;
+    font-weight: 700;
+}
+.at-budget-buffer.positive {
+    background: #ecfdf5;
+    color: #15803d;
+}
+.at-budget-buffer.negative {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+.at-budget-ai-box {
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-top: 8px;
+    line-height: 1.5;
+}
