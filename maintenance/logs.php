@@ -46,101 +46,9 @@ $categoriesStmt = $pdo->query("SELECT DISTINCT category FROM system_logs ORDER B
 $categories = $categoriesStmt->fetchAll(PDO::FETCH_COLUMN);
 ?>
 
-<style>
-.filters {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-.filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.filter-group label {
-    font-size: 12px;
-    color: #666;
-    font-weight: bold;
-}
-
-.filter-group select {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-}
-
-.log-table {
-    width: 100%;
-    background: white;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.log-table th {
-    background: #2c3e50;
-    color: white;
-    padding: 12px;
-    text-align: left;
-    font-size: 13px;
-}
-
-.log-table td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #eee;
-    font-size: 13px;
-}
-
-.log-table tr:hover {
-    background: #f8f9fa;
-}
-
-.log-level {
-    display: inline-block;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: bold;
-}
-
-.log-level-INFO { background: #d4edda; color: #155724; }
-.log-level-DEBUG { background: #e7e7e7; color: #333; }
-.log-level-WARNING { background: #fff3cd; color: #856404; }
-.log-level-ERROR { background: #f8d7da; color: #721c24; }
-.log-level-CRITICAL { background: #721c24; color: white; }
-
-.log-context {
-    font-family: monospace;
-    font-size: 11px;
-    color: #666;
-    max-width: 300px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    cursor: pointer;
-}
-
-.log-context:hover {
-    white-space: normal;
-    word-break: break-all;
-}
-
-.action-buttons {
-    display: flex;
-    gap: 10px;
-}
-</style>
-
 <!-- Filters -->
 <div class="filters">
-    <div class="filter-group">
+    <div class="log-filter-group">
         <label>Level</label>
         <select id="levelFilter">
             <option value="all" <?= $level === 'all' ? 'selected' : '' ?>>All Levels</option>
@@ -152,7 +60,7 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_COLUMN);
         </select>
     </div>
 
-    <div class="filter-group">
+    <div class="log-filter-group">
         <label>Category</label>
         <select id="categoryFilter">
             <option value="all" <?= $category === 'all' ? 'selected' : '' ?>>All Categories</option>
@@ -164,7 +72,7 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_COLUMN);
         </select>
     </div>
 
-    <div class="filter-group">
+    <div class="log-filter-group">
         <label>Limit</label>
         <select id="limitFilter">
             <option value="50" <?= $limit === 50 ? 'selected' : '' ?>>50</option>
