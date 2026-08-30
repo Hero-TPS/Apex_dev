@@ -2,7 +2,9 @@
 /**
  * modules/DistanceCalculator/index.php
  * Trip Distance Calculator — multi-stop route planning
- * @version 1.3.0 — Client-side debug logging routed to system_logs (log-error.php)
+ * @version 1.4.0 — Client-side debug logging now uses the shared
+ *          window.logJsError() / maintenance/api/log_js_error.php,
+ *          same system_logs destination as before
  */
 
 $page_title = 'Trip Distance Calculator';
@@ -253,39 +255,20 @@ $(document).ready(function () {
 // added afterward (new stop rows) attach immediately.
 //
 // DEBUG MODE: since this is tested on a mobile browser with no console access,
-// every step below reports to log-error.php, which writes into the existing
-// system_logs table (viewable at /maintenance/logs.php). Remove distCalcLog()
-// calls once autocomplete is confirmed working end to end.
+// every step below reports via the shared window.logJsError() (see
+// assets/js/error-logging.js), which writes into the existing system_logs
+// table (viewable at /maintenance/logs.php) under the DISTCALC_JS category.
+// Remove these logJsError() calls once autocomplete is confirmed working
+// end to end — the page's own uncaught-error reporting is now handled
+// globally, so nothing page-specific needs to stay for that part.
 window.distCalcMapsReady = false;
 window.distCalcPendingInputs = [];
-
-function distCalcLog(level, message, context) {
-    context = context || {};
-    fetch('log-error.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ level: level, message: message, context: context }),
-        keepalive: true
-    }).catch(function () {
-        // If the logger itself can't be reached, nothing more we can do
-        // without a console — fail silently.
-    });
-}
-
-// Catches any uncaught JS error on the page (not just ours) while debugging.
-window.addEventListener('error', function (event) {
-    distCalcLog('ERROR', 'Uncaught JS error: ' + event.message, {
-        source: event.filename,
-        line: event.lineno,
-        col: event.colno
-    });
-});
 
 // Google's global callback for auth-related failures: invalid key, key
 // restricted to the wrong referrer, API not enabled, billing disabled, etc.
 // This is the most likely one to fire given the referrer-restriction setup.
 window.gm_authFailure = function () {
-    distCalcLog('ERROR', 'Google Maps auth failure — check referrer restriction, enabled APIs, and billing on the Places key', {
+    logJsError('ERROR', 'Google Maps auth failure — check referrer restriction, enabled APIs, and billing on the Places key', {
         page_url: window.location.href
     });
 };
@@ -298,9 +281,9 @@ function distCalcInitAutocomplete(inputEl) {
                 componentRestrictions: { country: 'za' },
                 fields: ['formatted_address']
             });
-            distCalcLog('INFO', 'Autocomplete attached to field', { field_id: inputEl.id || inputEl.name });
+            logJsError('INFO', 'Autocomplete attached to field', { field_id: inputEl.id || inputEl.name });
         } catch (e) {
-            distCalcLog('ERROR', 'Autocomplete constructor threw: ' + e.message, {
+            logJsError('ERROR', 'Autocomplete constructor threw: ' + e.message, {
                 field_id: inputEl.id || inputEl.name
             });
         }
@@ -310,7 +293,7 @@ function distCalcInitAutocomplete(inputEl) {
 }
 
 function distCalcOnMapsLoaded() {
-    distCalcLog('INFO', 'Maps script loaded, distCalcOnMapsLoaded callback fired', {});
+    logJsError('INFO', 'Maps script loaded, distCalcOnMapsLoaded callback fired', {});
     window.distCalcMapsReady = true;
     distCalcInitAutocomplete(document.getElementById('start_address'));
     distCalcInitAutocomplete(document.getElementById('final_destination'));
@@ -319,7 +302,7 @@ function distCalcOnMapsLoaded() {
 }
 
 function distCalcOnMapsScriptError() {
-    distCalcLog('ERROR', 'Maps script tag failed to load entirely (network/blocked, not an API-level error)', {});
+    logJsError('ERROR', 'Maps script tag failed to load entirely (network/blocked, not an API-level error)', {});
 }
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars(GOOGLE_MAPS_BROWSER_KEY) ?>&libraries=places&callback=distCalcOnMapsLoaded" async defer onerror="distCalcOnMapsScriptError()"></script>
