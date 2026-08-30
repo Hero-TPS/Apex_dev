@@ -357,7 +357,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
                         var statusCell = row.find('.wa-status-col');
                         statusCell.html(buildWaStatusBadge(status, res.wa_sent_date || null));
 
-                        // ✅ ADD HERE — hide buttons based on new status
+                        // Hide buttons based on new status
                         if (status === 'sent' || status === 'positive') {
                             row.find('.wa-cleanup-btn').hide();
                         }
