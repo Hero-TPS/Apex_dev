@@ -170,6 +170,7 @@ $overdueCount = (int) $overdueStmt->fetchColumn();
                     submitBtn.prop('disabled', false).text('💾 Save Changes');
                     result.html('<div class="error-message">❌ Failed to save. Please try again.</div>');
                     console.error('Error:', error, xhr.responseText);
+                    logJsError('ERROR', 'Maintenance: failed to save changes', { response: xhr.responseText });
                 }
             });
         });
@@ -206,6 +207,7 @@ $overdueCount = (int) $overdueStmt->fetchColumn();
                     submitBtn.prop('disabled', false).text('💾 Save Variables');
                     result.html('<div class="error-message">❌ Failed to save. Please try again.</div>');
                     console.error('Error:', error, xhr.responseText);
+                    logJsError('ERROR', 'Maintenance: failed to save variables', { response: xhr.responseText });
                 }
             });
         });
@@ -238,6 +240,7 @@ $overdueCount = (int) $overdueStmt->fetchColumn();
                     btn.prop('disabled', false).text('➕ Add Variable');
                     result.html('<div class="error-message">❌ Failed to add variable.</div>');
                     console.error('Error:', error, xhr.responseText);
+                    logJsError('ERROR', 'Maintenance: failed to add variable', { response: xhr.responseText });
                 }
             });
         });
