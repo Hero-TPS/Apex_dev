@@ -143,7 +143,7 @@ if (isset($_GET['id'])) {
                 <label for="otherDestination">Specify Other Destination</label>
                 <input type="text" id="otherDestination" name="other_destination">
             </div>
-            <!-- ✅ ADD: Add to destinations list checkbox -->
+            <!-- Add to destinations list checkbox -->
             <div class="form-group hidden" id="addToDestinationGroup">
                 <label>
                     <input type="checkbox" id="addToDestinations" name="add_to_destinations">
@@ -181,7 +181,7 @@ if (isset($_GET['id'])) {
                 <input type="number" id="otherCost" name="other_cost">
             </div>
 
-            <!-- ✅ Payment Method: EFT Checkbox -->
+            <!-- Payment Method: EFT Checkbox -->
             <div class="form-group">
                 <label>
                     <input type="checkbox" id="payment_method" name="payment_method" value="eft"
@@ -410,7 +410,7 @@ $(document).ready(function () {
     $('#contact').on('change', updatePickupOptions);
     updatePickupOptions();
 
-    // ✅ Handle pickup "other" option toggle
+    // Pickup "other" option toggle
     $('#pickup').on('change', function () {
         if ($(this).val() === 'other') {
             $('#otherPickupGroup').removeClass('hidden');
@@ -421,7 +421,7 @@ $(document).ready(function () {
         }
     });
 
-    // ✅ Handle destination "other" option toggle
+    // Destination "other" option toggle
     $('#destination').on('change', function () {
         if ($(this).val() === 'other') {
             $('#otherDestinationGroup').removeClass('hidden');
@@ -458,7 +458,7 @@ $(document).ready(function () {
     $('#otherPickup, #otherDestination').on('input', updateAirportNoticeHint);
     updateAirportNoticeHint();
 
-    // ✅ Handle cost "other" option toggle
+    // Cost "other" option toggle
     $('#cost').on('change', function () {
         var selected = $(this).val();
         if (selected === 'other') {
@@ -530,7 +530,6 @@ $(document).ready(function () {
         loading.show();
         result.html('');
 
-        // ✅ Get payment method
         var paymentMethod = $('#payment_method').is(':checked') ? 'eft' : 'cash';
         var paymentReceived = $('#payment_received').is(':checked') ? '1' : '0';
         var formData = $(this).serialize() + '&payment_method=' + paymentMethod + '&payment_received=' + paymentReceived;
