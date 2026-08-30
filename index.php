@@ -251,10 +251,13 @@ document.getElementById('enquiry-form').addEventListener('submit', function (e) 
             }
             btn.disabled = false;
         })
-        .catch(function () {
+        .catch(function (err) {
             result.className = 'error';
             result.textContent = 'Could not send your enquiry. Please try again later.';
             btn.disabled = false;
+            if (window.logJsError) {
+                logJsError('ERROR', 'Public contact form submission failed: ' + err.message, {});
+            }
         });
 });
 </script>
