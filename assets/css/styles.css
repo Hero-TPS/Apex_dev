@@ -3,6 +3,7 @@
 @import url("modules/financials.css");
 @import url("modules/clients.css");
 @import url("modules/uber.css");
+@import url("modules/maintenance.css");
 @import url("modules/outreach.css");
 @import url("modules/distcalc.css");
 @import url("modules/budgeting.css");
@@ -905,7 +906,8 @@ body:not(.home-page) .floating-menu-toggle {
 
 .highlight-row { background-color: #fff9c4 !important; transition: background-color 0.3s; }
 
-/* Shared across modules — used by both Clients and Maintenance/Logs filter bars */
+/* Used by Clients/index.php. (Maintenance/Logs has its own
+   .log-filter-group in modules/maintenance.css — different layout.) */
 .filter-group {
     flex: 1;
     min-width: 150px;
@@ -933,110 +935,6 @@ body:not(.home-page) .floating-menu-toggle {
   margin-top: 15px;
   flex-wrap: wrap;
 }
-
-/* NEEDS YOUR CALL: maintenance/logs.php actually renders
-   .filters / .log-table / .log-level / .log-level-{LEVEL} / .log-context —
-   none of which match the classes below (.logs-filters / .filter-row /
-   .logs-table / .level-badge / .level-{LEVEL} / .context-btn / .context-modal
-   / .context-content). These look like leftovers from an older version of
-   the Logs page — the live page currently has NO styling for its table,
-   level badges, or filter wrapper. Left in place, unused, until you decide:
-   rename these to match the live markup (restores styling), or delete them
-   and style the current markup fresh. */
-.logs-filters {
-    background: #f8f9fa;
-    padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-}
-
-.filter-row {
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-    align-items: end;
-}
-
-.logs-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-    font-size: 13px;
-}
-
-.logs-table th {
-    background: #2c3e50;
-    color: white;
-    padding: 12px;
-    text-align: left;
-    font-weight: 600;
-}
-
-.logs-table td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #eee;
-}
-
-.logs-table tr:hover {
-    background: #f8f9fa;
-}
-
-.level-badge {
-    display: inline-block;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-weight: 600;
-    font-size: 11px;
-    text-transform: uppercase;
-}
-
-.level-DEBUG { background: #e3f2fd; color: #1976d2; }
-.level-INFO { background: #e8f5e9; color: #388e3c; }
-.level-WARNING { background: #fff3e0; color: #f57c00; }
-.level-ERROR { background: #ffebee; color: #d32f2f; }
-.level-CRITICAL { background: #3f0000; color: white; }
-
-.context-btn {
-    background: #3498db;
-    color: white;
-    border: none;
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 11px;
-}
-
-.context-btn:hover {
-    background: #2980b9;
-}
-
-.context-modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    z-index: 1000;
-    overflow: auto;
-}
-
-.context-content {
-    background: white;
-    margin: 50px auto;
-    padding: 20px;
-    max-width: 800px;
-    border-radius: 8px;
-}
-
-.context-content pre {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 4px;
-    overflow-x: auto;
-}
-
 
 /* ============================================================
    Public page wrapper + intranet login/logout
