@@ -2,6 +2,7 @@
 // modules/Financials/api/index.php
 
 require_once __DIR__ . '/../../../config.php';
+require_once ROOT_DIR . '/includes/logger.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once ROOT_DIR . '/modules/Financials/helper.php';
 
@@ -27,7 +28,7 @@ switch ($action) {
             $weeks = getWeeklyBreakdownForMonth($pdo, (int) $year, (int) $month);
             echo json_encode(['success' => true, 'weeks' => $weeks]);
         } catch (Exception $e) {
-            error_log('Financials API error: ' . $e->getMessage());
+            logError('FINANCIALS', 'Financials API error: ' . $e->getMessage());
             echo json_encode(['success' => false, 'message' => 'Server error']);
         }
         break;
