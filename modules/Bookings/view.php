@@ -6,6 +6,7 @@ $page_subtitle = 'View Booking';
 $show_breadcrumb = true;
 
 require_once __DIR__ . '/../../config.php';
+require_once ROOT_DIR . '/includes/logger.php';
 require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once __DIR__ . '/helpers.php';
@@ -55,7 +56,7 @@ if (isset($_GET['id'])) {
                 $error_message = "Booking not found.";
             }
         } catch (PDOException $e) {
-            error_log('BookingDetail error: ' . $e->getMessage());
+            logError('BOOKINGS', 'BookingDetail error: ' . $e->getMessage());
             $error_message = "Failed to load booking.";
         }
     } else {
