@@ -3,6 +3,8 @@
 // includes/helpers.php — Global helper functions
 // =============================================================================
 
+require_once __DIR__ . '/logger.php';
+
 // --- DATA FETCHING ---
 
 /**
@@ -13,13 +15,13 @@
 function fetchData(PDO $pdo, string $tableName, string $orderBy): array
 {
     if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(\s+(ASC|DESC))?$/i', $orderBy)) {
-        error_log("fetchData: Invalid ORDER BY: '$orderBy'");
+        logError('HELPERS', "fetchData: Invalid ORDER BY: '$orderBy'");
         return [];
     }
     try {
         return $pdo->query("SELECT * FROM `$tableName` ORDER BY $orderBy")->fetchAll();
     } catch (PDOException $e) {
-        error_log("fetchData failed: " . $e->getMessage());
+        logError('HELPERS', "fetchData failed: " . $e->getMessage());
         return [];
     }
 }
@@ -32,13 +34,13 @@ function fetchData(PDO $pdo, string $tableName, string $orderBy): array
 function fetchColumn(PDO $pdo, string $tableName, string $columnName, string $orderBy): array
 {
     if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(\s+(ASC|DESC))?$/i', $orderBy)) {
-        error_log("fetchColumn: Invalid ORDER BY: '$orderBy'");
+        logError('HELPERS', "fetchColumn: Invalid ORDER BY: '$orderBy'");
         return [];
     }
     try {
         return $pdo->query("SELECT `$columnName` FROM `$tableName` ORDER BY $orderBy")->fetchAll(PDO::FETCH_COLUMN);
     } catch (PDOException $e) {
-        error_log("fetchColumn failed: " . $e->getMessage());
+        logError('HELPERS', "fetchColumn failed: " . $e->getMessage());
         return [];
     }
 }
