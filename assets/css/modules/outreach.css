@@ -1,0 +1,44 @@
+/* ========================
+   Outreach module
+   Loaded via @import from the base styles.css
+   Covers: custom WhatsApp send modal, and the WA Cleanup
+   Campaign status badges/buttons.
+======================== */
+
+.modal-content.whatsapp-modal {
+  max-width: 480px;
+  text-align: left;
+}
+
+.whatsapp-btn {
+  background-color: #25d366;
+  color: white;
+}
+
+.whatsapp-btn:hover {
+  background-color: #128c7e;
+  color: white;
+}
+
+/* Status badge — displayed in the WA Status column (without_bookings view) */
+.wa-status-badge {
+  display: inline-block;
+  border-radius: 10px;
+  padding: 2px 9px;
+  font-size: 0.82em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.wa-status-badge.not-sent    { background: #f0f0f0; color: #666; }
+.wa-status-badge.sent        { background: #e3f2fd; color: #1565c0; }
+.wa-status-badge.positive    { background: #e8f5e9; color: #2e7d32; }
+
+.wa-sent-date { font-size: 0.75em; color: #888; margin-top: 3px; }
+
+/* WA Cleanup action button */
+.wa-cleanup-btn { background-color: #128c7e; }
+.wa-cleanup-btn:hover { background-color: #0e7068; }
+
+/* Quick status buttons */
+.wa-positive-btn    { background-color: #27ae60; }
+.wa-positive-btn:hover { background-color: #229954; }
