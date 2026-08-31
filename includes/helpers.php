@@ -639,12 +639,12 @@ function applyMonthsOverride(int $monthsBack): int
 function renderMonthsOverrideToggle(int $currentMonthsBack, int $defaultMonthsBack, int $quickViewMonths = 12): string
 {
     if ($currentMonthsBack !== $defaultMonthsBack) {
-        return '<div class="months-toggle"><a href="?" class="months-toggle-link">'
-            . '↩ Back to Default (' . $defaultMonthsBack . ' months)</a></div>';
+        return '<div class="months-toggle"><a href="?" class="months-toggle-btn">'
+            . 'Back to Default (' . $defaultMonthsBack . ' months)</a></div>';
     }
     if ($currentMonthsBack < $quickViewMonths) {
-        return '<div class="months-toggle"><a href="?months=' . $quickViewMonths . '" class="months-toggle-link">'
-            . '📅 Show Last ' . $quickViewMonths . ' Months</a></div>';
+        return '<div class="months-toggle"><a href="?months=' . $quickViewMonths . '" class="months-toggle-btn">'
+            . 'Show Last ' . $quickViewMonths . ' Months</a></div>';
     }
     return '';
 }
