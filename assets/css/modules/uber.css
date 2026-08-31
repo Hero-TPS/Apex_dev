@@ -12,10 +12,10 @@
     font-style: italic;
 }
 
-.correct-balance-btn,
-.save-correction-btn,
-.cancel-correction-btn,
-.export-since-correction-btn {
+.action-btn.correct-balance-btn,
+.action-btn.save-correction-btn,
+.action-btn.cancel-correction-btn,
+.action-btn.export-since-correction-btn {
     width: auto;
     white-space: normal;
 }
@@ -91,10 +91,10 @@
 
 /* Rental override correction — mirrors the balance-correction UI above,
    same pattern, own class names */
-.correct-rental-btn,
-.save-rental-btn,
-.clear-rental-btn,
-.cancel-rental-btn {
+.action-btn.correct-rental-btn,
+.action-btn.save-rental-btn,
+.action-btn.clear-rental-btn,
+.action-btn.cancel-rental-btn {
     width: auto;
     white-space: normal;
 }
