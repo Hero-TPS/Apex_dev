@@ -912,17 +912,20 @@ body:not(.home-page) .floating-menu-toggle {
     text-align: right;
     margin-bottom: 12px;
 }
-.months-toggle-link {
+.months-toggle-btn {
     display: inline-block;
-    font-size: 13px;
-    color: #667eea;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
     text-decoration: none;
-    padding: 4px 10px;
-    border: 1px solid #667eea;
-    border-radius: 4px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
 }
-.months-toggle-link:hover {
-    background: #667eea;
+.months-toggle-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
     color: white;
 }
 
