@@ -306,6 +306,19 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
         var prefillDest  = <?= json_encode($prefill_destination) ?>;
         var prefillCost  = <?= json_encode($prefill_cost) ?>;
 
+        // After-hours surcharge check
+        var afterHoursStart  = <?= json_encode(substr((string) getSystemVariable($pdo, 'after_hours_start'), 0, 5)) ?>;
+        var afterHoursEnd    = <?= json_encode(substr((string) getSystemVariable($pdo, 'after_hours_end'), 0, 5)) ?>;
+        var afterHoursCharge = <?= json_encode((float) getSystemVariable($pdo, 'after_hours_charge')) ?>;
+
+        function isAfterHours(time) {
+            if (!time) return false;
+            if (afterHoursStart <= afterHoursEnd) {
+                return time >= afterHoursStart && time < afterHoursEnd;
+            }
+            return time >= afterHoursStart || time < afterHoursEnd;
+        }
+
         if (prefillTime) {
             $('#startTime').val(prefillTime.substr(0, 5));
         }
@@ -539,6 +552,16 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
         // Form submit
         $('#bookingForm').on('submit', function (e) {
             e.preventDefault();
+
+            var afterHoursConfirmed = '0';
+            var startTimeVal = $('#startTime').val();
+            if (isAfterHours(startTimeVal)) {
+                var afterHoursMsg = 'This trip starts at ' + startTimeVal + ', which falls within after-hours (' +
+                    afterHoursStart + '–' + afterHoursEnd + '). Add the R' + afterHoursCharge.toFixed(2) +
+                    ' after-hours surcharge to the cost?';
+                afterHoursConfirmed = confirm(afterHoursMsg) ? '1' : '0';
+            }
+
             var submitBtn = $('#submitBtn');
             var loading = $('#loading');
             var result = $('#result');
@@ -548,7 +571,8 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
 
             var paymentMethod = $('#payment_method').is(':checked') ? 'eft' : 'cash';
             var paymentReceived = $('#payment_received').is(':checked') ? '1' : '0';
-            var formData = $(this).serialize() + '&payment_method=' + paymentMethod + '&payment_received=' + paymentReceived;
+            var formData = $(this).serialize() + '&payment_method=' + paymentMethod + '&payment_received=' + paymentReceived +
+                '&after_hours_confirmed=' + afterHoursConfirmed;
 
             $.ajax({
                 type: 'POST',
