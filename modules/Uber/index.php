@@ -14,6 +14,8 @@ $monthsBack = (int) getSystemVariable($pdo, 'financial_months_back');
 if ($monthsBack < 1) {
     $monthsBack = 3;
 }
+$defaultMonthsBack = $monthsBack;
+$monthsBack = applyMonthsOverride($monthsBack);
 
 $months = [];
 $today        = new DateTime();
@@ -101,6 +103,8 @@ if ($lastOverrideId !== null) {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<?= renderMonthsOverrideToggle($monthsBack, $defaultMonthsBack) ?>
 
 <div class="financial-dashboard">
     <h2>🚗 Uber Reports (Last <?= htmlspecialchars($monthsBack) ?> Months)</h2>
