@@ -144,8 +144,6 @@ function getGoogleAccessToken()
         $_SESSION['google_access_token'] = $response_json['access_token'];
         $_SESSION['google_token_expiry'] = time() + $response_json['expires_in'] - 30;
 
-        logDebug('GOOGLE_AUTH', 'Access token obtained successfully');
-        
         return $response_json['access_token'];
     }
 
