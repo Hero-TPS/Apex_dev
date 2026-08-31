@@ -1,306 +1,511 @@
 <?php
-/**
- * modules/DistanceCalculator/index.php
- * Trip Distance Calculator — multi-stop route planning
- * @version 1.5.0 — Removed temporary debug-level logging (autocomplete
- *          confirmed working); kept genuine error reporting via
- *          window.logJsError() / maintenance/api/log_js_error.php
- */
+// modules/Clients/api/index.php
 
-$page_title = 'Trip Distance Calculator';
-$page_subtitle = 'Calculate distance and time for multi-stop routes';
-$show_breadcrumb = true;
+require_once __DIR__ . '/../../../config.php';
+require_once ROOT_DIR . '/includes/helpers.php'; 
 
-require_once __DIR__ . '/../../config.php';
-require_once ROOT_DIR . '/includes/auth.php';
-require_once ROOT_DIR . '/includes/helpers.php';
+header('Content-Type: application/json');
+require_once ROOT_DIR . '/includes/auth_api.php';
 
-$breadcrumb = buildBreadcrumb([['label' => 'Trip Distance Calculator']]);
-include ROOT_DIR . '/includes/header.php';
+$action = $_REQUEST['action'] ?? 'get';
 
-$legs = [];
-$totalDistanceM = 0;
-$totalDurationS = 0;
-$error = null;
+try {
+    switch ($action) {
+        case 'get':
+            handleGetClients();
+            break;
+        case 'get_csv':
+            handleGetClientsCsv();
+            break;
+        case 'get_single':
+            handleGetSingleClient();
+            break;
+        case 'add':
+            handleAddClient();
+            break;
+        case 'update':
+            handleUpdateClient();
+            break;
+        case 'delete':
+            handleDeleteClient();
+            break;
+        case 'save_pickup_gps':
+            handleSavePickupGps();
+            break;
+        case 'clear_pickup_gps':
+            handleClearPickupGps();
+            break;
+        case 'update_wa_status':
+            handleUpdateWaStatus();
+            break;
+        default:
+            jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
+    }
+} catch (Exception $e) {
+    logCritical('CLIENT_API', 'Unhandled exception', [
+        'error' => $e->getMessage(),
+        'action' => $action
+    ]);
+    jsonResponse(['success' => false, 'message' => 'Server error occurred'], 500);
+}
 
-// Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Collect and validate stops
-    $start = trim($_POST['start_address'] ?? '');
-    $stops = array_filter(array_map('trim', $_POST['stops'] ?? []), fn($s) => !empty($s));
-    $final = trim($_POST['final_destination'] ?? '');
+// ========== HANDLERS ==========
 
-    // Validate we have at least start and final destination
-    if (empty($start) || empty($final)) {
-        $error = 'Start address and final destination are required.';
-    } elseif (GOOGLE_API_KEY === 'YOUR_GOOGLE_API_KEY_HERE') {
-        $error = 'Google API key not configured. Please check config.php.';
-    } else {
-        // Build full route: start → stops[] → final
-        $allStops = [$start];
-        $allStops = array_merge($allStops, $stops);
-        $allStops[] = $final;
+function handleGetClients()
+{
+    global $pdo;
 
-        // Calculate each leg
-        for ($i = 0; $i < count($allStops) - 1; $i++) {
-            $origin = $allStops[$i];
-            $destination = $allStops[$i + 1];
+    // Support new `filter` param (all | with_bookings | without_bookings)
+    // Fall back to legacy `only_with_bookings` for backward-compat.
+    $allowedFilters = ['all', 'with_bookings', 'without_bookings'];
+    $filter = $_GET['filter'] ?? null;
+    if ($filter === null) {
+        $onlyWithBookings = isset($_GET['only_with_bookings']) && $_GET['only_with_bookings'] == 1;
+        $filter = $onlyWithBookings ? 'with_bookings' : 'all';
+    } elseif (!in_array($filter, $allowedFilters, true)) {
+        $filter = 'all';
+    }
 
-            $url = GOOGLE_DISTANCE_MATRIX_URL . '?' . http_build_query([
-                'origins'      => $origin,
-                'destinations' => $destination,
-                'units'        => 'metric',
-                'key'          => GOOGLE_API_KEY,
-            ]);
+    try {
+        $sql = buildClientsQuery($filter);
+        $stmt = $pdo->query($sql);
+        $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            $response = @file_get_contents($url);
-            $data = $response ? json_decode($response, true) : null;
-            $element = $data['rows'][0]['elements'][0] ?? null;
+        foreach ($contacts as &$contact) {
+            $contact['whatsapp_phone'] = formatPhoneNumberForWhatsApp($contact['phone'] ?? '');
+        }
+        unset($contact);
 
-            if (!$element || $element['status'] !== 'OK') {
-                $legs[] = [
-                    'from'    => $origin,
-                    'to'      => $destination,
-                    'status'  => 'error',
-                    'message' => $element['status'] ?? 'UNKNOWN_ERROR',
-                ];
-            } else {
-                $legs[] = [
-                    'from'         => $origin,
-                    'to'           => $destination,
-                    'distance_m'   => $element['distance']['value'],
-                    'distance_txt' => $element['distance']['text'],
-                    'duration_s'   => $element['duration']['value'],
-                    'duration_txt' => $element['duration']['text'],
-                    'status'       => 'ok',
-                ];
+        jsonResponse([
+            'success' => true,
+            'contacts' => $contacts
+        ]);
 
-                $totalDistanceM += $element['distance']['value'];
-                $totalDurationS += $element['duration']['value'];
+    } catch (PDOException $e) {
+        logError('CLIENT', 'Failed to fetch clients', [
+            'error' => $e->getMessage(),
+            'filter' => $filter
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Database error'], 500);
+    }
+}
+
+function handleGetClientsCsv()
+{
+    global $pdo;
+
+    $allowedFilters = ['all', 'with_bookings', 'without_bookings'];
+    $filter = $_GET['filter'] ?? 'all';
+    if (!in_array($filter, $allowedFilters, true)) {
+        $filter = 'all';
+    }
+    $labelMap = [
+        'all'              => 'All Clients',
+        'with_bookings'    => 'Clients With Bookings',
+        'without_bookings' => 'Clients Without Bookings',
+    ];
+    $label = $labelMap[$filter] ?? 'Clients';
+    $filename = str_replace(' ', '_', $label) . '_' . date('Y-m-d') . '.csv';
+
+    try {
+        $sql = buildClientsQuery($filter);
+        $stmt = $pdo->query($sql);
+        $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Send CSV headers (override JSON header set earlier)
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $out = fopen('php://output', 'w');
+        // BOM for Excel UTF-8 compatibility
+        fputs($out, "\xEF\xBB\xBF");
+        // Column headers — include WA Status for the without_bookings export
+        $headers = ['Name', 'Phone', 'Email', 'Address', 'Additional Info', 'Bookings'];
+        if ($filter === 'without_bookings') {
+            $headers[] = 'WA Status';
+        }
+        fputcsv($out, $headers);
+
+        foreach ($contacts as $c) {
+            $row = [
+                $c['name']            ?? '',
+                $c['phone']           ?? '',
+                $c['email']           ?? '',
+                $c['address']         ?? '',
+                $c['additional_info'] ?? '',
+                $c['booking_count']   ?? 0,
+            ];
+            if ($filter === 'without_bookings') {
+                $row[] = $c['wa_status'] ?? '';
             }
+            fputcsv($out, $row);
         }
+        fclose($out);
+        exit;
+
+    } catch (PDOException $e) {
+        logError('CLIENT', 'Failed to export clients CSV', [
+            'error'  => $e->getMessage(),
+            'filter' => $filter
+        ]);
+        // Restore JSON header for error response
+        header('Content-Type: application/json');
+        jsonResponse(['success' => false, 'message' => 'Database error'], 500);
     }
 }
-?>
 
-<div class="at-distcalc-wrapper">
-    <h2>🗺️ Trip Distance Calculator</h2>
-    <p class="at-distcalc-description">
-        Enter a start address, any number of stops (in order), and a final destination. 
-        We'll calculate the distance and time for each leg.
-    </p>
+function buildClientsQuery($filter)
+{
+    switch ($filter) {
+        case 'with_bookings':
+            return "
+                SELECT
+                    c.*,
+                    COUNT(DISTINCT b.id) AS booking_count
+                FROM contacts c
+                INNER JOIN bookings b ON c.id = b.contact_id
+                GROUP BY c.id
+                ORDER BY c.name ASC
+            ";
+        case 'without_bookings':
+            return "
+                SELECT
+                    c.*,
+                    0 AS booking_count
+                FROM contacts c
+                WHERE NOT EXISTS (SELECT 1 FROM bookings b WHERE b.contact_id = c.id)
+                ORDER BY c.name ASC
+            ";
+        default: // 'all'
+            return "
+                SELECT
+                    c.*,
+                    (SELECT COUNT(*) FROM bookings b WHERE b.contact_id = c.id) AS booking_count
+                FROM contacts c
+                ORDER BY c.name ASC
+            ";
+    }
+}
 
-    <form method="post">
-        <!-- Start Address -->
-        <div class="form-group">
-            <label for="start_address">Start Address <span class="required">*</span></label>
-            <input type="text" id="start_address" name="start_address" 
-                   placeholder="e.g., 123 Main Street, Cape Town" 
-                   value="<?= htmlspecialchars($_POST['start_address'] ?? '') ?>" 
-                   required>
-        </div>
+function handleGetSingleClient()
+{
+    global $pdo;
+    
+    $id = intval($_GET['id'] ?? 0);
+    
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid client ID'], 400);
+    }
+    
+    try {
+        $stmt = $pdo->prepare("
+            SELECT 
+                c.*,
+                (SELECT COUNT(*) FROM bookings b WHERE b.contact_id = c.id) AS booking_count
+            FROM contacts c
+            WHERE c.id = ?
+        ");
+        $stmt->execute([$id]);
+        $client = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$client) {
+            jsonResponse(['success' => false, 'message' => 'Client not found'], 404);
+        }
+        
+        jsonResponse([
+            'success' => true,
+            'client' => $client
+        ]);
+        
+    } catch (PDOException $e) {
+        logError('CLIENT', 'Failed to fetch single client', [
+            'error' => $e->getMessage(),
+            'client_id' => $id
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Database error'], 500);
+    }
+}
 
-        <!-- Dynamic Stops -->
-        <div class="form-group">
-            <label>Stops (Optional)</label>
-            <div id="at-distcalc-stops-container" class="at-distcalc-stops-container">
-                <!-- Stops will be inserted here via JavaScript -->
-            </div>
-            <button type="button" id="at-distcalc-add-stop-btn" class="at-distcalc-add-btn">+ Add Stop</button>
-        </div>
+function handleAddClient()
+{
+    global $pdo;
+    
+    try {
+        $name = trim($_POST['name'] ?? '');
+        $phone = trim($_POST['phone'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+        $address = trim($_POST['address'] ?? '');
+        $additional_info = trim($_POST['additionalInfo'] ?? '');
+        
+        // Validate
+        if (empty($name)) {
+            jsonResponse(['success' => false, 'message' => 'Client name is required'], 400);
+        }
 
-        <!-- Final Destination -->
-        <div class="form-group">
-            <label for="final_destination">Final Destination <span class="required">*</span></label>
-            <input type="text" id="final_destination" name="final_destination" 
-                   placeholder="e.g., 456 Beach Road, Gordon's Bay" 
-                   value="<?= htmlspecialchars($_POST['final_destination'] ?? '') ?>" 
-                   required>
-        </div>
+        // Normalise phone before storing
+        if ($phone !== '') {
+            $normalised = formatPhoneNumberForWhatsApp($phone);
+            $phone = $normalised !== '' ? $normalised : preg_replace('/\D/', '', $phone);
+        }
 
-        <button type="submit" class="btn">🔍 Calculate Route</button>
-    </form>
+        // Insert client
+        $stmt = $pdo->prepare("
+            INSERT INTO contacts (name, phone, email, address, additional_info, date_added)
+            VALUES (?, ?, ?, ?, ?, NOW())
+        ");
+        $stmt->execute([$name, $phone, $email, $address, $additional_info]);
+        
+        $clientId = $pdo->lastInsertId();
+        
+        logInfo('CLIENT', 'Client created', [
+            'client_id' => $clientId,
+            'name' => $name
+        ]);
+        
+        jsonResponse([
+            'success' => true,
+            'message' => 'Client added successfully',
+            'contact_id' => $clientId,
+            'client' => [
+                'id' => $clientId,
+                'name' => $name,
+                'phone' => $phone,
+                'email' => $email,
+                'address' => $address
+            ]
+        ]);
+        
+    } catch (PDOException $e) {
+        logError('CLIENT', 'Failed to create client', [
+            'error' => $e->getMessage()
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Failed to add client'], 500);
+    }
+}
 
-    <?php if ($error): ?>
-        <div class="error-message">
-            <?= htmlspecialchars($error) ?>
-        </div>
-    <?php endif; ?>
+function handleUpdateClient()
+{
+    global $pdo;
+    
+    try {
+        $id = intval($_POST['id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        $phone = trim($_POST['phone'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+        $address = trim($_POST['address'] ?? '');
+        $additional_info = trim($_POST['additionalInfo'] ?? '');
+        
+        if ($id <= 0) {
+            jsonResponse(['success' => false, 'message' => 'Invalid client ID'], 400);
+        }
+        
+        if (empty($name)) {
+            jsonResponse(['success' => false, 'message' => 'Name is required'], 400);
+        }
 
-    <?php if (!empty($legs)): ?>
-        <div class="at-distcalc-results">
-            <h3>📍 Route Breakdown</h3>
-            <table class="bookings-table">
-                <thead>
-                    <tr>
-                        <th>From</th>
-                        <th>To</th>
-                        <th>Distance</th>
-                        <th>Time</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($legs as $leg): ?>
-                        <tr class="<?= $leg['status'] === 'error' ? 'at-distcalc-leg-error' : 'at-distcalc-leg-ok' ?>">
-                            <td><?= htmlspecialchars($leg['from']) ?></td>
-                            <td><?= htmlspecialchars($leg['to']) ?></td>
-                            <td>
-                                <?php if ($leg['status'] === 'ok'): ?>
-                                    <?= htmlspecialchars($leg['distance_txt']) ?>
-                                <?php else: ?>
-                                    <span class="at-distcalc-error-badge">Error: <?= htmlspecialchars($leg['message']) ?></span>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <?php if ($leg['status'] === 'ok'): ?>
-                                    <?= htmlspecialchars($leg['duration_txt']) ?>
-                                <?php else: ?>
-                                    —
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+        // Normalise phone before storing
+        if ($phone !== '') {
+            $normalised = formatPhoneNumberForWhatsApp($phone);
+            $phone = $normalised !== '' ? $normalised : preg_replace('/\D/', '', $phone);
+        }
 
-<?php if ($totalDistanceM > 0): ?>
-    <div class="at-distcalc-totals">
-        <div class="at-distcalc-total-item">
-            <strong>Total Distance:</strong>
-            <span><?= number_format($totalDistanceM / 1000, 1) ?> km</span>
-        </div>
-        <div class="at-distcalc-total-item">
-            <strong>Total Driving Time:</strong>
-            <span>~<?= round($totalDurationS / 60) ?> minutes</span>
-        </div>
-        <?php
-            $ratePerKm = (float) getSystemVariable($pdo, 'rate_per_km');
-            if ($ratePerKm > 0) {
-                $estimatedCost = ($totalDistanceM / 1000) * $ratePerKm;
-        ?>
-        <div class="at-distcalc-total-item">
-            <strong>Estimated Cost (@ R<?= number_format($ratePerKm, 2) ?>/km):</strong>
-            <span>R<?= number_format($estimatedCost, 2) ?></span>
-        </div>
-        <?php } ?>
-    </div>
-<?php endif; ?>
+        // Update client
+        $stmt = $pdo->prepare("
+            UPDATE contacts 
+            SET name = ?, phone = ?, email = ?, address = ?, additional_info = ?
+            WHERE id = ?
+        ");
+        $updated = $stmt->execute([$name, $phone, $email, $address, $additional_info, $id]);
+        
+        if ($updated) {
+            logInfo('CLIENT', 'Client updated', [
+                'client_id' => $id,
+                'name' => $name
+            ]);
             
-        </div>
-    <?php endif; ?>
-</div>
-
-<script>
-$(document).ready(function () {
-    // Load previously entered stops from form submission
-    const previousStops = <?= json_encode(array_filter(array_map('trim', $_POST['stops'] ?? []), fn($s) => !empty($s))) ?>;
-
-    const container = $('#at-distcalc-stops-container');
-
-    // Render existing stops
-    function renderStops() {
-        const count = container.find('.at-distcalc-stop-row').length;
-        if (count === 0 && previousStops.length === 0) {
-            container.html(''); // Empty by default
+            jsonResponse([
+                'success' => true,
+                'message' => 'Client updated successfully'
+            ]);
         } else {
-            previousStops.forEach((stop, index) => {
-                if (container.find('.at-distcalc-stop-row').length <= index) {
-                    addStopRow(stop);
-                }
-            });
+            jsonResponse([
+                'success' => false,
+                'message' => 'Failed to update client'
+            ], 400);
         }
+        
+    } catch (PDOException $e) {
+        logError('CLIENT', 'Failed to update client', [
+            'error' => $e->getMessage(),
+            'client_id' => $id ?? null
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Failed to update client'], 500);
     }
+}
 
-    function addStopRow(value = '') {
-        const index = container.find('.at-distcalc-stop-row').length;
-        const row = $(`
-            <div class="at-distcalc-stop-row">
-                <input type="text" name="stops[]" class="at-distcalc-stop-input" 
-                       placeholder="Stop ${index + 1} (optional)" 
-                       value="${escapeHtml(value)}">
-                <button type="button" class="at-distcalc-remove-stop-btn" data-index="${index}">Remove</button>
-            </div>
-        `);
-        container.append(row);
-
-        // Attach remove handler
-        row.find('.at-distcalc-remove-stop-btn').on('click', function (e) {
-            e.preventDefault();
-            row.remove();
-        });
-
-        // Wire up autocomplete on this new stop input
-        distCalcInitAutocomplete(row.find('.at-distcalc-stop-input')[0]);
+function handleDeleteClient()
+{    global $pdo;
+    
+    $id = intval($_POST['id'] ?? 0);
+    
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid client ID'], 400);
     }
-
-    $('#at-distcalc-add-stop-btn').on('click', function (e) {
-        e.preventDefault();
-        addStopRow();
-    });
-
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text || '';
-        return div.innerHTML;
-    }
-
-    // Initialize with previous stops or empty
-    renderStops();
-});
-
-// --- Places Autocomplete wiring ---
-// Google's Maps script (loaded below with a callback) calls distCalcOnMapsLoaded()
-// once the places library is available. Inputs added before that point (start,
-// final, and any restored stops) are queued and attached once ready. Inputs
-// added afterward (new stop rows) attach immediately.
-//
-// Genuine failure conditions below report via the shared window.logJsError()
-// (see assets/js/error-logging.js), which writes into the existing
-// system_logs table (viewable at /maintenance/logs.php) under the
-// DISTCALC_JS category — useful since this is tested on a mobile browser
-// with no console access.
-window.distCalcMapsReady = false;
-window.distCalcPendingInputs = [];
-
-// Google's global callback for auth-related failures: invalid key, key
-// restricted to the wrong referrer, API not enabled, billing disabled, etc.
-// This is the most likely one to fire given the referrer-restriction setup.
-window.gm_authFailure = function () {
-    logJsError('ERROR', 'Google Maps auth failure — check referrer restriction, enabled APIs, and billing on the Places key', {
-        page_url: window.location.href
-    });
-};
-
-function distCalcInitAutocomplete(inputEl) {
-    if (!inputEl) return;
-    if (window.distCalcMapsReady) {
-        try {
-            new google.maps.places.Autocomplete(inputEl, {
-                componentRestrictions: { country: 'za' },
-                fields: ['formatted_address']
-            });
-        } catch (e) {
-            logJsError('ERROR', 'Autocomplete constructor threw: ' + e.message, {
-                field_id: inputEl.id || inputEl.name
-            });
+    
+    try {
+        // Check if client has bookings
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM bookings WHERE contact_id = ?");
+        $stmt->execute([$id]);
+        $bookingCount = $stmt->fetchColumn();
+        
+        if ($bookingCount > 0) {
+            jsonResponse([
+                'success' => false,
+                'message' => "Cannot delete client with {$bookingCount} booking(s). Delete bookings first."
+            ], 400);
         }
-    } else {
-        window.distCalcPendingInputs.push(inputEl);
+        
+        // Get client name for logging
+        $stmt = $pdo->prepare("SELECT name FROM contacts WHERE id = ?");
+        $stmt->execute([$id]);
+        $clientName = $stmt->fetchColumn();
+        
+        // Delete client
+        $stmt = $pdo->prepare("DELETE FROM contacts WHERE id = ?");
+        $stmt->execute([$id]);
+        
+        if ($stmt->rowCount() > 0) {
+            logInfo('CLIENT', 'Client deleted', [
+                'client_id' => $id,
+                'name' => $clientName
+            ]);
+            
+            jsonResponse([
+                'success' => true,
+                'message' => 'Client deleted successfully'
+            ]);
+        } else {
+            jsonResponse(['success' => false, 'message' => 'Client not found'], 404);
+        }
+        
+    } catch (PDOException $e) {
+        logError('CLIENT', 'Failed to delete client', [
+            'error' => $e->getMessage(),
+            'client_id' => $id
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Failed to delete client'], 500);
     }
 }
 
-function distCalcOnMapsLoaded() {
-    window.distCalcMapsReady = true;
-    distCalcInitAutocomplete(document.getElementById('start_address'));
-    distCalcInitAutocomplete(document.getElementById('final_destination'));
-    window.distCalcPendingInputs.forEach(el => distCalcInitAutocomplete(el));
-    window.distCalcPendingInputs = [];
+function handleSavePickupGps()
+{
+    global $pdo;
+
+    $id  = intval($_POST['id'] ?? 0);
+    $lat = isset($_POST['lat']) ? (float) $_POST['lat'] : null;
+    $lng = isset($_POST['lng']) ? (float) $_POST['lng'] : null;
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid client ID.'], 400);
+    }
+
+    if ($lat === null || $lng === null || $lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
+        jsonResponse(['success' => false, 'message' => 'Invalid GPS coordinates.'], 400);
+    }
+
+    try {
+        $stmt = $pdo->prepare("UPDATE contacts SET pickup_lat = ?, pickup_lng = ? WHERE id = ?");
+        $stmt->execute([$lat, $lng, $id]);
+
+        logInfo('CLIENT', 'Pickup GPS saved', [
+            'client_id' => $id,
+            'lat' => $lat,
+            'lng' => $lng,
+        ]);
+
+        jsonResponse(['success' => true, 'message' => 'GPS location saved.']);
+
+    } catch (PDOException $e) {
+        logError('CLIENT', 'Failed to save pickup GPS', [
+            'error'     => $e->getMessage(),
+            'client_id' => $id,
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Failed to save GPS location.'], 500);
+    }
 }
 
-function distCalcOnMapsScriptError() {
-    logJsError('ERROR', 'Maps script tag failed to load entirely (network/blocked, not an API-level error)', {});
-}
-</script>
-<script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars(GOOGLE_MAPS_BROWSER_KEY) ?>&libraries=places&callback=distCalcOnMapsLoaded" async defer onerror="distCalcOnMapsScriptError()"></script>
+function handleClearPickupGps()
+{
+    global $pdo;
 
-<?php include ROOT_DIR . '/includes/footer.php'; ?>
+    $id = intval($_POST['id'] ?? 0);
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid client ID.'], 400);
+    }
+
+    try {
+        $stmt = $pdo->prepare("UPDATE contacts SET pickup_lat = NULL, pickup_lng = NULL WHERE id = ?");
+        $stmt->execute([$id]);
+
+        logInfo('CLIENT', 'Pickup GPS cleared', ['client_id' => $id]);
+
+        jsonResponse(['success' => true, 'message' => 'GPS location cleared.']);
+
+    } catch (PDOException $e) {
+        logError('CLIENT', 'Failed to clear pickup GPS', [
+            'error'     => $e->getMessage(),
+            'client_id' => $id,
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Failed to clear GPS location.'], 500);
+    }
+}
+
+function handleUpdateWaStatus()
+{
+    global $pdo;
+
+    $id     = intval($_POST['id'] ?? 0);
+    $status = trim($_POST['status'] ?? '');
+
+    $allowed = ['sent', 'positive'];
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid client ID.'], 400);
+    }
+
+    if (!in_array($status, $allowed, true)) {
+        jsonResponse(['success' => false, 'message' => 'Invalid WA status value.'], 400);
+    }
+
+    try {
+        if ($status === 'sent') {
+            $stmt = $pdo->prepare("UPDATE contacts SET wa_status = ?, wa_sent_date = CURDATE() WHERE id = ?");
+            $stmt->execute([$status, $id]);
+        } else {
+            $stmt = $pdo->prepare("UPDATE contacts SET wa_status = ? WHERE id = ?");
+            $stmt->execute([$status, $id]);
+        }
+
+        logInfo('CLIENT', 'WA status updated', [
+            'client_id' => $id,
+            'wa_status'  => $status,
+        ]);
+
+        $waSentDate = null;
+        if ($status === 'sent') {
+            $waSentDate = date('Y-m-d');
+        }
+
+        jsonResponse(['success' => true, 'message' => 'WA status updated.', 'wa_status' => $status, 'wa_sent_date' => $waSentDate]);
+
+    } catch (PDOException $e) {
+        logError('CLIENT', 'Failed to update WA status', [
+            'error'     => $e->getMessage(),
+            'client_id' => $id,
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Failed to update WA status.'], 500);
+    }
+}
