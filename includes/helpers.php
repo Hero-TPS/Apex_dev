@@ -184,6 +184,7 @@ function createWhatsAppMessage(PDO $pdo, array $bookingDetails): string
     $paymentReceivedInfo = !empty($bookingDetails['payment_received'])
         ? "✅ Payment Received\n" : '';
     $displayNotes = appendAirportPickupNotice($pdo, $bookingDetails['pickup_location'] ?? '', $bookingDetails['description'] ?? '');
+    $displayNotes = appendAfterHoursNotice($bookingDetails['after_hours_charge'] ?? null, $displayNotes);
     $notesInfo = !empty($displayNotes)
         ? "📝 Notes: " . $displayNotes . "\n" : '';
 
@@ -314,6 +315,9 @@ const SYSTEM_VARIABLES = [
     'rent' => ['label' => 'Rent (R/week)', 'type' => 'number', 'default' => 0],
     'debt_payment' => ['label' => 'Debt Payment (R/week)', 'type' => 'number', 'default' => 0],
     'living_expenses_daily' => ['label' => 'Living Expenses (R/day)', 'type' => 'number', 'default' => 120],
+    'after_hours_charge' => ['label' => 'After-Hours Surcharge (R)', 'type' => 'number', 'default' => 75],
+    'after_hours_start' => ['label' => 'After-Hours Start Time', 'type' => 'time', 'default' => '20:00'],
+    'after_hours_end' => ['label' => 'After-Hours End Time', 'type' => 'time', 'default' => '06:00'],
     'airport_pickup_notice' => [
         'label' => 'Cape Town Airport Pickup Notice',
         'type' => 'textarea',
@@ -397,6 +401,60 @@ function appendAirportPickupNotice(PDO $pdo, string $pickup, ?string $notes): st
         return $notes;
     }
 
+    return trim($notes) === '' ? $notice : rtrim($notes) . "\n" . $notice;
+}
+
+/**
+ * Whether a trip start time falls within the after-hours window defined by
+ * the after_hours_start / after_hours_end system variables. The window may
+ * wrap past midnight (e.g. 20:00 to 06:00), so it's checked as "at or after
+ * start, OR before end" rather than a simple range.
+ * Used by: modules/Bookings/api/index.php
+ *
+ * @param PDO    $pdo
+ * @param string $startTime  "H:i" or "H:i:s" trip start time
+ * @return bool
+ */
+function isAfterHoursStartTime(PDO $pdo, string $startTime): bool
+{
+    $start = substr((string) getSystemVariable($pdo, 'after_hours_start'), 0, 5);
+    $end = substr((string) getSystemVariable($pdo, 'after_hours_end'), 0, 5);
+    $time = substr($startTime, 0, 5);
+
+    if ($start === '' || $end === '') {
+        return false;
+    }
+    if ($start <= $end) {
+        return $time >= $start && $time < $end;
+    }
+    // Window wraps past midnight
+    return $time >= $start || $time < $end;
+}
+
+/**
+ * Returns booking notes with the after-hours surcharge notice appended,
+ * when the booking's stored after_hours_charge is set. Computed at render
+ * time only, from the stored charge amount — never written into
+ * bookings.description, same principle as appendAirportPickupNotice().
+ * Used by: createWhatsAppMessage(), modules/Bookings/view.php
+ *
+ * @param float|string|null $afterHoursCharge  bookings.after_hours_charge value
+ * @param string|null       $notes             Raw stored notes/description text
+ * @return string                               Notes text ready for display
+ */
+function appendAfterHoursNotice($afterHoursCharge, ?string $notes): string
+{
+    $notes = $notes ?? '';
+    $charge = (float) $afterHoursCharge;
+
+    if ($charge <= 0) {
+        return $notes;
+    }
+    if (stripos($notes, 'after-hours') !== false) {
+        return $notes;
+    }
+
+    $notice = 'This is an after-hours trip — a R' . number_format($charge, 2) . ' after-hours surcharge is included in the cost.';
     return trim($notes) === '' ? $notice : rtrim($notes) . "\n" . $notice;
 }
 
