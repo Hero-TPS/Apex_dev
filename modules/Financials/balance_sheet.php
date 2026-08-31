@@ -16,6 +16,8 @@ $monthsBack = (int) getSystemVariable($pdo, 'financial_months_back');
 if ($monthsBack < 1) {
     $monthsBack = 3;
 }
+$defaultMonthsBack = $monthsBack;
+$monthsBack = applyMonthsOverride($monthsBack);
 
 $months = [];
 $tz           = new DateTimeZone(TIME_ZONE);
@@ -61,6 +63,8 @@ $carRentalWeekly = (float) getSystemVariable($pdo, 'car_rental_price');
 
 include ROOT_DIR . '/includes/header.php';
 ?>
+
+<?= renderMonthsOverrideToggle($monthsBack, $defaultMonthsBack) ?>
 
 <div class="balance-sheet-page">
 
