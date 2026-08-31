@@ -2,9 +2,9 @@
 /**
  * modules/DistanceCalculator/index.php
  * Trip Distance Calculator — multi-stop route planning
- * @version 1.4.0 — Client-side debug logging now uses the shared
- *          window.logJsError() / maintenance/api/log_js_error.php,
- *          same system_logs destination as before
+ * @version 1.5.0 — Removed temporary debug-level logging (autocomplete
+ *          confirmed working); kept genuine error reporting via
+ *          window.logJsError() / maintenance/api/log_js_error.php
  */
 
 $page_title = 'Trip Distance Calculator';
@@ -254,13 +254,11 @@ $(document).ready(function () {
 // final, and any restored stops) are queued and attached once ready. Inputs
 // added afterward (new stop rows) attach immediately.
 //
-// DEBUG MODE: since this is tested on a mobile browser with no console access,
-// every step below reports via the shared window.logJsError() (see
-// assets/js/error-logging.js), which writes into the existing system_logs
-// table (viewable at /maintenance/logs.php) under the DISTCALC_JS category.
-// Remove these logJsError() calls once autocomplete is confirmed working
-// end to end — the page's own uncaught-error reporting is now handled
-// globally, so nothing page-specific needs to stay for that part.
+// Genuine failure conditions below report via the shared window.logJsError()
+// (see assets/js/error-logging.js), which writes into the existing
+// system_logs table (viewable at /maintenance/logs.php) under the
+// DISTCALC_JS category — useful since this is tested on a mobile browser
+// with no console access.
 window.distCalcMapsReady = false;
 window.distCalcPendingInputs = [];
 
@@ -281,7 +279,6 @@ function distCalcInitAutocomplete(inputEl) {
                 componentRestrictions: { country: 'za' },
                 fields: ['formatted_address']
             });
-            logJsError('INFO', 'Autocomplete attached to field', { field_id: inputEl.id || inputEl.name });
         } catch (e) {
             logJsError('ERROR', 'Autocomplete constructor threw: ' + e.message, {
                 field_id: inputEl.id || inputEl.name
@@ -293,7 +290,6 @@ function distCalcInitAutocomplete(inputEl) {
 }
 
 function distCalcOnMapsLoaded() {
-    logJsError('INFO', 'Maps script loaded, distCalcOnMapsLoaded callback fired', {});
     window.distCalcMapsReady = true;
     distCalcInitAutocomplete(document.getElementById('start_address'));
     distCalcInitAutocomplete(document.getElementById('final_destination'));
