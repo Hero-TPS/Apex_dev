@@ -906,6 +906,26 @@ body:not(.home-page) .floating-menu-toggle {
 
 .highlight-row { background-color: #fff9c4 !important; transition: background-color 0.3s; }
 
+/* Temporary "Show Last N Months" / "Back to Default" toggle — used by
+   Financials, Balance Sheet, Fuel, Uber, and Bookings Reports pages */
+.months-toggle {
+    text-align: right;
+    margin-bottom: 12px;
+}
+.months-toggle-link {
+    display: inline-block;
+    font-size: 13px;
+    color: #667eea;
+    text-decoration: none;
+    padding: 4px 10px;
+    border: 1px solid #667eea;
+    border-radius: 4px;
+}
+.months-toggle-link:hover {
+    background: #667eea;
+    color: white;
+}
+
 /* Used by Clients/index.php. (Maintenance/Logs has its own
    .log-filter-group in modules/maintenance.css — different layout.) */
 .filter-group {
