@@ -259,7 +259,7 @@ function handleAddClient()
         
         $clientId = $pdo->lastInsertId();
         
-        logDebug('CLIENT', 'Client created', [
+        logInfo('CLIENT', 'Client created', [
             'client_id' => $clientId,
             'name' => $name
         ]);
@@ -320,7 +320,7 @@ function handleUpdateClient()
         $updated = $stmt->execute([$name, $phone, $email, $address, $additional_info, $id]);
         
         if ($updated) {
-            logDebug('CLIENT', 'Client updated', [
+            logInfo('CLIENT', 'Client updated', [
                 'client_id' => $id,
                 'name' => $name
             ]);
@@ -377,7 +377,7 @@ function handleDeleteClient()
         $stmt->execute([$id]);
         
         if ($stmt->rowCount() > 0) {
-            logDebug('CLIENT', 'Client deleted', [
+            logInfo('CLIENT', 'Client deleted', [
                 'client_id' => $id,
                 'name' => $clientName
             ]);
@@ -419,7 +419,7 @@ function handleSavePickupGps()
         $stmt = $pdo->prepare("UPDATE contacts SET pickup_lat = ?, pickup_lng = ? WHERE id = ?");
         $stmt->execute([$lat, $lng, $id]);
 
-        logDebug('CLIENT', 'Pickup GPS saved', [
+        logInfo('CLIENT', 'Pickup GPS saved', [
             'client_id' => $id,
             'lat' => $lat,
             'lng' => $lng,
@@ -450,7 +450,7 @@ function handleClearPickupGps()
         $stmt = $pdo->prepare("UPDATE contacts SET pickup_lat = NULL, pickup_lng = NULL WHERE id = ?");
         $stmt->execute([$id]);
 
-        logDebug('CLIENT', 'Pickup GPS cleared', ['client_id' => $id]);
+        logInfo('CLIENT', 'Pickup GPS cleared', ['client_id' => $id]);
 
         jsonResponse(['success' => true, 'message' => 'GPS location cleared.']);
 
@@ -489,7 +489,7 @@ function handleUpdateWaStatus()
             $stmt->execute([$status, $id]);
         }
 
-        logDebug('CLIENT', 'WA status updated', [
+        logInfo('CLIENT', 'WA status updated', [
             'client_id' => $id,
             'wa_status'  => $status,
         ]);
