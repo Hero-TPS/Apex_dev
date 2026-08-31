@@ -91,6 +91,10 @@ $overdueCount = (int) $overdueStmt->fetchColumn();
                     <input type="number" name="variables[<?= htmlspecialchars($name) ?>]"
                         value="<?= htmlspecialchars($value) ?>" step="0.01" min="0" required>
                     <small>Default: <?= htmlspecialchars($def['default']) ?></small>
+                <?php elseif ($def['type'] === 'time'): ?>
+                    <input type="time" name="variables[<?= htmlspecialchars($name) ?>]"
+                        value="<?= htmlspecialchars($value) ?>" required>
+                    <small>Default: <?= htmlspecialchars($def['default']) ?></small>
                 <?php elseif ($def['type'] === 'textarea'): ?>
                     <textarea name="variables[<?= htmlspecialchars($name) ?>]" rows="12"
                         style="width: 100%; font-family: monospace;" required><?= htmlspecialchars($value) ?></textarea>
