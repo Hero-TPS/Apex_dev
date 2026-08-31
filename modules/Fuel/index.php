@@ -12,6 +12,8 @@ $monthsBack = (int) getSystemVariable($pdo, 'financial_months_back');
 if ($monthsBack < 1) {
     $monthsBack = 3;
 }
+$defaultMonthsBack = $monthsBack;
+$monthsBack = applyMonthsOverride($monthsBack);
 
 $months = [];
 $today        = new DateTime();
@@ -44,6 +46,8 @@ $currentWeekSunday->setTime(23, 59, 59);
 
 include ROOT_DIR . '/includes/header.php';
 ?>
+
+<?= renderMonthsOverrideToggle($monthsBack, $defaultMonthsBack) ?>
 
 <div class="financial-dashboard">
     <h2>⛽ Fuel Reports (Last <?= htmlspecialchars($monthsBack) ?> Months)</h2>
