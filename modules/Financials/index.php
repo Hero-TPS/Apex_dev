@@ -16,6 +16,9 @@ $monthsBack = (int) getSystemVariable($pdo, 'financial_months_back');
 if ($monthsBack < 1) {
     $monthsBack = 3;
 }
+$defaultMonthsBack = $monthsBack;
+$monthsBack = applyMonthsOverride($monthsBack);
+echo renderMonthsOverrideToggle($monthsBack, $defaultMonthsBack);
 
 $months = [];
 $today        = new DateTime();
