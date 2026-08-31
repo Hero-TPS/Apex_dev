@@ -176,7 +176,7 @@ if (isset($_GET['id'])) {
             <?php endif; ?>
         </div>
         <div class="detail-item full-width">
-            <strong>Notes:</strong> <?= nl2br(htmlspecialchars(appendAirportPickupNotice($pdo, $booking['pickup_location'], $booking['description']) ?: 'None')) ?>
+            <strong>Notes:</strong> <?= nl2br(htmlspecialchars(appendAfterHoursNotice($booking['after_hours_charge'] ?? null, appendAirportPickupNotice($pdo, $booking['pickup_location'], $booking['description'])) ?: 'None')) ?>
         </div>
         <div class="detail-item" id="status-display">
             <strong>Status:</strong>
