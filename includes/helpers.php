@@ -607,6 +607,49 @@ function buildBreadcrumb(array $items): string
 }
 
 /**
+ * Apply an optional ?months= override on top of a system-variable months-back
+ * value, for a temporary quick view (e.g. "Show Last 12 Months") that doesn't
+ * touch the saved setting itself.
+ * Used by: Financials/index.php, Financials/balance_sheet.php, Fuel/index.php,
+ *          Uber/index.php, Bookings/reports.php
+ *
+ * @param int $monthsBack  The months-back value from the saved system variable
+ * @return int             $monthsBack, or the ?months= override if present and valid
+ */
+function applyMonthsOverride(int $monthsBack): int
+{
+    if (!empty($_GET['months']) && ctype_digit((string) $_GET['months'])) {
+        return max(1, (int) $_GET['months']);
+    }
+    return $monthsBack;
+}
+
+/**
+ * Render a small toggle link for report pages using applyMonthsOverride():
+ * "Show Last N Months" when viewing the default range, or "Back to Default"
+ * when a temporary override is currently active. Reload-based, not saved.
+ * Used by: Financials/index.php, Financials/balance_sheet.php, Fuel/index.php,
+ *          Uber/index.php, Bookings/reports.php
+ *
+ * @param int $currentMonthsBack  The months value currently in effect (after override)
+ * @param int $defaultMonthsBack  The saved system-variable value (or its fallback)
+ * @param int $quickViewMonths    The quick-view months count to offer (default 12)
+ * @return string                 HTML for the toggle, or '' if there's nothing to offer
+ */
+function renderMonthsOverrideToggle(int $currentMonthsBack, int $defaultMonthsBack, int $quickViewMonths = 12): string
+{
+    if ($currentMonthsBack !== $defaultMonthsBack) {
+        return '<div class="months-toggle"><a href="?" class="months-toggle-link">'
+            . '↩ Back to Default (' . $defaultMonthsBack . ' months)</a></div>';
+    }
+    if ($currentMonthsBack < $quickViewMonths) {
+        return '<div class="months-toggle"><a href="?months=' . $quickViewMonths . '" class="months-toggle-link">'
+            . '📅 Show Last ' . $quickViewMonths . ' Months</a></div>';
+    }
+    return '';
+}
+
+/**
  * Send a JSON response and exit.
  * Used by: all API files site-wide.
  *
