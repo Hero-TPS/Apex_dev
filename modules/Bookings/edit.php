@@ -293,6 +293,19 @@ if (isset($_GET['id'])) {
 $(document).ready(function () {
     var bookingCost = <?= (float) $booking['cost'] ?>;
 
+    // After-hours surcharge check
+    var afterHoursStart  = <?= json_encode(substr((string) getSystemVariable($pdo, 'after_hours_start'), 0, 5)) ?>;
+    var afterHoursEnd    = <?= json_encode(substr((string) getSystemVariable($pdo, 'after_hours_end'), 0, 5)) ?>;
+    var afterHoursCharge = <?= json_encode((float) getSystemVariable($pdo, 'after_hours_charge')) ?>;
+
+    function isAfterHours(time) {
+        if (!time) return false;
+        if (afterHoursStart <= afterHoursEnd) {
+            return time >= afterHoursStart && time < afterHoursEnd;
+        }
+        return time >= afterHoursStart || time < afterHoursEnd;
+    }
+
     // Earmark auto-saves independently of the main form (dedicated lightweight endpoint)
     function saveEarmark() {
         $.post('<?= BASE_URL ?>/modules/Bookings/api/index.php', {
@@ -524,6 +537,16 @@ $(document).ready(function () {
     updateBookingFee();
     $('#editBookingForm').on('submit', function (e) {
         e.preventDefault();
+
+        var afterHoursConfirmed = '0';
+        var startTimeVal = $('#startTime').val();
+        if (isAfterHours(startTimeVal)) {
+            var afterHoursMsg = 'This trip starts at ' + startTimeVal + ', which falls within after-hours (' +
+                afterHoursStart + '–' + afterHoursEnd + '). Add the R' + afterHoursCharge.toFixed(2) +
+                ' after-hours surcharge to the cost?';
+            afterHoursConfirmed = confirm(afterHoursMsg) ? '1' : '0';
+        }
+
         var submitBtn = $('#submitBtn');
         var loading = $('#loading');
         var result = $('#result');
@@ -533,7 +556,8 @@ $(document).ready(function () {
 
         var paymentMethod = $('#payment_method').is(':checked') ? 'eft' : 'cash';
         var paymentReceived = $('#payment_received').is(':checked') ? '1' : '0';
-        var formData = $(this).serialize() + '&payment_method=' + paymentMethod + '&payment_received=' + paymentReceived;
+        var formData = $(this).serialize() + '&payment_method=' + paymentMethod + '&payment_received=' + paymentReceived +
+            '&after_hours_confirmed=' + afterHoursConfirmed;
 
         $.ajax({
             type: 'POST',
