@@ -197,7 +197,7 @@ function handleAdd()
         // Insert additional costs
         saveAdditionalCosts($pdo, $uberIncomeId, $reasons, $amounts);
 
-        logDebug('UBER', 'Uber income created', [
+        logInfo('UBER', 'Uber income created', [
             'record_id'  => $uberIncomeId,
             'week_start' => date('Y-m-d', $weekStart),
             'total_income' => $totalIncome
@@ -242,7 +242,7 @@ function handleUpdate()
         $pdo->prepare("DELETE FROM uber_additional_costs WHERE uber_income_id = ?")->execute([$id]);
         saveAdditionalCosts($pdo, $id, $reasons, $amounts);
 
-        logDebug('UBER', 'Uber income updated', ['record_id' => $id]);
+        logInfo('UBER', 'Uber income updated', ['record_id' => $id]);
 
         jsonResponse(['success' => true, 'message' => 'Uber income updated successfully']);
 
@@ -270,7 +270,7 @@ function handleDelete()
         $stmt->execute([$id]);
 
         if ($stmt->rowCount() > 0) {
-            logDebug('UBER', 'Uber income deleted', ['record_id' => $id]);
+            logInfo('UBER', 'Uber income deleted', ['record_id' => $id]);
             jsonResponse(['success' => true, 'message' => 'Uber income deleted successfully']);
         } else {
             jsonResponse(['success' => false, 'message' => 'Record not found'], 404);
@@ -308,7 +308,7 @@ function handleSetBalanceOverride()
             $stmt = $pdo->prepare("UPDATE uber_income SET balance_override = NULL, balance_override_at = NULL WHERE id = ?");
             $stmt->execute([$id]);
 
-            logDebug('UBER', 'Balance correction cleared', ['record_id' => $id]);
+            logInfo('UBER', 'Balance correction cleared', ['record_id' => $id]);
             jsonResponse(['success' => true, 'message' => 'Balance correction cleared']);
             return;
         }
@@ -318,7 +318,7 @@ function handleSetBalanceOverride()
         $stmt = $pdo->prepare("UPDATE uber_income SET balance_override = ?, balance_override_at = NOW() WHERE id = ?");
         $stmt->execute([$value, $id]);
 
-        logDebug('UBER', 'Balance correction set', ['record_id' => $id, 'value' => $value]);
+        logInfo('UBER', 'Balance correction set', ['record_id' => $id, 'value' => $value]);
         jsonResponse(['success' => true, 'message' => 'Balance correction saved']);
 
     } catch (PDOException $e) {
@@ -359,7 +359,7 @@ function handleSetRentalOverride()
             $stmt = $pdo->prepare("UPDATE uber_income SET rental_override = NULL, rental_override_at = NULL WHERE id = ?");
             $stmt->execute([$id]);
 
-            logDebug('UBER', 'Rental override cleared', ['record_id' => $id]);
+            logInfo('UBER', 'Rental override cleared', ['record_id' => $id]);
             jsonResponse(['success' => true, 'message' => 'Rental override cleared']);
             return;
         }
@@ -369,7 +369,7 @@ function handleSetRentalOverride()
         $stmt = $pdo->prepare("UPDATE uber_income SET rental_override = ?, rental_override_at = NOW() WHERE id = ?");
         $stmt->execute([$value, $id]);
 
-        logDebug('UBER', 'Rental override set', ['record_id' => $id, 'value' => $value]);
+        logInfo('UBER', 'Rental override set', ['record_id' => $id, 'value' => $value]);
         jsonResponse(['success' => true, 'message' => 'Rental override saved']);
 
     } catch (PDOException $e) {
