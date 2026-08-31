@@ -16,6 +16,8 @@ $monthsBack = (int) getSystemVariable($pdo, 'financial_months_back');
 if ($monthsBack < 1) {
     $monthsBack = 3;
 }
+$defaultMonthsBack = $monthsBack;
+$monthsBack = applyMonthsOverride($monthsBack);
 
 // Booking Reports also looks 3 months into the future, on top of the shared
 // financial_months_back setting used for history. Hard-coded — this is scoped
@@ -51,6 +53,8 @@ $currentWeekSunday = clone $currentWeekMonday;
 $currentWeekSunday->modify('+6 days');
 $currentWeekSunday->setTime(23, 59, 59);
 ?>
+
+<?= renderMonthsOverrideToggle($monthsBack, $defaultMonthsBack) ?>
 
 <div class="financial-dashboard">
     <h2>📊 Booking Reports</h2>
