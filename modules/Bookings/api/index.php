@@ -1,509 +1,1284 @@
 <?php
-$page_title = 'Clients';
-$page_subtitle = 'Client Management';
-$show_breadcrumb = true;
-
-require_once __DIR__ . '/../../config.php';
-require_once ROOT_DIR . '/includes/auth.php';
+// modules/Bookings/api/index.php
+// Unified Bookings API router
+header('Content-Type: application/json');
+require_once __DIR__ . '/../../../config.php';
+require_once ROOT_DIR . '/google-auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
-$breadcrumb = buildBreadcrumb([['label' => 'Clients']]);
-include ROOT_DIR . '/includes/header.php';
+require_once __DIR__ . '/../helpers.php';
 
-// Check for highlight parameter
-$highlightClientId = $_GET['highlight'] ?? null;
-?>
-<!-- Summary Stats -->
-<div id="client-stats" style="margin-bottom: 20px;"></div>
+require_once ROOT_DIR . '/includes/auth_api.php';
 
-<!-- Booking Filter Buttons -->
-<div class="view-filter-group">
-    <button class="view-filter-btn active" data-filter="all">👥 All Clients</button>
-    <button class="view-filter-btn" data-filter="with_bookings">📅 With Bookings</button>
-    <button class="view-filter-btn" data-filter="without_bookings">🚫 Without Bookings</button>
-    <a id="downloadCsvBtn" href="#" class="csv-download-btn">⬇️ Download CSV</a>
-</div>
+$action = $_REQUEST['action'] ?? null;
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
-<!-- Client Search -->
-<div class="client-search-container">
-    <input type="text" id="clientSearch" class="client-search-input"
-        placeholder="🔍 Search clients by name, phone or address...">
-    <div id="search-results-count"></div>
-</div>
-
-<!-- Notification Area -->
-<div id="notification-area"></div>
-
-<!-- Clients Table -->
-<table class="bookings-table">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Address</th>
-            <th>Additional Info</th>
-            <th>Bookings</th>
-            <th class="wa-status-col" style="display:none;">WA Status</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody id="clients-table-body">
-        <!-- Filled by AJAX -->
-    </tbody>
-</table>
-
-<!-- No Clients Message -->
-<div id="no-clients-message" class="no-bookings" style="display: none;">
-    <h3>📋 No clients found</h3>
-    <p>
-        <a href="<?= BASE_URL ?>/modules/Clients/add.php" class="btn" style="width: auto; padding: 10px 20px;">
-            + Add Your First Client
-        </a>
-    </p>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div id="deleteConfirmationModal" class="modal-overlay">
-    <div class="modal-content">
-        <h3>Are you sure?</h3>
-        <p>This will permanently delete the contact. This action cannot be undone.</p>
-        <div class="modal-buttons">
-            <button id="confirmDeleteBtn" class="modal-btn confirm-btn">Yes, Delete</button>
-            <button id="cancelDeleteBtn" class="modal-btn cancel-btn">Cancel</button>
-        </div>
-    </div>
-</div>
-
-<script>
-    $(document).ready(function () {
-        var tableBody = $('#clients-table-body');
-        var noClientsMessage = $('#no-clients-message');
-        var notificationArea = $('#notification-area');
-        var modal = $('#deleteConfirmationModal');
-        var contactIdToDelete = null;
-        var allClients = [];
-        var currentFilter = 'all';
-
-        // Build CSV download URL for the current filter
-        function updateCsvLink() {
-            $('#downloadCsvBtn').attr(
-                'href',
-                '<?= BASE_URL ?>/modules/Clients/api/index.php?action=get_csv&filter=' + currentFilter
-            );
-        }
-
-        // Show/hide WA Status column (only visible in without_bookings view)
-        function updateWaStatusColumn() {
-            if (currentFilter === 'without_bookings') {
-                $('.wa-status-col').show();
-            } else {
-                $('.wa-status-col').hide();
-            }
-        }
-
-        // Filter button clicks
-        $('.view-filter-btn').on('click', function () {
-            $('.view-filter-btn').removeClass('active');
-            $(this).addClass('active');
-            currentFilter = $(this).data('filter');
-            updateCsvLink();
-            updateWaStatusColumn();
-            loadContacts();
-        });
-
-        // Set initial CSV link and column visibility
-        updateCsvLink();
-        updateWaStatusColumn();
-
-        function buildGpsButtons(contact) {
-            var hasGps = contact.pickup_lat && contact.pickup_lng;
-            return hasGps
-                ? '<button class="action-btn toggle gps-btn" data-id="' + contact.id + '">Update GPS</button>'
-                : '<button class="action-btn save gps-btn" data-id="' + contact.id + '">Set GPS</button>';
-        }
-
-        // ── WA Status helpers ──
-
-        var WA_STATUS_LABELS = {
-            '': '📋 Not Sent',
-            'sent': '📨 Sent',
-            'positive': '✅ Positive'
-        };
-        var WA_STATUS_CSS = {
-            '': 'not-sent',
-            'sent': 'sent',
-            'positive': 'positive'
-        };
-
-        function buildWaStatusBadge(status, sentDate) {
-            var key = status || '';
-            var label = WA_STATUS_LABELS[key] || key;
-            var css = WA_STATUS_CSS[key] || 'not-sent';
-            var html = '<span class="wa-status-badge ' + css + '">' + label + '</span>';
-            if (sentDate) {
-                var d = new Date(sentDate);
-                var formatted = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-                html += '<div class="wa-sent-date">📅 ' + formatted + '</div>';
-            }
-            return html;
-        }
-
-        // ======================================================
-        // CLEANUP WA MESSAGE — edit the text below as needed
-
-               function buildCleanupMessage(name) {
-    return "Hi " + name + " 👋 André Matthews suggested I reach out to you.\n\n" +
-        "I'm <?= e(BUSINESS_OWNER) ?> from <?= e(BUSINESS_NAME) ?> — I've taken over his personal transport services in the Helderberg area since he retired.\n\n" +
-        "Just checking whether transport is something you still need from time to time. I'd be happy to assist if so.\n\n" +
-        "This is a once-off message — I won't follow up unless I hear from you.\n\n" +
-        "Kind regards,\n<?= e(BUSINESS_OWNER) ?>\n<?= e(BUSINESS_NAME) ?>";
+if (!$action) {
+    if ($method === 'GET')
+        $action = 'get';
+    elseif ($method === 'POST')
+        $action = 'add';
+    elseif ($method === 'PUT' || $method === 'PATCH')
+        $action = 'update';
+    elseif ($method === 'DELETE')
+        $action = 'delete';
 }
 
-        function loadContacts(highlightId = null) {
-            var colspan = currentFilter === 'without_bookings' ? 6 : 5;
-            tableBody.html('<tr><td colspan="' + colspan + '" style="text-align:center;">Loading clients...</td></tr>');
-            $.ajax({
-                type: 'GET',
-                url: '<?= BASE_URL ?>/modules/Clients/api/index.php?action=get',
-                data: { filter: currentFilter },
-                dataType: 'json',
-                success: function (response) {
-                    tableBody.empty();
-                    if (response.success && response.contacts.length > 0) {
-                        allClients = response.contacts;
+try {
 
-                        var totalClients = response.contacts.length;
-                        var clientsWithBookings = response.contacts.filter(c => c.booking_count > 0).length;
-                        var totalBookings = response.contacts.reduce((sum, c) => sum + (c.booking_count || 0), 0);
-
-                        $('#client-stats').html(`
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-number">${totalClients}</div>
-                    <div class="stat-label">Total Clients</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${clientsWithBookings}</div>
-                    <div class="stat-label">Clients with Bookings</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${totalBookings}</div>
-                    <div class="stat-label">Total Bookings</div>
-                </div>
-            </div>
-        `);
-
-                        response.contacts.forEach(function (contact) {
-                            var waGreeting = 'Hi ' + contact.name;
-                            var waHref = contact.whatsapp_phone
-                                ? 'https://wa.me/' + contact.whatsapp_phone + '?text=' + encodeURIComponent(waGreeting)
-                                : '#';
-
-                            var gpsIndicator = (contact.pickup_lat && contact.pickup_lng)
-                                ? ' <span title="GPS set">📍</span>'
-                                : '';
-
-                            var rowClass = (highlightId && contact.id == highlightId) ? 'highlight-row' : '';
-
-                            // WA Status cell and cleanup buttons (without_bookings view only)
-                            var waStatusCell = '';
-                            var waCleanupBtn = '';
-                            var waStatusBtns = '';
-                            if (currentFilter === 'without_bookings') {
-                                waStatusCell = '<td data-label="WA Status" class="wa-status-col">' +
-                                    buildWaStatusBadge(contact.wa_status, contact.wa_sent_date) + '</td>';
-
-                                if (contact.whatsapp_phone && contact.wa_status !== 'sent' && contact.wa_status !== 'positive') {
-                                    var cleanupMsg = buildCleanupMessage(contact.name);
-                                    var cleanupHref = 'https://wa.me/' + contact.whatsapp_phone +
-                                        '?text=' + encodeURIComponent(cleanupMsg);
-                                    waCleanupBtn = '<a href="' + cleanupHref + '" target="_blank" ' +
-                                        'class="action-btn wa-cleanup-btn" ' +
-                                        'data-id="' + contact.id + '">WA Cleanup</a>';
-                                }
-
-                                waStatusBtns =
-                                    (contact.wa_status !== 'positive' ? '<button class="action-btn wa-positive-btn" data-id="' + contact.id + '" data-status="positive">Positive</button>' : '');
-                            }
-
-                            var row = '<tr class="' + rowClass + '" data-client-id="' + contact.id + '">' +
-                                '<td data-label="Name">' + escapeHtml(contact.name) + gpsIndicator +
-                                (contact.phone ? '<br><span class="client-subline">📞 ' + escapeHtml(contact.phone) + '</span>' : '') +
-                                (contact.email ? '<br><span class="client-subline">✉️ ' + escapeHtml(contact.email) + '</span>' : '') +
-                                '</td>' +
-                                '<td data-label="Address">' + escapeHtml(contact.address || '') + '</td>' +
-                                '<td data-label="Additional Info">' + escapeHtml(contact.additional_info || '') + '</td>' +
-                                '<td data-label="Bookings">' + (contact.booking_count || 0) + '</td>' +
-                                waStatusCell +
-                                '<td data-label="Actions">' +
-                                '<div class="actions-container">' +
-                                (contact.booking_count > 0 ? '<a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=' + contact.id + '" class="action-btn view-details-btn">View Bookings</a>' : '') +
-                                '<a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=' + contact.id + '&contact_name=' + encodeURIComponent(contact.name) + '" class="action-btn add-booking-small">Add Booking</a>' +
-                                '<a href="<?= BASE_URL ?>/modules/Clients/edit.php?id=' + contact.id + '" class="action-btn edit-btn">Edit</a>' +
-                                (contact.whatsapp_phone
-                                    ? '<a href="' + waHref + '" target="_blank" class="action-btn whatsapp-btn" onclick="logWhatsAppSend(null, ' + contact.id + ', ' + JSON.stringify(waGreeting) + ', \'message\')">WhatsApp</a>'
-                                    : '') +
-                                waCleanupBtn +
-                                buildGpsButtons(contact) +
-                                waStatusBtns +
-                                '<button class="action-btn delete-btn" data-id="' + contact.id + '">Delete</button>' +
-                                '</div>' +
-                                '</td>' +
-                                '</tr>';
-                            tableBody.append(row);
-                        });
-                        $('.bookings-table').show();
-                        noClientsMessage.hide();
-                    } else {
-                        noClientsMessage.show();
-                        $('.bookings-table').hide();
-                    }
-                },
-                error: function () {
-                    tableBody.empty();
-                    showNotification('❌ Could not load clients', 'error');
-                }
-            });
-        }
-
-        // Initial load
-        loadContacts(<?= json_encode($highlightClientId) ?>);
-
-        // ── GPS: Set / Update ──
-        tableBody.on('click', '.gps-btn', function () {
-            var btn = $(this);
-            var clientId = btn.data('id');
-
-            if (!navigator.geolocation) {
-                showNotification('✗ Geolocation not supported by this browser.', 'error');
-                return;
-            }
-
-            btn.prop('disabled', true).text('Getting GPS…');
-
-            navigator.geolocation.getCurrentPosition(
-                function (position) {
-                    $.ajax({
-                        url: '<?= BASE_URL ?>/modules/Clients/api/index.php',
-                        type: 'POST',
-                        data: {
-                            action: 'save_pickup_gps',
-                            id: clientId,
-                            lat: position.coords.latitude,
-                            lng: position.coords.longitude
-                        },
-                        dataType: 'json',
-                        success: function (res) {
-                            if (res.success) {
-                                showNotification('✓ GPS saved for client.', 'success');
-                                btn.text('Update GPS').removeClass('save').addClass('toggle');
-                                var row = btn.closest('tr');
-                                var nameCell = row.find('td[data-label="Name"]');
-                                if (!nameCell.find('span[title="GPS set"]').length) {
-                                    nameCell.append(' <span title="GPS set">📍</span>');
-                                }
-                                var c = allClients.find(function (x) { return x.id == clientId; });
-                                if (c) { c.pickup_lat = position.coords.latitude; c.pickup_lng = position.coords.longitude; }
-                            } else {
-                                showNotification('✗ ' + res.message, 'error');
-                            }
-                        },
-                        error: function () {
-                            showNotification('✗ Failed to save GPS.', 'error');
-                        },
-                        complete: function () {
-                            btn.prop('disabled', false);
-                        }
-                    });
-                },
-                function (error) {
-                    var msg = 'Could not get location.';
-                    if (error.code === error.PERMISSION_DENIED) msg = 'Location permission denied.';
-                    else if (error.code === error.POSITION_UNAVAILABLE) msg = 'Location unavailable.';
-                    else if (error.code === error.TIMEOUT) msg = 'Location request timed out.';
-                    showNotification('✗ ' + msg, 'error');
-                    btn.prop('disabled', false).text(btn.hasClass('toggle') ? 'Update GPS' : 'Set GPS');
-                },
-                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-            );
-        });
-
-        // ── WA Cleanup button: open WA and mark as 'sent' ──
-        tableBody.on('click', '.wa-cleanup-btn', function () {
-            var clientId = $(this).data('id');
-            var row = $(this).closest('tr');
-            updateWaStatus(clientId, 'sent', row);
-        });
-
-        // ── WA Status quick-update buttons ──
-        tableBody.on('click', '.wa-positive-btn', function () {
-            var btn = $(this);
-            var clientId = btn.data('id');
-            var newStatus = btn.data('status');
-            var row = btn.closest('tr');
-            updateWaStatus(clientId, newStatus, row);
-        });
-
-        function updateWaStatus(clientId, status, row) {
-            $.ajax({
-                type: 'POST',
-                url: '<?= BASE_URL ?>/modules/Clients/api/index.php',
-                data: {
-                    action: 'update_wa_status',
-                    id: clientId,
-                    status: status
-                },
-                dataType: 'json',
-                success: function (res) {
-                    if (res.success) {
-                        // Update badge in row
-                        var statusCell = row.find('.wa-status-col');
-                        statusCell.html(buildWaStatusBadge(status, res.wa_sent_date || null));
-
-                        // Hide buttons based on new status
-                        if (status === 'sent' || status === 'positive') {
-                            row.find('.wa-cleanup-btn').hide();
-                        }
-                        if (status === 'positive') {
-                            row.find('.wa-positive-btn').hide();
-                        }
-
-                        // Update cached client object
-                        var c = allClients.find(function (x) { return x.id == clientId; });
-                        if (c) {
-                            c.wa_status = status;
-                            if (res.wa_sent_date) { c.wa_sent_date = res.wa_sent_date; }
-                        }
-                    } else {
-                        showNotification('✗ ' + res.message, 'error');
-                    }
-                },
-                error: function () {
-                    showNotification('✗ Failed to update WA status.', 'error');
-                }
-            });
-        }
-
-        // ── Delete ──
-        tableBody.on('click', '.delete-btn', function () {
-            contactIdToDelete = $(this).data('id');
-            modal.css('display', 'flex');
-        });
-
-        $('#confirmDeleteBtn').on('click', function () {
-            if (!contactIdToDelete) return;
-
-            $.ajax({
-                type: 'POST',
-                url: '<?= BASE_URL ?>/modules/Clients/api/index.php',
-                data: {
-                    action: 'delete',
-                    id: contactIdToDelete
-                },
-                dataType: 'json',
-                success: function (response) {
-                    if (response.success) {
-                        $('tr[data-client-id="' + contactIdToDelete + '"]').fadeOut(function () {
-                            $(this).remove();
-                            if (tableBody.find('tr').length === 0) {
-                                loadContacts();
-                            }
-                        });
-                        showNotification('✓ ' + response.message, 'success');
-                    } else {
-                        showNotification('✗ ' + response.message, 'error');
-                    }
-                },
-                error: function (xhr) {
-                    var msg = '❌ Failed to delete contact';
-                    if (xhr.responseJSON && xhr.responseJSON.message) {
-                        msg = '✗ ' + xhr.responseJSON.message;
-                    }
-                    showNotification(msg, 'error');
-                },
-                complete: function () {
-                    modal.hide();
-                    contactIdToDelete = null;
-                }
-            });
-        });
-
-        $('#cancelDeleteBtn').on('click', function () {
-            modal.hide();
-            contactIdToDelete = null;
-        });
-
-        // Search functionality
-        $('#clientSearch').on('keyup', function () {
-            var searchText = $(this).val().toLowerCase().trim();
-
-            if (searchText.length === 0) {
-                tableBody.find('tr').show();
-                $('#search-results-count').text('');
-                return;
-            }
-
-            var words = searchText.split(/\s+/).filter(w => w.length > 0);
-
-            var visibleCount = 0;
-
-            tableBody.find('tr').each(function () {
-                var row = $(this);
-                var clientId = parseInt(row.data('client-id'));
-                var client = allClients.find(c => c.id === clientId);
-                if (!client) { row.hide(); return; }
-
-                var haystack = [
-                    client.name || '',
-                    client.phone || '',
-                    client.address || '',
-                    client.email || '',
-                    client.additional_info || ''
-                ].join(' ').toLowerCase();
-
-                var match = words.every(function (word) {
-                    return haystack.indexOf(word) > -1;
-                });
-
-                row.toggle(match);
-                if (match) visibleCount++;
-            });
-
-            $('#search-results-count').text(visibleCount + ' result' + (visibleCount !== 1 ? 's' : ''));
-
-        });
-
-        function showNotification(message, type) {
-            var className = type === 'success' ? 'success-message' : 'error-message';
-            var notification = $('<div class="' + className + '">' + message + '</div>');
-            notificationArea.html(notification);
-            setTimeout(function () {
-                notification.fadeOut(function () {
-                    $(this).remove();
-                });
-            }, 5000);
-        }
-
-        function escapeHtml(text) {
-            var div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-    });
-
-    function logWhatsAppSend(bookingId, contactId, messageContent, messageType) {
-        $.ajax({
-            type: 'POST',
-            url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
-            data: {
-                action: 'log_whatsapp',
-                booking_id: bookingId,
-                contact_id: contactId,
-                message_type: messageType || 'message',
-                message_content: messageContent,
-                sent_by: 'user'
-            },
-            dataType: 'json'
-        });
+    switch ($action) {
+        case 'get':
+            handleGetBookings();
+            break;
+        case 'add':
+        case 'create':
+            handleAddBooking();
+            break;
+        case 'update':
+        case 'update_payment':
+        case 'update_status':
+            handleUpdateBooking();
+            break;
+        case 'delete':
+            handleDeleteBooking();
+            break;
+        case 'update_gate_code':
+            handleUpdateGateCode();
+            break;
+        case 'set_earmark':
+            handleSetEarmark();
+            break;
+        case 'tomorrows_bookings':
+            handleTomorrowsBookings();
+            break;
+        case 'mark_confirmed':
+            handleMarkConfirmed();
+            break;
+        case 'log_whatsapp':
+            handleLogWhatsApp();
+            break;
+        case 'get_whatsapp_log':
+            handleGetWhatsAppLog();
+            break;
+        case 'weekly_bookings':
+            handleWeeklyBookings();
+            break;
+        case 'monthly_bookings':
+            handleMonthlyBookings();
+            break;
+        case 'weekly_bookings_by_month':
+            handleWeeklyBookingsByMonth();
+            break;
+        case 'get_drivers':
+            handleGetDrivers();
+            break;
+        case 'assign_driver':
+            handleAssignDriver();
+            break;
+        case 'monthly_bookings_list':
+            handleMonthlyBookingsList();
+            break;
+        case 'check_overlap':
+            handleCheckOverlap();
+            break;
+        default:
+            jsonResponse(['success' => false, 'message' => 'Unknown action: ' . ($action ?? 'none')], 400);
     }
-</script>
+} catch (Exception $e) {
+    logCritical('BOOKING_API', 'Unhandled exception in action: ' . $action, [
+        'error' => $e->getMessage(),
+        'trace' => $e->getTraceAsString()
+    ]);
+    jsonResponse(['success' => false, 'message' => 'Server error occurred'], 500);
+}
 
-<?php include ROOT_DIR . '/includes/footer.php'; ?>
+// ========== HANDLERS ==========
+
+function handleGetBookings()
+{
+    global $pdo;
+
+    $response = [
+        'success' => false,
+        'message' => 'An error occurred while fetching bookings.',
+        'bookings' => []
+    ];
+
+    try {
+        $show = $_GET['show'] ?? 'upcoming';
+        $bookings = [];
+
+        if ($show === 'all') {
+            $sql = "
+                SELECT 
+                    b.id, b.contact_id, b.trip_date, b.start_time, b.end_time, b.status,
+                    b.original_pickup, b.original_destination, b.was_swapped, b.cost,
+                    b.payment_received,
+                    b.driver_id, b.booking_fee, b.distance_km, b.is_round_trip,
+                    c.name AS client_name, c.phone AS client_phone,
+                    d.name AS driver_name
+                FROM bookings b
+                JOIN contacts c ON b.contact_id = c.id
+                LEFT JOIN drivers d ON b.driver_id = d.id
+                ORDER BY b.trip_date DESC, b.start_time DESC
+                LIMIT 100
+            ";
+            $stmt = $pdo->query($sql);
+            $recentBookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $bookings = array_reverse($recentBookings);
+        } else {
+            $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
+            $sql = "
+                SELECT 
+                    b.id, b.contact_id, b.trip_date, b.start_time, b.end_time, b.status,
+                    b.original_pickup, b.original_destination, b.was_swapped, b.cost,
+                    b.payment_received,
+                    b.driver_id, b.booking_fee, b.distance_km, b.is_round_trip,
+                    c.name AS client_name, c.phone AS client_phone,
+                    d.name AS driver_name
+                FROM bookings b
+                JOIN contacts c ON b.contact_id = c.id
+                LEFT JOIN drivers d ON b.driver_id = d.id
+                WHERE b.trip_date >= ? AND b.status != 'completed'
+                ORDER BY b.trip_date ASC, b.start_time ASC
+                LIMIT 100
+            ";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$today]);
+            $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        $now = new DateTime('now', new DateTimeZone(TIME_ZONE));
+        $today_str = $now->format('Y-m-d');
+        $ratePerKm = (float) getSystemVariable($pdo, 'rate_per_km');
+
+        // Overlaps are checked against ALL bookings on the relevant dates,
+        // not just the ones in this filtered list (e.g. a completed booking
+        // can still overlap with an upcoming one).
+        $overlapMap = getBookingOverlapsForDates($pdo, array_column($bookings, 'trip_date'));
+
+        foreach ($bookings as $row) {
+            $pickup = $row['was_swapped'] ? $row['original_destination'] : $row['original_pickup'];
+            $destination = $row['was_swapped'] ? $row['original_pickup'] : $row['original_destination'];
+
+            $tripDate = new DateTime($row['trip_date']);
+            $isToday = ($row['trip_date'] === $today_str);
+            $isPast = ($tripDate < $now && !$isToday);
+            $isOverdue = $isPast && ($row['status'] !== 'completed');
+
+            $distanceKm = $row['distance_km'] !== null ? (float) $row['distance_km'] : null;
+            $calculatedCost = ($distanceKm !== null && $ratePerKm > 0)
+                ? $distanceKm * $ratePerKm
+                : null;
+
+            $response['bookings'][] = [
+                'id' => (int) $row['id'],
+                'contact_id' => (int) $row['contact_id'],
+                'trip_date' => date('d/m/y', strtotime($row['trip_date'])),
+                'trip_date_raw' => $row['trip_date'],
+                'start_time' => date('H:i', strtotime($row['start_time'])),
+                'status' => $row['status'],
+                'is_overdue' => $isOverdue,
+                'is_today' => $isToday,
+                'is_past' => $isPast,
+                'pickup_location' => $pickup,
+                'destination' => $destination,
+                'cost' => 'R' . number_format((float) $row['cost'], 2),
+                'payment_received' => (bool) $row['payment_received'],
+                'distance' => $distanceKm !== null
+                    ? number_format($distanceKm, 1) . ' km' . (!empty($row['is_round_trip']) ? ' (RT)' : '')
+                    : null,
+                'calculated_cost' => $calculatedCost !== null ? 'R' . number_format($calculatedCost, 2) : null,
+                'client_name' => $row['client_name'],
+                'client_phone' => formatPhoneNumberForWhatsApp($row['client_phone'] ?? ''),
+                'driver_name' => $row['driver_name'] ?? null,
+                'overlaps' => $overlapMap[(int) $row['id']] ?? [],
+            ];
+        }
+
+        $response['success'] = true;
+        $response['message'] = count($bookings) > 0
+            ? 'Bookings retrieved successfully.'
+            : 'No bookings found.';
+
+    } catch (PDOException $e) {
+        logError('BOOKING', 'Database error fetching bookings', [
+            'error' => $e->getMessage(),
+            'show' => $show ?? 'upcoming'
+        ]);
+        $response['message'] = 'Database error: ' . $e->getMessage();
+        $response['error_type'] = 'database';
+    } catch (Exception $e) {
+        logError('BOOKING', 'Error fetching bookings', [
+            'error' => $e->getMessage(),
+            'type' => get_class($e),
+            'show' => $show ?? 'upcoming'
+        ]);
+        $response['message'] = 'Server error: ' . $e->getMessage();
+        $response['error_type'] = 'general';
+    }
+
+    jsonResponse($response);
+}
+
+function handleAddBooking()
+{
+    global $pdo;
+
+    try {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            throw new Exception('POST method required');
+        }
+
+        // Get values
+        $contact_id = $_POST['contact_id'] ?? '';
+        $trip_date = $_POST['trip_date'] ?? '';
+        $start_time = $_POST['start_time'] ?? '';
+        $duration = $_POST['duration'] ?? '';
+        $original_pickup = $_POST['original_pickup'] ?? '';
+        $original_destination = $_POST['original_destination'] ?? '';
+        $cost = $_POST['cost'] ?? '';
+        $payment_method = $_POST['payment_method'] ?? 'cash';
+        $payment_received = isset($_POST['payment_received']) && $_POST['payment_received'] == '1' ? 1 : 0;
+        $was_swapped = isset($_POST['swap_locations']) ? 1 : 0;
+
+        // Capture flag before resolving 'other'
+        $pickup_is_custom = ($original_pickup === 'other') ? 1 : 0;
+
+        // Handle "Other" fields
+        if ($original_pickup === 'other') {
+            $original_pickup = $_POST['other_original_pickup'] ?? '';
+        }
+        if ($original_destination === 'other') {
+            $original_destination = $_POST['other_original_destination'] ?? '';
+        }
+        if ($cost === 'other') {
+            $cost = $_POST['other_cost'] ?? '';
+        }
+
+        $flight_number = $_POST['flight_number'] ?? '';
+        $description = $_POST['description'] ?? '';
+        $driver_id = intval($_POST['driver_id'] ?? 0) ?: null;
+        $no_booking_fee = isset($_POST['no_booking_fee']) ? 1 : 0;
+        $driver_notes = trim($_POST['driver_notes'] ?? '') ?: null;
+
+        // After-hours surcharge — only applied if the popup was accepted
+        // client-side AND the time is genuinely within the window (never
+        // trust the client-side check alone).
+        $after_hours_confirmed = isset($_POST['after_hours_confirmed']) && $_POST['after_hours_confirmed'] === '1';
+        $after_hours_charge = null;
+        if ($after_hours_confirmed && !empty($start_time) && isAfterHoursStartTime($pdo, $start_time)) {
+            $after_hours_charge = (float) getSystemVariable($pdo, 'after_hours_charge');
+            $cost = (float) $cost + $after_hours_charge;
+        }
+
+        // Validate
+        if (empty($contact_id))
+            throw new Exception('Client not selected');
+        if (empty($trip_date))
+            throw new Exception('Trip date is required');
+        if (empty($start_time))
+            throw new Exception('Start time is required');
+        if (empty($duration) || !is_numeric($duration))
+            throw new Exception('Valid duration is required');
+        if (empty($original_pickup))
+            throw new Exception('Pickup location is required');
+        if (empty($original_destination))
+            throw new Exception('Destination is required');
+        if (empty($cost))
+            throw new Exception('Cost is required');
+
+        // Calculate end_time
+        $start = new DateTime($trip_date . ' ' . $start_time, new DateTimeZone(TIME_ZONE));
+        $end = clone $start;
+        $end->modify("+" . (float) $duration . " hours");
+        $end_time = $end->format('H:i:s');
+
+        // Add new destination to list if requested
+        if (isset($_POST['add_to_destinations'])) {
+            $newDestination = trim($_POST['other_original_destination'] ?? '');
+            if (!empty($newDestination)) {
+                $check = $pdo->prepare("SELECT id FROM destinations WHERE name = ? LIMIT 1");
+                $check->execute([$newDestination]);
+                if (!$check->fetch()) {
+                    $insertDest = $pdo->prepare("INSERT INTO destinations (name) VALUES (?)");
+                    $insertDest->execute([$newDestination]);
+                }
+            }
+        }
+
+        // Calculate booking fee if driver is allocated (waived if no_booking_fee is set)
+        $booking_fee = null;
+        if ($driver_id !== null && !$no_booking_fee) {
+            $pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
+            $fee = calculateBookingFee((float) $cost, $pct);
+            if ($fee > 0) {
+                $booking_fee = $fee;
+            }
+        }
+
+        // Calculate trip distance (null on failure — never guessed)
+        $is_round_trip = isset($_POST['round_trip']) ? 1 : 0;
+        $distance_km = calculateTripDistanceKm($original_pickup, $original_destination);
+        if ($distance_km !== null && $is_round_trip) {
+            $distance_km = round($distance_km * 2, 1);
+        }
+
+        // Insert booking
+        $stmt = $pdo->prepare("
+            INSERT INTO bookings (
+                contact_id, trip_date, start_time, end_time,
+                original_pickup, original_destination, was_swapped, cost, payment_method, payment_received,
+                flight_number, description, driver_id, booking_fee, no_booking_fee, driver_notes,
+                pickup_is_custom, distance_km, is_round_trip, after_hours_charge
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        $stmt->execute([
+            $contact_id,
+            $trip_date,
+            $start_time,
+            $end_time,
+            $original_pickup,
+            $original_destination,
+            $was_swapped,
+            $cost,
+            $payment_method,
+            $payment_received,
+            $flight_number,
+            $description,
+            $driver_id,
+            $booking_fee,
+            $no_booking_fee,
+            $driver_notes,
+            $pickup_is_custom,
+            $distance_km,
+            $is_round_trip,
+            $after_hours_charge
+        ]);
+
+        $booking_id = $pdo->lastInsertId();
+
+        // CREATE GOOGLE CALENDAR EVENT
+        $googleEventId = null;
+        $stmt = $pdo->prepare("
+            SELECT b.*, c.name AS client_name, c.phone AS client_phone 
+            FROM bookings b 
+            JOIN contacts c ON b.contact_id = c.id 
+            WHERE b.id = ?
+        ");
+        $stmt->execute([$booking_id]);
+        $bookingData = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($bookingData) {
+            // Apply swap for calendar event location
+            $bookingData['pickup_location'] = $was_swapped ? $original_destination : $original_pickup;
+            $bookingData['destination'] = $was_swapped ? $original_pickup : $original_destination;
+
+            $googleEventId = createBookingInGoogleCalendar($bookingData, $start, $end);
+
+            if ($googleEventId) {
+                $updateStmt = $pdo->prepare("UPDATE bookings SET google_calendar_event_id = ? WHERE id = ?");
+                $updateStmt->execute([$googleEventId, $booking_id]);
+            } else {
+                logWarning('BOOKING', 'Booking created but calendar event failed', [
+                    'booking_id' => $booking_id
+                ]);
+            }
+        }
+
+        // Mark prebooking as converted if this booking originated from one
+        $fromPrebooking = intval($_POST['from_prebooking'] ?? 0);
+        if ($fromPrebooking > 0) {
+            $markConverted = $pdo->prepare("UPDATE prebookings SET converted_booking_id = ? WHERE id = ? AND converted_booking_id IS NULL");
+            $markConverted->execute([$booking_id, $fromPrebooking]);
+        }
+
+        jsonResponse([
+            'success' => true,
+            'message' => 'Booking created successfully',
+            'booking_id' => $booking_id,
+            'google_event_id' => $googleEventId
+        ]);
+
+    } catch (Exception $e) {
+        logError('BOOKING', 'Failed to create booking', [
+            'error' => $e->getMessage(),
+            'contact_id' => $contact_id ?? null,
+            'trip_date' => $trip_date ?? null
+        ]);
+        jsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
+    }
+}
+
+function handleCheckOverlap()
+{
+    global $pdo;
+
+    $response = [
+        'success' => false,
+        'message' => '',
+        'overlaps' => []
+    ];
+
+    try {
+        $trip_date = $_REQUEST['trip_date'] ?? '';
+        $start_time = $_REQUEST['start_time'] ?? '';
+        $duration = $_REQUEST['duration'] ?? '';
+        $exclude_id = intval($_REQUEST['exclude_id'] ?? 0) ?: null;
+
+        if (empty($trip_date) || empty($start_time) || empty($duration) || !is_numeric($duration)) {
+            throw new Exception('trip_date, start_time and duration are required');
+        }
+
+        // Same calculation used when saving a booking
+        $start = new DateTime($trip_date . ' ' . $start_time, new DateTimeZone(TIME_ZONE));
+        $end = clone $start;
+        $end->modify("+" . (float) $duration . " hours");
+
+        $response['overlaps'] = getOverlapsForCandidateSlot(
+            $pdo,
+            $trip_date,
+            $start->format('H:i:s'),
+            $end->format('H:i:s'),
+            $exclude_id
+        );
+        $response['success'] = true;
+
+    } catch (Exception $e) {
+        logError('BOOKING', 'Failed to check booking overlap', [
+            'error' => $e->getMessage(),
+            'trip_date' => $trip_date ?? null,
+            'start_time' => $start_time ?? null
+        ]);
+        $response['message'] = $e->getMessage();
+    }
+
+    jsonResponse($response);
+}
+
+function handleUpdateBooking()
+{
+    global $pdo;
+
+    try {
+        // Sub-action: update payment method
+        if (isset($_REQUEST['action']) && $_REQUEST['action'] === 'update_payment') {
+            $booking_id = intval($_REQUEST['id'] ?? 0);
+            $payment_method = $_REQUEST['payment_method'] ?? 'cash';
+
+            if ($booking_id <= 0 || !in_array($payment_method, ['cash', 'eft'])) {
+                throw new Exception('Invalid booking ID or payment method.');
+            }
+
+            $stmt = $pdo->prepare("UPDATE bookings SET payment_method = ?, updated_at = NOW() WHERE id = ?");
+            $stmt->execute([$payment_method, $booking_id]);
+
+            if ($stmt->rowCount() === 0) {
+                throw new Exception('Booking not found.');
+            }
+
+            jsonResponse(['success' => true, 'message' => 'Payment method updated.']);
+        }
+
+        // Sub-action: update status
+        if (isset($_REQUEST['action']) && $_REQUEST['action'] === 'update_status') {
+            $booking_id = intval($_REQUEST['id'] ?? 0);
+            $status = $_REQUEST['status'] ?? '';
+
+            if ($booking_id <= 0 || !in_array($status, ['confirmed', 'completed'])) {
+                throw new Exception('Invalid booking ID or status.');
+            }
+
+            $stmt = $pdo->prepare("UPDATE bookings SET status = ?, updated_at = NOW() WHERE id = ?");
+            $stmt->execute([$status, $booking_id]);
+
+            if ($stmt->rowCount() === 0) {
+                throw new Exception('Booking not found.');
+            }
+
+            jsonResponse([
+                'success' => true,
+                'message' => 'Status updated to "' . htmlspecialchars($status) . '".'
+            ]);
+        }
+
+        // Full booking update
+        if (isset($_REQUEST['booking_id'])) {
+            $booking_id = intval($_REQUEST['booking_id'] ?? 0);
+            $contact_id = intval($_REQUEST['contact_id'] ?? 0);
+            $trip_date = trim($_REQUEST['trip_date'] ?? '');
+            $start_time = trim($_REQUEST['start_time'] ?? '');
+            $duration = floatval($_REQUEST['duration'] ?? 1);
+            $pickup_location = trim($_REQUEST['original_pickup'] ?? '');
+            $other_pickup_location = trim($_REQUEST['other_pickup_location'] ?? '');
+            $destination = trim($_REQUEST['original_destination'] ?? '');
+            $other_destination = trim($_REQUEST['other_destination'] ?? '');
+            $cost = trim($_REQUEST['cost'] ?? '');
+            $other_cost = trim($_REQUEST['other_cost'] ?? '');
+            $flight_number = trim($_REQUEST['flight_number'] ?? '');
+            $description_input = trim($_REQUEST['description'] ?? '');
+            $payment_method = trim($_REQUEST['payment_method'] ?? 'cash');
+            $payment_received = isset($_REQUEST['payment_received']) && $_REQUEST['payment_received'] == '1' ? 1 : 0;
+            $swap_locations = isset($_REQUEST['swap_locations']);
+            $driver_id = intval($_REQUEST['driver_id'] ?? 0) ?: null;
+            $no_booking_fee = isset($_REQUEST['no_booking_fee']) ? 1 : 0;
+            $driver_notes = trim($_REQUEST['driver_notes'] ?? '');
+
+            // Capture flag before resolving 'other'
+            $pickup_is_custom = ($pickup_location === 'other') ? 1 : 0;
+
+            // Handle "Other" fields
+            if ($pickup_location === 'other') {
+                $original_pickup = $other_pickup_location;
+            } else {
+                $original_pickup = $pickup_location;
+            }
+
+            if ($destination === 'other') {
+                $original_destination = $other_destination;
+            } else {
+                $original_destination = $destination;
+            }
+
+            if ($cost === 'other') {
+                $final_cost = floatval($other_cost);
+            } else {
+                $final_cost = floatval($cost);
+            }
+
+            if (empty($original_pickup) || empty($original_destination) || $final_cost <= 0) {
+                throw new Exception('Invalid booking data');
+            }
+
+            // After-hours surcharge — only applied if the popup was accepted
+            // client-side AND the time is genuinely within the window (never
+            // trust the client-side check alone).
+            $after_hours_confirmed = isset($_REQUEST['after_hours_confirmed']) && $_REQUEST['after_hours_confirmed'] === '1';
+            $after_hours_charge = null;
+            if ($after_hours_confirmed && !empty($start_time) && isAfterHoursStartTime($pdo, $start_time)) {
+                $after_hours_charge = (float) getSystemVariable($pdo, 'after_hours_charge');
+                $final_cost += $after_hours_charge;
+            }
+
+            // Recalculate booking fee (waived if no_booking_fee is set)
+            // Null out all driver fields when no driver is selected
+            if ($driver_id === null) {
+                $booking_fee = null;
+                $no_booking_fee = 0;
+                $driver_notes = null;
+            } else {
+                $booking_fee = null;
+                if (!$no_booking_fee) {
+                    $pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
+                    $fee = calculateBookingFee($final_cost, $pct);
+                    if ($fee > 0) {
+                        $booking_fee = $fee;
+                    }
+                }
+            }
+
+            $start_datetime = new DateTime($trip_date . ' ' . $start_time, new DateTimeZone(TIME_ZONE));
+            $end_datetime = clone $start_datetime;
+            $end_datetime->add(new DateInterval('PT' . ($duration * 60) . 'M'));
+            $end_time_formatted = $end_datetime->format('H:i:s');
+
+            // Fetch current data for change detection
+            $stmt_fetch = $pdo->prepare("
+                SELECT contact_id, trip_date, start_time, end_time, original_pickup, original_destination, 
+                       was_swapped, cost, flight_number, description, payment_method
+                FROM bookings 
+                WHERE id = ?
+            ");
+            $stmt_fetch->execute([$booking_id]);
+            $current = $stmt_fetch->fetch(PDO::FETCH_ASSOC);
+
+            if (!$current) {
+                throw new Exception('Booking not found.');
+            }
+
+            $description_to_save = $description_input;
+
+            // Recalculate trip distance in case pickup/destination changed
+            $is_round_trip = isset($_REQUEST['round_trip']) ? 1 : 0;
+            $distance_km = calculateTripDistanceKm($original_pickup, $original_destination);
+            if ($distance_km !== null && $is_round_trip) {
+                $distance_km = round($distance_km * 2, 1);
+            }
+
+            $sql = "UPDATE bookings SET 
+                contact_id = ?, trip_date = ?, start_time = ?, end_time = ?,
+                original_pickup = ?, original_destination = ?, was_swapped = ?,
+                cost = ?, flight_number = ?, description = ?, payment_method = ?, payment_received = ?,
+                driver_id = ?, booking_fee = ?, no_booking_fee = ?, driver_notes = ?,
+                pickup_is_custom = ?, distance_km = ?, is_round_trip = ?, after_hours_charge = ?,
+                last_confirmed_at = NULL,
+                updated_at = NOW()
+            WHERE id = ?";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([
+                $contact_id,
+                $trip_date,
+                $start_time,
+                $end_time_formatted,
+                $original_pickup,
+                $original_destination,
+                $swap_locations ? 1 : 0,
+                $final_cost,
+                $flight_number,
+                $description_to_save,
+                $payment_method,
+                $payment_received,
+                $driver_id,
+                $booking_fee,
+                $no_booking_fee,
+                $driver_notes ?: null,
+                $pickup_is_custom,
+                $distance_km,
+                $is_round_trip,
+                $after_hours_charge,
+                $booking_id
+            ]);
+
+            // Fetch updated booking (with driver info)
+            $stmt = $pdo->prepare("
+                SELECT b.*, c.name AS client_name, c.phone AS client_phone,
+                       d.name AS driver_name, d.phone AS driver_phone
+                FROM bookings b
+                JOIN contacts c ON b.contact_id = c.id
+                LEFT JOIN drivers d ON b.driver_id = d.id
+                WHERE b.id = ?
+            ");
+            $stmt->execute([$booking_id]);
+            $bookingDetails = $stmt->fetch();
+
+            if (!$bookingDetails) {
+                throw new Exception('Booking not found after update.');
+            }
+
+            $pickup = $bookingDetails['was_swapped'] ? $bookingDetails['original_destination'] : $bookingDetails['original_pickup'];
+            $destination = $bookingDetails['was_swapped'] ? $bookingDetails['original_pickup'] : $bookingDetails['original_destination'];
+            $bookingDetails['pickup_location'] = $pickup;
+            $bookingDetails['destination'] = $destination;
+
+            if (!empty($bookingDetails['google_calendar_event_id'])) {
+                updateBookingInGoogleCalendar($bookingDetails, $start_datetime, $end_datetime);
+            }
+
+            $fullMessage = createWhatsAppMessage($pdo, $bookingDetails);
+
+            jsonResponse([
+                'success' => true,
+                'message' => "Booking for '" . htmlspecialchars($bookingDetails['client_name'], ENT_QUOTES) . "' updated.",
+                'whatsapp' => "https://wa.me/" . formatPhoneNumberForWhatsApp($bookingDetails['client_phone']) . "?text=" . urlencode($fullMessage),
+                'fullMessage' => $fullMessage
+            ]);
+
+        } else {
+            jsonResponse(['success' => false, 'message' => 'Invalid request. No booking ID received.'], 400);
+        }
+
+    } catch (Exception $e) {
+        logError('BOOKING', 'Failed to update booking', [
+            'error' => $e->getMessage(),
+            'booking_id' => $booking_id ?? null
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Update failed.'], 400);
+    }
+}
+
+function handleDeleteBooking()
+{
+    global $pdo;
+
+    if ($_SERVER["REQUEST_METHOD"] !== "POST" || !isset($_POST['id'])) {
+        jsonResponse(['success' => false, 'message' => 'Invalid request or missing booking ID.'], 400);
+    }
+
+    $bookingId = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+    if ($bookingId === false || $bookingId <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid booking ID.'], 400);
+    }
+
+    try {
+        $booking = getBookingById($pdo, $bookingId);
+        if (!$booking) {
+            jsonResponse(['success' => false, 'message' => "Booking not found or already deleted."], 404);
+        }
+
+        $deleted = deleteBookingFromDb($pdo, $bookingId);
+        if (!$deleted) {
+            jsonResponse(['success' => false, 'message' => "Booking could not be deleted."], 404);
+        }
+
+        $googleEventId = $booking['google_calendar_event_id'] ?? null;
+        $calendarDeleted = false;
+        if (!empty($googleEventId)) {
+            $calendarDeleted = deleteBookingFromGoogleCalendar($googleEventId);
+        }
+
+        logInfo('BOOKING', 'Booking deleted', [
+            'booking_id' => $bookingId,
+            'had_calendar_event' => !empty($googleEventId),
+            'calendar_deleted' => $calendarDeleted,
+            'client' => $booking['client_name'] ?? null
+        ]);
+
+        $message = "Booking deleted from database.";
+        if (!empty($googleEventId)) {
+            $message .= $calendarDeleted
+                ? " Google Calendar event also deleted."
+                : " (Calendar event may have been removed manually)";
+        }
+
+        jsonResponse(['success' => true, 'message' => $message]);
+
+    } catch (PDOException $e) {
+        logError('BOOKING', 'Database error during deletion', [
+            'error' => $e->getMessage(),
+            'booking_id' => $bookingId
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred while deleting.'], 500);
+    } catch (Exception $e) {
+        logError('BOOKING', 'Unexpected error during deletion', [
+            'error' => $e->getMessage(),
+            'booking_id' => $bookingId
+        ]);
+        jsonResponse(['success' => false, 'message' => 'An unexpected error occurred.'], 500);
+    }
+}
+
+function handleSetEarmark()
+{
+    global $pdo;
+
+    $id = intval($_POST['booking_id'] ?? 0);
+    $earmarkedRent = trim($_POST['earmarked_rent'] ?? '');
+    $earmarkedDebt = trim($_POST['earmarked_debt'] ?? '');
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid booking ID.'], 400);
+    }
+
+    $rentValue = $earmarkedRent === '' ? null : (float) $earmarkedRent;
+    $debtValue = $earmarkedDebt === '' ? null : (float) $earmarkedDebt;
+
+    if (($rentValue !== null && $rentValue < 0) || ($debtValue !== null && $debtValue < 0)) {
+        jsonResponse(['success' => false, 'message' => 'Earmark amounts cannot be negative.'], 400);
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT cost FROM bookings WHERE id = ?");
+        $stmt->execute([$id]);
+        $cost = (float) $stmt->fetchColumn();
+
+        if (($rentValue ?? 0) + ($debtValue ?? 0) > $cost + 0.01) {
+            jsonResponse(['success' => false, 'message' => 'Rent + debt earmark cannot exceed the booking cost.'], 400);
+        }
+
+        $stmt = $pdo->prepare("UPDATE bookings SET earmarked_rent = ?, earmarked_debt = ? WHERE id = ?");
+        $stmt->execute([$rentValue, $debtValue, $id]);
+
+        jsonResponse(['success' => true, 'message' => 'Earmark saved.']);
+
+    } catch (PDOException $e) {
+        logError('BOOKING', 'Failed to save earmark', [
+            'error' => $e->getMessage(),
+            'booking_id' => $id
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Failed to save earmark.'], 500);
+    }
+}
+
+
+function handleUpdateGateCode()
+{
+    global $pdo;
+
+    $id = intval($_POST['id'] ?? 0);
+    $gate_code = trim($_POST['gate_code'] ?? '');
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid booking ID.'], 400);
+    }
+
+    try {
+        $stmt = $pdo->prepare("UPDATE bookings SET gate_code = ? WHERE id = ?");
+        $stmt->execute([$gate_code, $id]);
+
+        jsonResponse(['success' => true, 'message' => 'Gate code saved.']);
+
+    } catch (PDOException $e) {
+        logError('BOOKING', 'Failed to save gate code', [
+            'error' => $e->getMessage(),
+            'booking_id' => $id
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Failed to save gate code.'], 500);
+    }
+}
+
+// ========== REPORTS HANDLERS ==========
+
+function handleWeeklyBookings()
+{
+    global $pdo;
+
+    try {
+        $sql = "
+            SELECT 
+                YEAR(trip_date) as year,
+                WEEK(trip_date, 1) as week_number,
+                MIN(trip_date) as week_start,
+                MAX(trip_date) as week_end,
+                COUNT(*) as booking_count,
+                SUM(cost) as total_income
+            FROM bookings
+            WHERE trip_date >= DATE_SUB(CURDATE(), INTERVAL 12 WEEK)
+            GROUP BY YEAR(trip_date), WEEK(trip_date, 1)
+            ORDER BY year DESC, week_number DESC
+        ";
+
+        $stmt = $pdo->query($sql);
+        $weeks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $formatted = array_map(function ($week) {
+            $start = new DateTime($week['week_start']);
+            $end = new DateTime($week['week_end']);
+            return [
+                'week_label' => $start->format('d M') . ' - ' . $end->format('d M Y'),
+                'booking_count' => (int) $week['booking_count'],
+                'total_income' => (float) $week['total_income']
+            ];
+        }, $weeks);
+
+        jsonResponse(['success' => true, 'data' => $formatted]);
+
+    } catch (PDOException $e) {
+        logError('BOOKING_REPORT', 'Weekly report generation failed', [
+            'error' => $e->getMessage()
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
+function handleMonthlyBookings()
+{
+    global $pdo;
+
+    try {
+        $currentYear = date('Y');
+
+        $sql = "
+            SELECT 
+                MONTH(trip_date) as month_number,
+                MONTHNAME(trip_date) as month_name,
+                COUNT(*) as booking_count,
+                SUM(cost) as total_income
+            FROM bookings
+            WHERE YEAR(trip_date) = ?
+            GROUP BY MONTH(trip_date), MONTHNAME(trip_date)
+            ORDER BY month_number ASC
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$currentYear]);
+        $months = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $formatted = array_map(function ($month) {
+            return [
+                'month_label' => $month['month_name'],
+                'booking_count' => (int) $month['booking_count'],
+                'total_income' => (float) $month['total_income']
+            ];
+        }, $months);
+
+        jsonResponse(['success' => true, 'data' => $formatted]);
+
+    } catch (PDOException $e) {
+        logError('BOOKING_REPORT', 'Monthly report generation failed', [
+            'error' => $e->getMessage()
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
+function handleWeeklyBookingsByMonth()
+{
+    global $pdo;
+
+    $year  = $_GET['year']  ?? null;
+    $month = $_GET['month'] ?? null;
+
+    if (!$year || !$month || !checkdate((int) $month, 1, (int) $year)) {
+        jsonResponse(['success' => false, 'message' => 'Invalid date'], 400);
+        return;
+    }
+
+    try {
+        $tz       = new DateTimeZone(TIME_ZONE);
+        $firstDay = new DateTime(sprintf('%04d-%02d-01', (int) $year, (int) $month), $tz);
+        if ($firstDay->format('N') !== '1') {
+            $firstDay->modify('next monday');
+        }
+        $lastDay = new DateTime(sprintf('%04d-%02d-01', (int) $year, (int) $month), $tz);
+        $lastDay->modify('last day of this month');
+
+        $today   = new DateTime('now', $tz);
+        $data    = [];
+        $current = clone $firstDay;
+        while ($current <= $lastDay) {
+            $monday = clone $current;
+            $monday->setTime(0, 0, 0);
+            $sunday = clone $monday;
+            $sunday->modify('+6 days');
+
+            $startStr = $monday->format('Y-m-d');
+            $endStr   = $sunday->format('Y-m-d');
+
+            $stmt = $pdo->prepare(
+                "SELECT COALESCE(SUM(cost), 0) AS total_income, COUNT(*) AS booking_count
+                 FROM bookings WHERE trip_date BETWEEN ? AND ?"
+            );
+            $stmt->execute([$startStr, $endStr]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $data[] = [
+                'week_label'    => $monday->format('d M') . ' – ' . $sunday->format('d M Y'),
+                'booking_count' => (int)   $row['booking_count'],
+                'total_income'  => (float) $row['total_income'],
+                'in_progress'   => ($sunday > $today),
+            ];
+
+            $current->modify('+1 week');
+        }
+
+        jsonResponse(['success' => true, 'data' => $data]);
+
+    } catch (PDOException $e) {
+        logError('BOOKING_REPORT', 'Weekly-by-month report failed', ['error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
+// ========== FEATURE 1: TOMORROW'S BOOKINGS ==========
+
+/**
+ * Ensure the whatsapp-related schema additions exist.
+ * Safe to call on every request; uses IF NOT EXISTS guards.
+ */
+function ensureWhatsAppSchema(PDO $pdo): void
+{
+    try {
+        $pdo->exec("ALTER TABLE bookings ADD COLUMN IF NOT EXISTS last_confirmed_at DATETIME NULL DEFAULT NULL");
+    } catch (PDOException $e) {
+        // Column already exists or DB does not support IF NOT EXISTS — ignore
+    }
+    try {
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS whatsapp_log (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                booking_id INT NULL,
+                contact_id INT NULL,
+                message_type VARCHAR(50) NOT NULL DEFAULT 'custom',
+                message_content TEXT NOT NULL,
+                sent_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                sent_by VARCHAR(100) NOT NULL DEFAULT 'system',
+                FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE SET NULL,
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL,
+                INDEX idx_booking_id (booking_id),
+                INDEX idx_contact_id (contact_id),
+                INDEX idx_sent_at (sent_at)
+            )
+        ");
+    } catch (PDOException $e) {
+        // Table already exists — ignore
+    }
+}
+
+function handleTomorrowsBookings()
+{
+    global $pdo;
+
+    ensureWhatsAppSchema($pdo);
+
+    try {
+        $sql = "
+            SELECT b.id, b.trip_date, b.start_time, b.original_pickup, b.original_destination,
+                   b.was_swapped, b.cost, b.last_confirmed_at,
+                   c.name AS client_name, c.phone AS client_phone
+            FROM bookings b
+            JOIN contacts c ON b.contact_id = c.id
+            WHERE b.trip_date = DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+              AND b.status != 'completed'
+            ORDER BY b.start_time ASC
+        ";
+        $stmt = $pdo->query($sql);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
+
+        $bookings = [];
+        foreach ($rows as $row) {
+            $row['pickup_location'] = $row['was_swapped'] ? $row['original_destination'] : $row['original_pickup'];
+            $row['destination'] = $row['was_swapped'] ? $row['original_pickup'] : $row['original_destination'];
+
+            $message = createEveningConfirmationMessage($row);
+            $row['whatsapp_url'] = buildWhatsAppUrl($row['client_phone'], $message);
+            $row['message_content'] = $message;
+            $row['already_confirmed'] = (
+                !empty($row['last_confirmed_at']) &&
+                substr($row['last_confirmed_at'], 0, 10) === $today
+            );
+            $bookings[] = $row;
+        }
+
+        jsonResponse(['success' => true, 'bookings' => $bookings]);
+
+    } catch (PDOException $e) {
+        logError('BOOKING_API', 'Failed to fetch tomorrow\'s bookings', ['error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
+function handleMarkConfirmed()
+{
+    global $pdo;
+
+    $id = intval($_POST['id'] ?? 0);
+    $message = trim($_POST['message_content'] ?? '');
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid booking ID.'], 400);
+    }
+
+    try {
+        $stmt = $pdo->prepare("UPDATE bookings SET last_confirmed_at = NOW() WHERE id = ?");
+        $stmt->execute([$id]);
+
+        if ($stmt->rowCount() === 0) {
+            jsonResponse(['success' => false, 'message' => 'Booking not found or could not be updated.'], 404);
+            return;
+        }
+
+        // Fetch contact_id for the log entry
+        $contactStmt = $pdo->prepare("SELECT contact_id FROM bookings WHERE id = ?");
+        $contactStmt->execute([$id]);
+        $contactId = $contactStmt->fetchColumn() ?: null;
+
+        // Log the confirmation
+        if ($message !== '') {
+            $logStmt = $pdo->prepare("
+                INSERT INTO whatsapp_log (booking_id, contact_id, message_type, message_content, sent_by)
+                VALUES (?, ?, 'evening_confirmation', ?, 'user')
+            ");
+            $logStmt->execute([$id, $contactId, $message]);
+        }
+
+        logInfo('BOOKING_API', 'Booking marked as confirmed', ['booking_id' => $id]);
+        jsonResponse(['success' => true]);
+
+    } catch (PDOException $e) {
+        logError('BOOKING_API', 'Failed to mark booking confirmed', [
+            'error' => $e->getMessage(),
+            'booking_id' => $id
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
+// ========== FEATURE 3: WHATSAPP LOG ==========
+
+function handleLogWhatsApp()
+{
+    global $pdo;
+
+    $bookingId = !empty($_POST['booking_id']) ? intval($_POST['booking_id']) : null;
+    $contactId = !empty($_POST['contact_id']) ? intval($_POST['contact_id']) : null;
+    $messageType = trim($_POST['message_type'] ?? 'custom');
+    $messageContent = trim($_POST['message_content'] ?? '');
+    $sentBy = trim($_POST['sent_by'] ?? 'user');
+
+    if ($messageContent === '') {
+        jsonResponse(['success' => false, 'message' => 'Message content is required.'], 400);
+    }
+
+    ensureWhatsAppSchema($pdo);
+
+    try {
+        $stmt = $pdo->prepare("
+            INSERT INTO whatsapp_log (booking_id, contact_id, message_type, message_content, sent_by)
+            VALUES (?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([$bookingId, $contactId, $messageType, $messageContent, $sentBy]);
+
+        jsonResponse(['success' => true]);
+
+    } catch (PDOException $e) {
+        logError('BOOKING_API', 'Failed to log WhatsApp message', ['error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
+function handleGetWhatsAppLog()
+{
+    global $pdo;
+
+    $bookingId = !empty($_GET['booking_id']) ? intval($_GET['booking_id']) : null;
+    $contactId = !empty($_GET['contact_id']) ? intval($_GET['contact_id']) : null;
+
+    if (!$bookingId && !$contactId) {
+        jsonResponse(['success' => false, 'message' => 'booking_id or contact_id required.'], 400);
+    }
+
+    ensureWhatsAppSchema($pdo);
+
+    try {
+        if ($bookingId) {
+            $stmt = $pdo->prepare("
+                SELECT * FROM whatsapp_log
+                WHERE booking_id = ?
+                ORDER BY sent_at DESC
+                LIMIT 50
+            ");
+            $stmt->execute([$bookingId]);
+        } else {
+            $stmt = $pdo->prepare("
+                SELECT * FROM whatsapp_log
+                WHERE contact_id = ?
+                ORDER BY sent_at DESC
+                LIMIT 50
+            ");
+            $stmt->execute([$contactId]);
+        }
+
+        $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        jsonResponse(['success' => true, 'logs' => $logs]);
+
+    } catch (PDOException $e) {
+        logError('BOOKING_API', 'Failed to fetch WhatsApp log', ['error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
+// ========== DRIVERS ==========
+
+function handleGetDrivers()
+{
+    global $pdo;
+
+    try {
+        $stmt = $pdo->query("SELECT id, name, phone FROM drivers WHERE active = 1 ORDER BY name ASC");
+        $drivers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        jsonResponse(['success' => true, 'drivers' => $drivers]);
+    } catch (PDOException $e) {
+        logError('BOOKING_API', 'Failed to fetch drivers', ['error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
+function handleAssignDriver()
+{
+    global $pdo;
+
+    $bookingId   = intval($_POST['booking_id'] ?? 0);
+    $driverIdRaw = trim($_POST['driver_id'] ?? '');
+    $driverIdInt  = intval($driverIdRaw);
+    $driver_id    = ($driverIdRaw !== '' && $driverIdInt > 0) ? $driverIdInt : null;
+    $no_booking_fee = !empty($_POST['no_booking_fee']) ? 1 : 0;
+    $driver_notes   = trim($_POST['driver_notes'] ?? '') ?: null;
+    $booking_fee    = ($driver_id !== null && !$no_booking_fee) ? (float) ($_POST['booking_fee'] ?? 0) : null;
+
+    if ($bookingId <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid booking ID.'], 400);
+        return;
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            "UPDATE bookings SET driver_id = ?, booking_fee = ?, no_booking_fee = ?, driver_notes = ?, updated_at = NOW() WHERE id = ?"
+        );
+        $stmt->execute([$driver_id, $booking_fee, $no_booking_fee, $driver_notes, $bookingId]);
+
+        if ($stmt->rowCount() === 0) {
+            jsonResponse(['success' => false, 'message' => 'Booking not found.'], 404);
+            return;
+        }
+
+        logInfo('BOOKING_API', 'Driver assigned to booking', [
+            'booking_id'     => $bookingId,
+            'driver_id'      => $driver_id,
+            'fee'            => $booking_fee,
+            'no_booking_fee' => $no_booking_fee,
+        ]);
+        jsonResponse(['success' => true, 'message' => $driver_id ? 'Driver assigned.' : 'Driver removed.']);
+
+    } catch (PDOException $e) {
+        logError('BOOKING_API', 'Failed to assign driver', [
+            'error'      => $e->getMessage(),
+            'booking_id' => $bookingId,
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
+
+// ========== REPORTS: MONTHLY BOOKINGS LIST ==========
+
+function handleMonthlyBookingsList()
+{
+    global $pdo;
+
+    $year  = $_GET['year']  ?? null;
+    $month = $_GET['month'] ?? null;
+
+    if (!$year || !$month || !checkdate((int) $month, 1, (int) $year)) {
+        jsonResponse(['success' => false, 'message' => 'Invalid date'], 400);
+        return;
+    }
+
+    try {
+        $startDate = (new DateTime(sprintf('%04d-%02d-01', (int) $year, (int) $month)))->format('Y-m-d');
+        $endDate   = (new DateTime(sprintf('%04d-%02d-01', (int) $year, (int) $month)))
+            ->modify('last day of this month')->format('Y-m-d');
+
+        $stmt = $pdo->prepare("
+            SELECT b.id, b.trip_date, b.start_time, b.original_pickup, b.original_destination,
+                   b.was_swapped, b.cost, b.booking_fee, b.payment_method,
+                   c.name AS client_name,
+                   d.name AS driver_name
+            FROM bookings b
+            JOIN contacts c ON b.contact_id = c.id
+            LEFT JOIN drivers d ON b.driver_id = d.id
+            WHERE b.trip_date BETWEEN ? AND ?
+            ORDER BY b.trip_date ASC, b.start_time ASC
+        ");
+        $stmt->execute([$startDate, $endDate]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Same "against all bookings" overlap rule as everywhere else.
+        $overlapMap = getBookingOverlapsForDates($pdo, array_column($rows, 'trip_date'));
+
+        $bookings = [];
+        foreach ($rows as $row) {
+            $pickup      = $row['was_swapped'] ? $row['original_destination'] : $row['original_pickup'];
+            $destination = $row['was_swapped'] ? $row['original_pickup']      : $row['original_destination'];
+            $bookings[] = [
+                'id'          => (int) $row['id'],
+                'trip_date'   => date('d/m/y', strtotime($row['trip_date'])),
+                'start_time'  => date('H:i', strtotime($row['start_time'])),
+                'client_name' => $row['client_name'],
+                'pickup'      => $pickup,
+                'destination' => $destination,
+                'cost'        => (float) $row['cost'],
+                'booking_fee' => $row['booking_fee'] !== null ? (float) $row['booking_fee'] : null,
+                'driver_name' => $row['driver_name'] ?? null,
+                'overlaps'    => $overlapMap[(int) $row['id']] ?? [],
+            ];
+        }
+
+        jsonResponse(['success' => true, 'bookings' => $bookings]);
+
+    } catch (PDOException $e) {
+        logError('BOOKING_REPORT', 'Monthly bookings list failed', ['error' => $e->getMessage()]);
+        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+    }
+}
