@@ -261,6 +261,16 @@ function handleAddBooking()
         $no_booking_fee = isset($_POST['no_booking_fee']) ? 1 : 0;
         $driver_notes = trim($_POST['driver_notes'] ?? '') ?: null;
 
+        // After-hours surcharge — only applied if the popup was accepted
+        // client-side AND the time is genuinely within the window (never
+        // trust the client-side check alone).
+        $after_hours_confirmed = isset($_POST['after_hours_confirmed']) && $_POST['after_hours_confirmed'] === '1';
+        $after_hours_charge = null;
+        if ($after_hours_confirmed && !empty($start_time) && isAfterHoursStartTime($pdo, $start_time)) {
+            $after_hours_charge = (float) getSystemVariable($pdo, 'after_hours_charge');
+            $cost = (float) $cost + $after_hours_charge;
+        }
+
         // Validate
         if (empty($contact_id))
             throw new Exception('Client not selected');
@@ -319,8 +329,8 @@ function handleAddBooking()
                 contact_id, trip_date, start_time, end_time,
                 original_pickup, original_destination, was_swapped, cost, payment_method, payment_received,
                 flight_number, description, driver_id, booking_fee, no_booking_fee, driver_notes,
-                pickup_is_custom, distance_km, is_round_trip
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                pickup_is_custom, distance_km, is_round_trip, after_hours_charge
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -342,7 +352,8 @@ function handleAddBooking()
             $driver_notes,
             $pickup_is_custom,
             $distance_km,
-            $is_round_trip
+            $is_round_trip,
+            $after_hours_charge
         ]);
 
         $booking_id = $pdo->lastInsertId();
@@ -539,6 +550,16 @@ function handleUpdateBooking()
                 throw new Exception('Invalid booking data');
             }
 
+            // After-hours surcharge — only applied if the popup was accepted
+            // client-side AND the time is genuinely within the window (never
+            // trust the client-side check alone).
+            $after_hours_confirmed = isset($_REQUEST['after_hours_confirmed']) && $_REQUEST['after_hours_confirmed'] === '1';
+            $after_hours_charge = null;
+            if ($after_hours_confirmed && !empty($start_time) && isAfterHoursStartTime($pdo, $start_time)) {
+                $after_hours_charge = (float) getSystemVariable($pdo, 'after_hours_charge');
+                $final_cost += $after_hours_charge;
+            }
+
             // Recalculate booking fee (waived if no_booking_fee is set)
             // Null out all driver fields when no driver is selected
             if ($driver_id === null) {
@@ -589,7 +610,7 @@ function handleUpdateBooking()
                 original_pickup = ?, original_destination = ?, was_swapped = ?,
                 cost = ?, flight_number = ?, description = ?, payment_method = ?, payment_received = ?,
                 driver_id = ?, booking_fee = ?, no_booking_fee = ?, driver_notes = ?,
-                pickup_is_custom = ?, distance_km = ?, is_round_trip = ?,
+                pickup_is_custom = ?, distance_km = ?, is_round_trip = ?, after_hours_charge = ?,
                 last_confirmed_at = NULL,
                 updated_at = NOW()
             WHERE id = ?";
@@ -615,6 +636,7 @@ function handleUpdateBooking()
                 $pickup_is_custom,
                 $distance_km,
                 $is_round_trip,
+                $after_hours_charge,
                 $booking_id
             ]);
 
