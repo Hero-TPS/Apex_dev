@@ -111,7 +111,7 @@ function getOverlapsForCandidateSlot(PDO $pdo, string $tripDate, string $startTi
 
 /**
  * Builds the Google Calendar event title for a booking:
- * "{Client Name} {transport icon}{overlap icon if any}{driver icon if assigned}"
+ * "{transport icon} {Client Name}{overlap icon if any}{driver icon if assigned}"
  * — no cost in the title (that's already in the event description).
  *
  * Transport icon: ✈️ if "airport" appears in the pickup or destination text,
@@ -126,7 +126,8 @@ function buildBookingCalendarSummary(array $bookingData): string
     $destination = $bookingData['destination'] ?? $bookingData['original_destination'] ?? '';
     $isAirport = stripos($pickup, 'airport') !== false || stripos($destination, 'airport') !== false;
 
-    $icons = $isAirport ? '✈️' : '🚗';
+    $transportIcon = $isAirport ? '✈️' : '🚗';
+    $icons = '';
 
     $overlaps = [];
     if (!empty($bookingData['id']) && !empty($bookingData['trip_date'])) {
@@ -141,24 +142,23 @@ function buildBookingCalendarSummary(array $bookingData): string
         $icons .= '👤';
     }
 
-    return $bookingData['client_name'] . ' ' . $icons;
+    return $transportIcon . ' ' . $bookingData['client_name'] . ($icons !== '' ? ' ' . $icons : '');
 }
 
 /**
- * Same icon treatment as buildBookingCalendarSummary(), for a tentative
- * prebooking's calendar title. Keeps the "TENTATIVE" prefix and the
- * pickup → destination text, since those are still useful while details
- * are unconfirmed. Driver icon only applies if $data has a driver_id set
- * (prebookings usually won't yet). Overlap is only checked when a
- * start_time is set — an "all day, time TBC" prebooking has nothing to
- * compare against a defaulted 1-hour slot for.
+ * Same icon treatment and ordering as buildBookingCalendarSummary(), for a tentative
+ * prebooking's calendar title. Keeps the "TENTATIVE" prefix. Driver icon only
+ * applies if $data has a driver_id set (prebookings usually won't yet).
+ * Overlap is only checked when a start_time is set — an "all day, time TBC"
+ * prebooking has nothing to compare against a defaulted 1-hour slot for.
  */
 function buildPrebookingCalendarSummary(array $data, string $pickup, string $destination): string
 {
     global $pdo;
 
     $isAirport = stripos($pickup, 'airport') !== false || stripos($destination, 'airport') !== false;
-    $icons = $isAirport ? '✈️' : '🚗';
+    $transportIcon = $isAirport ? '✈️' : '🚗';
+    $icons = '';
 
     if (!empty($data['start_time']) && !empty($data['trip_date'])) {
         $tz = new DateTimeZone(defined('TIME_ZONE') ? TIME_ZONE : 'UTC');
@@ -175,16 +175,7 @@ function buildPrebookingCalendarSummary(array $data, string $pickup, string $des
         $icons .= '👤';
     }
 
-    $summary = '📋 TENTATIVE: ' . $data['client_name'] . ' ' . $icons;
-    if ($pickup !== '' && $destination !== '') {
-        $summary .= ' ' . $pickup . ' → ' . $destination;
-    } elseif ($destination !== '') {
-        $summary .= ' → ' . $destination;
-    } elseif ($pickup !== '') {
-        $summary .= ' ' . $pickup . ' →';
-    }
-
-    return $summary;
+    return '📋 TENTATIVE: ' . $transportIcon . ' ' . $data['client_name'] . ($icons !== '' ? ' ' . $icons : '');
 }
 
 /**
