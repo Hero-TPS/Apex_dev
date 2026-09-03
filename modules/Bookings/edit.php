@@ -75,7 +75,7 @@ if (isset($_GET['id'])) {
                                 data-phone="<?php echo htmlspecialchars($contact['phone']); ?>" 
                                 data-address="<?php echo htmlspecialchars($contact['address']); ?>"
                                 <?php if ($contact['id'] == $booking['contact_id']) echo 'selected'; ?>>
-                                    <?php echo htmlspecialchars($contact['name']); ?>
+                                    <?php echo htmlspecialchars($contact['name']); ?><?php echo !empty($contact['is_archived']) ? ' (📦 archived)' : ''; ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
