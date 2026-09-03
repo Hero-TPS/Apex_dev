@@ -46,6 +46,29 @@ function fetchColumn(PDO $pdo, string $tableName, string $columnName, string $or
 }
 
 /**
+ * If a client was archived, un-archive them the moment a booking or
+ * prebooking is actually made for them — booking someone is treated as
+ * evidence they're active again, so there's no separate "Unarchive" step.
+ * Used by: modules/Bookings/api/index.php, modules/Prebookings/api/index.php
+ * Safe to call for any contact_id; no-ops if already active or not found.
+ */
+function reactivateContactIfArchived(PDO $pdo, int $contactId): void
+{
+    if ($contactId <= 0) {
+        return;
+    }
+    try {
+        $stmt = $pdo->prepare("UPDATE contacts SET is_archived = 0 WHERE id = ? AND is_archived = 1");
+        $stmt->execute([$contactId]);
+        if ($stmt->rowCount() > 0) {
+            logInfo('CLIENT', 'Client auto-reactivated via new booking', ['client_id' => $contactId]);
+        }
+    } catch (PDOException $e) {
+        logError('HELPERS', 'reactivateContactIfArchived failed: ' . $e->getMessage(), ['client_id' => $contactId]);
+    }
+}
+
+/**
  * Generate 15-minute interval time options (00:00–23:45) for dropdowns.
  * Used by: modules/Bookings/add.php, modules/Bookings/edit.php
  * Returns: array of 'HH:MM' strings
