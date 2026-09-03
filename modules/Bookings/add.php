@@ -364,7 +364,10 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
             if (filtered.length > 0) {
                 selected = -1;
                 filtered.forEach(client => {
-                    const item = $(`<div class="suggestion-item">${escapeHtml(client.name)}<br><small>${escapeHtml(client.phone || '')}</small><br><small>${escapeHtml(client.address || '')}</small></div>`);
+                    const archivedNote = client.is_archived == 1
+                        ? '<br><small class="archived-note">📦 archived — booking them will reactivate this client</small>'
+                        : '';
+                    const item = $(`<div class="suggestion-item">${escapeHtml(client.name)}<br><small>${escapeHtml(client.phone || '')}</small><br><small>${escapeHtml(client.address || '')}</small>${archivedNote}</div>`);
                     item.data('client', client);
                     item.on('click', function () {
                         selectClient($(this).data('client'));
