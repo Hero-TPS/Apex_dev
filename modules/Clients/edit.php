@@ -1,4 +1,5 @@
 <?php
+// modules/Clients/edit.php
 $page_title = 'Edit Client';
 $page_subtitle = 'Client Management';
 $show_breadcrumb = true;
@@ -57,6 +58,8 @@ if ($client_id <= 0) {
         <button type="submit" class="btn" id="submitBtn">
             💾 Update Client
         </button>
+        <button type="button" class="page-action-btn toggle" id="archiveBtn" style="display:none;">
+        </button>
         <a href="<?= BASE_URL ?>/modules/Clients/" class="page-action-btn back">
             ← Back to Clients
         </a>
@@ -74,6 +77,12 @@ $(document).ready(function() {
     var loading = $('#loading');
     var form = $('#editClientForm');
     var result = $('#result');
+    var archiveBtn = $('#archiveBtn');
+    var isArchived = false;
+
+    function renderArchiveBtn() {
+        archiveBtn.text(isArchived ? '♻️ Unarchive Client' : '📦 Archive Client').show();
+    }
 
     // Load client data
     $.ajax({
@@ -94,6 +103,8 @@ $(document).ready(function() {
                 } else {
                     $('#gps-status').html('<span style="color:#888;">— Not set</span>');
                 }
+                isArchived = !!parseInt(client.is_archived || 0);
+                renderArchiveBtn();
                 form.show();
             } else {
                 result.html('<div class="error-message">Client not found</div>');
@@ -103,6 +114,30 @@ $(document).ready(function() {
             loading.hide();
             result.html('<div class="error-message">Failed to load client data</div>');
         }
+    });
+
+    archiveBtn.on('click', function () {
+        archiveBtn.prop('disabled', true);
+        $.ajax({
+            type: 'POST',
+            url: '<?= BASE_URL ?>/modules/Clients/api/index.php',
+            data: { action: 'toggle_archive', id: clientId },
+            dataType: 'json',
+            success: function (res) {
+                archiveBtn.prop('disabled', false);
+                if (res.success) {
+                    isArchived = !!res.is_archived;
+                    renderArchiveBtn();
+                    result.html('<div class="success-message">' + res.message + '</div>');
+                } else {
+                    result.html('<div class="error-message">' + res.message + '</div>');
+                }
+            },
+            error: function () {
+                archiveBtn.prop('disabled', false);
+                result.html('<div class="error-message">❌ Failed to update client.</div>');
+            }
+        });
     });
 
     // Handle form submission
