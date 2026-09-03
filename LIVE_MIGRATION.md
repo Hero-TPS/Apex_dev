@@ -23,8 +23,8 @@ ALTER TABLE bookings
 
 ### [contacts] Add `is_archived` column
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 ```sql
 ALTER TABLE contacts
