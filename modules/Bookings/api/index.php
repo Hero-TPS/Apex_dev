@@ -358,6 +358,8 @@ function handleAddBooking()
 
         $booking_id = $pdo->lastInsertId();
 
+        reactivateContactIfArchived($pdo, (int) $contact_id);
+
         // CREATE GOOGLE CALENDAR EVENT
         $googleEventId = null;
         $stmt = $pdo->prepare("
@@ -639,6 +641,8 @@ function handleUpdateBooking()
                 $after_hours_charge,
                 $booking_id
             ]);
+
+            reactivateContactIfArchived($pdo, $contact_id);
 
             // Fetch updated booking (with driver info)
             $stmt = $pdo->prepare("
