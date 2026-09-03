@@ -1,4 +1,5 @@
 <?php
+// modules/Clients/index.php
 $page_title = 'Clients';
 $page_subtitle = 'Client Management';
 $show_breadcrumb = true;
@@ -20,6 +21,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
     <button class="view-filter-btn active" data-filter="all">👥 All Clients</button>
     <button class="view-filter-btn" data-filter="with_bookings">📅 With Bookings</button>
     <button class="view-filter-btn" data-filter="without_bookings">🚫 Without Bookings</button>
+    <button class="view-filter-btn" data-filter="archived">📦 Archived</button>
     <a id="downloadCsvBtn" href="#" class="csv-download-btn">⬇️ Download CSV</a>
 </div>
 
@@ -224,6 +226,10 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                     (contact.wa_status !== 'positive' ? '<button class="action-btn wa-positive-btn" data-id="' + contact.id + '" data-status="positive">Positive</button>' : '');
                             }
 
+                            var archiveBtn = contact.is_archived
+                                ? '<button class="action-btn toggle archive-btn" data-id="' + contact.id + '">♻️ Unarchive</button>'
+                                : '<button class="action-btn archive-btn" data-id="' + contact.id + '">📦 Archive</button>';
+
                             var row = '<tr class="' + rowClass + '" data-client-id="' + contact.id + '">' +
                                 '<td data-label="Name">' + escapeHtml(contact.name) + gpsIndicator +
                                 (contact.phone ? '<br><span class="client-subline">📞 ' + escapeHtml(contact.phone) + '</span>' : '') +
@@ -244,6 +250,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 waCleanupBtn +
                                 buildGpsButtons(contact) +
                                 waStatusBtns +
+                                archiveBtn +
                                 '<button class="action-btn delete-btn" data-id="' + contact.id + '">Delete</button>' +
                                 '</div>' +
                                 '</td>' +
@@ -381,6 +388,38 @@ $highlightClientId = $_GET['highlight'] ?? null;
                 }
             });
         }
+
+        // ── Archive / Unarchive ──
+        tableBody.on('click', '.archive-btn', function () {
+            var btn = $(this);
+            var clientId = btn.data('id');
+            btn.prop('disabled', true);
+
+            $.ajax({
+                type: 'POST',
+                url: '<?= BASE_URL ?>/modules/Clients/api/index.php',
+                data: {
+                    action: 'toggle_archive',
+                    id: clientId
+                },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.success) {
+                        showNotification('✓ ' + res.message, 'success');
+                        // The client no longer belongs in the current filter's view either way
+                        // (moved between active <-> archived), so just reload the list.
+                        loadContacts();
+                    } else {
+                        showNotification('✗ ' + res.message, 'error');
+                        btn.prop('disabled', false);
+                    }
+                },
+                error: function () {
+                    showNotification('❌ Failed to update client.', 'error');
+                    btn.prop('disabled', false);
+                }
+            });
+        });
 
         // ── Delete ──
         tableBody.on('click', '.delete-btn', function () {
