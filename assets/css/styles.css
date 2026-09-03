@@ -1050,3 +1050,9 @@ body:not(.home-page) .floating-menu-toggle {
     color: #888;
     margin: 2px 0 10px;
 }
+
+/* Add this near .suggestion-item / .suggestions-box in assets/css/styles.css */
+.archived-note {
+  color: #b25900;
+  font-style: italic;
+}
