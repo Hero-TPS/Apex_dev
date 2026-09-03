@@ -159,6 +159,8 @@ function handleAdd()
         $ins->execute([$contactId, $tripDate, $startTimeVal, $pickupVal, $destVal, $wasSwapped, $costVal, $descVal]);
         $prebookingId = (int) $pdo->lastInsertId();
 
+        reactivateContactIfArchived($pdo, $contactId);
+
         $calData = [
             'id'                   => $prebookingId,
             'client_name'          => $contact['name'],
