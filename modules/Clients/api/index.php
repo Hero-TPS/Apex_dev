@@ -38,6 +38,9 @@ try {
         case 'update_wa_status':
             handleUpdateWaStatus();
             break;
+        case 'toggle_archive':
+            handleToggleArchive();
+            break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
     }
@@ -55,9 +58,9 @@ function handleGetClients()
 {
     global $pdo;
 
-    // Support new `filter` param (all | with_bookings | without_bookings)
+    // Support new `filter` param (all | with_bookings | without_bookings | archived)
     // Fall back to legacy `only_with_bookings` for backward-compat.
-    $allowedFilters = ['all', 'with_bookings', 'without_bookings'];
+    $allowedFilters = ['all', 'with_bookings', 'without_bookings', 'archived'];
     $filter = $_GET['filter'] ?? null;
     if ($filter === null) {
         $onlyWithBookings = isset($_GET['only_with_bookings']) && $_GET['only_with_bookings'] == 1;
@@ -94,7 +97,7 @@ function handleGetClientsCsv()
 {
     global $pdo;
 
-    $allowedFilters = ['all', 'with_bookings', 'without_bookings'];
+    $allowedFilters = ['all', 'with_bookings', 'without_bookings', 'archived'];
     $filter = $_GET['filter'] ?? 'all';
     if (!in_array($filter, $allowedFilters, true)) {
         $filter = 'all';
@@ -103,6 +106,7 @@ function handleGetClientsCsv()
         'all'              => 'All Clients',
         'with_bookings'    => 'Clients With Bookings',
         'without_bookings' => 'Clients Without Bookings',
+        'archived'         => 'Archived Clients',
     ];
     $label = $labelMap[$filter] ?? 'Clients';
     $filename = str_replace(' ', '_', $label) . '_' . date('Y-m-d') . '.csv';
@@ -166,6 +170,7 @@ function buildClientsQuery($filter)
                     COUNT(DISTINCT b.id) AS booking_count
                 FROM contacts c
                 INNER JOIN bookings b ON c.id = b.contact_id
+                WHERE c.is_archived = 0
                 GROUP BY c.id
                 ORDER BY c.name ASC
             ";
@@ -175,15 +180,26 @@ function buildClientsQuery($filter)
                     c.*,
                     0 AS booking_count
                 FROM contacts c
-                WHERE NOT EXISTS (SELECT 1 FROM bookings b WHERE b.contact_id = c.id)
+                WHERE c.is_archived = 0
+                  AND NOT EXISTS (SELECT 1 FROM bookings b WHERE b.contact_id = c.id)
                 ORDER BY c.name ASC
             ";
-        default: // 'all'
+        case 'archived':
             return "
                 SELECT
                     c.*,
                     (SELECT COUNT(*) FROM bookings b WHERE b.contact_id = c.id) AS booking_count
                 FROM contacts c
+                WHERE c.is_archived = 1
+                ORDER BY c.name ASC
+            ";
+        default: // 'all' — active (non-archived) clients only
+            return "
+                SELECT
+                    c.*,
+                    (SELECT COUNT(*) FROM bookings b WHERE b.contact_id = c.id) AS booking_count
+                FROM contacts c
+                WHERE c.is_archived = 0
                 ORDER BY c.name ASC
             ";
     }
@@ -463,7 +479,50 @@ function handleClearPickupGps()
     }
 }
 
-function handleUpdateWaStatus()
+function handleToggleArchive()
+{
+    global $pdo;
+
+    $id = intval($_POST['id'] ?? 0);
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid client ID.'], 400);
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT name, is_archived FROM contacts WHERE id = ? LIMIT 1");
+        $stmt->execute([$id]);
+        $client = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$client) {
+            jsonResponse(['success' => false, 'message' => 'Client not found.'], 404);
+        }
+
+        $newState = $client['is_archived'] ? 0 : 1;
+
+        $upd = $pdo->prepare("UPDATE contacts SET is_archived = ? WHERE id = ?");
+        $upd->execute([$newState, $id]);
+
+        logInfo('CLIENT', $newState ? 'Client archived' : 'Client unarchived', [
+            'client_id' => $id,
+            'name'      => $client['name'],
+        ]);
+
+        jsonResponse([
+            'success'     => true,
+            'message'     => $newState ? 'Client archived.' : 'Client unarchived.',
+            'is_archived' => $newState,
+        ]);
+
+    } catch (PDOException $e) {
+        logError('CLIENT', 'Failed to toggle archive state', [
+            'error'     => $e->getMessage(),
+            'client_id' => $id,
+        ]);
+        jsonResponse(['success' => false, 'message' => 'Failed to update client.'], 500);
+    }
+}
+
 {
     global $pdo;
 
