@@ -75,10 +75,21 @@ function handleGetClients()
         $stmt = $pdo->query($sql);
         $contacts = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // Purely a display concern for the "Last Booking" column — MAX(trip_date)
+        // is the most recent booking chronologically, which can be an upcoming
+        // one rather than a past one. Flagged here so the UI can label it
+        // "Upcoming" instead of implying it already happened. Independent of
+        // handleToggleArchive()'s own "upcoming" check, which decides what gets
+        // deleted on archive — this doesn't touch that.
+        $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
+
         foreach ($contacts as &$contact) {
             $contact['whatsapp_phone'] = formatPhoneNumberForWhatsApp($contact['phone'] ?? '');
             if (!empty($contact['last_booking_date'])) {
+                $contact['last_booking_is_future'] = $contact['last_booking_date'] >= $today;
                 $contact['last_booking_date'] = date('d M Y', strtotime($contact['last_booking_date']));
+            } else {
+                $contact['last_booking_is_future'] = false;
             }
         }
         unset($contact);
@@ -136,7 +147,16 @@ function handleGetClientsCsv()
         }
         fputcsv($out, $headers);
 
+        $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
+
         foreach ($contacts as $c) {
+            $lastBooking = '';
+            if (!empty($c['last_booking_date'])) {
+                $lastBooking = date('d M Y', strtotime($c['last_booking_date']));
+                if ($c['last_booking_date'] >= $today) {
+                    $lastBooking = 'Upcoming: ' . $lastBooking;
+                }
+            }
             $row = [
                 $c['name']            ?? '',
                 $c['phone']           ?? '',
@@ -144,7 +164,7 @@ function handleGetClientsCsv()
                 $c['address']         ?? '',
                 $c['additional_info'] ?? '',
                 $c['booking_count']   ?? 0,
-                !empty($c['last_booking_date']) ? date('d M Y', strtotime($c['last_booking_date'])) : '',
+                $lastBooking,
             ];
             if ($filter === 'without_bookings') {
                 $row[] = $c['wa_status'] ?? '';
