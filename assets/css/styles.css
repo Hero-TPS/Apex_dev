@@ -192,6 +192,12 @@ textarea {
 .convert-btn { background-color: #e67e22; }
 .convert-btn:hover { background-color: #ca6f1e; }
 
+/* Archive / Unarchive (Clients list + edit) */
+.archive-btn { background-color: #8e44ad; }
+.archive-btn:hover { background-color: #703688; }
+.archive-btn.toggle { background-color: #16a085; }
+.archive-btn.toggle:hover { background-color: #128f77; }
+
 /* Status Toggle */
 .status-toggle-btn {
   background-color: #f39c12;
@@ -461,6 +467,10 @@ textarea {
 }
 .suggestion-item:hover {
   background: #f5f5f5;
+}
+.archived-note {
+  color: #b25900;
+  font-style: italic;
 }
 
 .map-link {
@@ -1049,10 +1059,4 @@ body:not(.home-page) .floating-menu-toggle {
     font-size: 12px;
     color: #888;
     margin: 2px 0 10px;
-}
-
-/* Add this near .suggestion-item / .suggestions-box in assets/css/styles.css */
-.archived-note {
-  color: #b25900;
-  font-style: italic;
 }
