@@ -117,6 +117,11 @@ $(document).ready(function() {
     });
 
     archiveBtn.on('click', function () {
+        if (!isArchived) {
+            if (!confirm('Archive this client? Any future bookings for them will be deleted (past bookings are kept for records).')) {
+                return;
+            }
+        }
         archiveBtn.prop('disabled', true);
         $.ajax({
             type: 'POST',
