@@ -2,7 +2,8 @@
 // modules/Clients/api/index.php
 
 require_once __DIR__ . '/../../../config.php';
-require_once ROOT_DIR . '/includes/helpers.php'; 
+require_once ROOT_DIR . '/includes/helpers.php';
+require_once ROOT_DIR . '/modules/Bookings/helpers.php'; // for deleteBookingFromGoogleCalendar() when archiving cancels future bookings
 
 header('Content-Type: application/json');
 require_once ROOT_DIR . '/includes/auth_api.php';
@@ -76,6 +77,9 @@ function handleGetClients()
 
         foreach ($contacts as &$contact) {
             $contact['whatsapp_phone'] = formatPhoneNumberForWhatsApp($contact['phone'] ?? '');
+            if (!empty($contact['last_booking_date'])) {
+                $contact['last_booking_date'] = date('d M Y', strtotime($contact['last_booking_date']));
+            }
         }
         unset($contact);
 
@@ -126,7 +130,7 @@ function handleGetClientsCsv()
         // BOM for Excel UTF-8 compatibility
         fputs($out, "\xEF\xBB\xBF");
         // Column headers — include WA Status for the without_bookings export
-        $headers = ['Name', 'Phone', 'Email', 'Address', 'Additional Info', 'Bookings'];
+        $headers = ['Name', 'Phone', 'Email', 'Address', 'Additional Info', 'Bookings', 'Last Booking'];
         if ($filter === 'without_bookings') {
             $headers[] = 'WA Status';
         }
@@ -140,6 +144,7 @@ function handleGetClientsCsv()
                 $c['address']         ?? '',
                 $c['additional_info'] ?? '',
                 $c['booking_count']   ?? 0,
+                !empty($c['last_booking_date']) ? date('d M Y', strtotime($c['last_booking_date'])) : '',
             ];
             if ($filter === 'without_bookings') {
                 $row[] = $c['wa_status'] ?? '';
@@ -167,7 +172,8 @@ function buildClientsQuery($filter)
             return "
                 SELECT
                     c.*,
-                    COUNT(DISTINCT b.id) AS booking_count
+                    COUNT(DISTINCT b.id) AS booking_count,
+                    MAX(b.trip_date) AS last_booking_date
                 FROM contacts c
                 INNER JOIN bookings b ON c.id = b.contact_id
                 WHERE c.is_archived = 0
@@ -178,7 +184,8 @@ function buildClientsQuery($filter)
             return "
                 SELECT
                     c.*,
-                    0 AS booking_count
+                    0 AS booking_count,
+                    NULL AS last_booking_date
                 FROM contacts c
                 WHERE c.is_archived = 0
                   AND NOT EXISTS (SELECT 1 FROM bookings b WHERE b.contact_id = c.id)
@@ -188,7 +195,8 @@ function buildClientsQuery($filter)
             return "
                 SELECT
                     c.*,
-                    (SELECT COUNT(*) FROM bookings b WHERE b.contact_id = c.id) AS booking_count
+                    (SELECT COUNT(*) FROM bookings b WHERE b.contact_id = c.id) AS booking_count,
+                    (SELECT MAX(b.trip_date) FROM bookings b WHERE b.contact_id = c.id) AS last_booking_date
                 FROM contacts c
                 WHERE c.is_archived = 1
                 ORDER BY c.name ASC
@@ -197,7 +205,8 @@ function buildClientsQuery($filter)
             return "
                 SELECT
                     c.*,
-                    (SELECT COUNT(*) FROM bookings b WHERE b.contact_id = c.id) AS booking_count
+                    (SELECT COUNT(*) FROM bookings b WHERE b.contact_id = c.id) AS booking_count,
+                    (SELECT MAX(b.trip_date) FROM bookings b WHERE b.contact_id = c.id) AS last_booking_date
                 FROM contacts c
                 WHERE c.is_archived = 0
                 ORDER BY c.name ASC
@@ -503,15 +512,56 @@ function handleToggleArchive()
         $upd = $pdo->prepare("UPDATE contacts SET is_archived = ? WHERE id = ?");
         $upd->execute([$newState, $id]);
 
+        $deletedBookings = 0;
+        if ($newState === 1) {
+            // Archiving: an archived client shouldn't have upcoming trips on the
+            // books. Same "upcoming" definition used by the Bookings list
+            // (today or later, not already completed) — past bookings are left
+            // alone since they're historical record.
+            $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
+            $stmt = $pdo->prepare("
+                SELECT id, google_calendar_event_id
+                FROM bookings
+                WHERE contact_id = ? AND trip_date >= ? AND status != 'completed'
+            ");
+            $stmt->execute([$id, $today]);
+            $futureBookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!empty($futureBookings)) {
+                foreach ($futureBookings as $fb) {
+                    if (!empty($fb['google_calendar_event_id'])) {
+                        deleteBookingFromGoogleCalendar($fb['google_calendar_event_id']);
+                    }
+                }
+                $ids = array_column($futureBookings, 'id');
+                $placeholders = implode(',', array_fill(0, count($ids), '?'));
+                $del = $pdo->prepare("DELETE FROM bookings WHERE id IN ($placeholders)");
+                $del->execute($ids);
+                $deletedBookings = count($ids);
+
+                logWarning('CLIENT', 'Deleted future booking(s) on client archive', [
+                    'client_id'  => $id,
+                    'name'       => $client['name'],
+                    'booking_ids' => $ids,
+                ]);
+            }
+        }
+
         logInfo('CLIENT', $newState ? 'Client archived' : 'Client unarchived', [
             'client_id' => $id,
             'name'      => $client['name'],
         ]);
 
+        $message = $newState ? 'Client archived.' : 'Client unarchived.';
+        if ($deletedBookings > 0) {
+            $message .= " {$deletedBookings} future booking(s) were removed.";
+        }
+
         jsonResponse([
-            'success'     => true,
-            'message'     => $newState ? 'Client archived.' : 'Client unarchived.',
-            'is_archived' => $newState,
+            'success'          => true,
+            'message'          => $message,
+            'is_archived'      => $newState,
+            'deleted_bookings' => $deletedBookings,
         ]);
 
     } catch (PDOException $e) {
@@ -523,6 +573,7 @@ function handleToggleArchive()
     }
 }
 
+function handleUpdateWaStatus()
 {
     global $pdo;
 
