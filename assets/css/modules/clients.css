@@ -5,6 +5,42 @@
    and the Duplicate Client Management feature.
 ======================== */
 
+/* View filter button group (clients index) — moved here from base styles.css,
+   confirmed used only on this page. */
+.view-filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+    align-items: center;
+}
+
+.view-filter-btn {
+    color: #fff;
+    border: 2px solid transparent;
+    padding: 6px 14px;
+    font-size: 0.9em;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    opacity: 0.72;
+}
+
+/* Individual colours per filter */
+.view-filter-btn[data-filter="all"]              { background-color: #3498db; } /* blue  – All Clients        */
+.view-filter-btn[data-filter="with_bookings"]    { background-color: #27ae60; } /* green – With Bookings      */
+.view-filter-btn[data-filter="without_bookings"] { background-color: #e67e22; } /* amber – Without Bookings   */
+.view-filter-btn[data-filter="archived"]         { background-color: #7f8c8d; } /* grey  – Archived           */
+
+.view-filter-btn:hover {
+    opacity: 1;
+}
+
+.view-filter-btn.active {
+    opacity: 1;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.18);
+}
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
