@@ -239,7 +239,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 '<td data-label="Address">' + escapeHtml(contact.address || '') + '</td>' +
                                 '<td data-label="Additional Info">' + escapeHtml(contact.additional_info || '') + '</td>' +
                                 '<td data-label="Bookings">' + (contact.booking_count || 0) + '</td>' +
-                                '<td data-label="Last Booking">' + escapeHtml(contact.last_booking_date || '—') + '</td>' +
+                                '<td data-label="Last Booking">' + (contact.last_booking_date ? (contact.last_booking_is_future ? '📅 Upcoming: ' + escapeHtml(contact.last_booking_date) : escapeHtml(contact.last_booking_date)) : '—') + '</td>' +
                                 waStatusCell +
                                 '<td data-label="Actions">' +
                                 '<div class="actions-container">' +
