@@ -43,6 +43,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
             <th>Address</th>
             <th>Additional Info</th>
             <th>Bookings</th>
+            <th>Last Booking</th>
             <th class="wa-status-col" style="display:none;">WA Status</th>
             <th>Actions</th>
         </tr>
@@ -160,7 +161,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
 }
 
         function loadContacts(highlightId = null) {
-            var colspan = currentFilter === 'without_bookings' ? 6 : 5;
+            var colspan = currentFilter === 'without_bookings' ? 7 : 6;
             tableBody.html('<tr><td colspan="' + colspan + '" style="text-align:center;">Loading clients...</td></tr>');
             $.ajax({
                 type: 'GET',
@@ -227,8 +228,8 @@ $highlightClientId = $_GET['highlight'] ?? null;
                             }
 
                             var archiveBtn = contact.is_archived
-                                ? '<button class="action-btn toggle archive-btn" data-id="' + contact.id + '">♻️ Unarchive</button>'
-                                : '<button class="action-btn archive-btn" data-id="' + contact.id + '">📦 Archive</button>';
+                                ? '<button class="action-btn toggle archive-btn" data-id="' + contact.id + '" data-archived="1">♻️ Unarchive</button>'
+                                : '<button class="action-btn archive-btn" data-id="' + contact.id + '" data-archived="0">📦 Archive</button>';
 
                             var row = '<tr class="' + rowClass + '" data-client-id="' + contact.id + '">' +
                                 '<td data-label="Name">' + escapeHtml(contact.name) + gpsIndicator +
@@ -238,6 +239,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 '<td data-label="Address">' + escapeHtml(contact.address || '') + '</td>' +
                                 '<td data-label="Additional Info">' + escapeHtml(contact.additional_info || '') + '</td>' +
                                 '<td data-label="Bookings">' + (contact.booking_count || 0) + '</td>' +
+                                '<td data-label="Last Booking">' + escapeHtml(contact.last_booking_date || '—') + '</td>' +
                                 waStatusCell +
                                 '<td data-label="Actions">' +
                                 '<div class="actions-container">' +
@@ -393,6 +395,14 @@ $highlightClientId = $_GET['highlight'] ?? null;
         tableBody.on('click', '.archive-btn', function () {
             var btn = $(this);
             var clientId = btn.data('id');
+            var isArchived = btn.data('archived') == 1;
+
+            if (!isArchived) {
+                if (!confirm('Archive this client? Any future bookings for them will be deleted (past bookings are kept for records).')) {
+                    return;
+                }
+            }
+
             btn.prop('disabled', true);
 
             $.ajax({
