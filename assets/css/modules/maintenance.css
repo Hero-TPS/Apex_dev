@@ -95,3 +95,28 @@
     white-space: normal;
     word-break: break-all;
 }
+
+.at-log-copy-btn {
+    background: #f1f2f6;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 13px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.at-log-copy-btn:hover {
+    background: #e2e4e9;
+}
+
+.at-log-copy-btn:disabled {
+    cursor: default;
+    opacity: 0.8;
+}
+
+.at-log-copy-clipboard-helper {
+    position: fixed;
+    top: -9999px;
+    left: -9999px;
+}
