@@ -110,13 +110,50 @@ function getOverlapsForCandidateSlot(PDO $pdo, string $tripDate, string $startTi
 }
 
 /**
+ * Resolves the transport icon for a booking/prebooking title based on the
+ * pickup and destination text (case-insensitive substring matching):
+ * - "airport" together with "pickup" in the pickup field     -> 🛬 (collected from the airport — arrival)
+ * - "airport" together with "drop off" in the destination field -> 🛫 (dropped at the airport — departure)
+ * - "airport" appears alone, without a pickup/drop off pairing, or that pairing
+ *   shows up in both fields at once (ambiguous) -> ✈️ fallback
+ * - Neither field mentions "airport" at all (plain "pickup"/"drop off" text
+ *   included) -> 🚗
+ * The arrival/departure icons are reserved for airport trips specifically —
+ * "pickup"/"drop off" text alone, without "airport", never triggers them.
+ */
+function resolveTransportIcon(string $pickup, string $destination): string
+{
+    $hasAirport = fn(string $text): bool => stripos($text, 'airport') !== false;
+    $hasDirectionWord = fn(string $text): bool => stripos($text, 'pickup') !== false || stripos($text, 'drop off') !== false;
+
+    $pickupIsAirportDirectional = $hasAirport($pickup) && $hasDirectionWord($pickup);
+    $destinationIsAirportDirectional = $hasAirport($destination) && $hasDirectionWord($destination);
+
+    if ($pickupIsAirportDirectional && $destinationIsAirportDirectional) {
+        return '✈️';
+    }
+    if ($pickupIsAirportDirectional) {
+        return '🛬';
+    }
+    if ($destinationIsAirportDirectional) {
+        return '🛫';
+    }
+
+    if ($hasAirport($pickup) || $hasAirport($destination)) {
+        return '✈️';
+    }
+
+    return '🚗';
+}
+
+/**
  * Builds the Google Calendar event title for a booking:
- * "{transport icon} {Client Name}{overlap icon if any}{driver icon if assigned}"
+ * "{transport icon} {payment icon if paid} {Client Name}{overlap icon if any}{driver icon if assigned}"
  * — no cost in the title (that's already in the event description).
  *
- * Transport icon: ✈️ if "airport" appears in the pickup or destination text,
- * otherwise 🚗. Overlap uses the same shared getBookingOverlapsForDates()
- * definition as add/edit/view/index/reports.
+ * Transport icon: see resolveTransportIcon(). Payment icon (💰) shows only when
+ * payment_received is truthy on the booking record. Overlap uses the same shared
+ * getBookingOverlapsForDates() definition as add/edit/view/index/reports.
  */
 function buildBookingCalendarSummary(array $bookingData): string
 {
@@ -124,9 +161,8 @@ function buildBookingCalendarSummary(array $bookingData): string
 
     $pickup = $bookingData['pickup_location'] ?? $bookingData['original_pickup'] ?? '';
     $destination = $bookingData['destination'] ?? $bookingData['original_destination'] ?? '';
-    $isAirport = stripos($pickup, 'airport') !== false || stripos($destination, 'airport') !== false;
-
-    $transportIcon = $isAirport ? '✈️' : '🚗';
+    $transportIcon = resolveTransportIcon($pickup, $destination);
+    $paymentIcon = !empty($bookingData['payment_received']) ? '💰' : '';
     $icons = '';
 
     $overlaps = [];
@@ -142,22 +178,24 @@ function buildBookingCalendarSummary(array $bookingData): string
         $icons .= '👤';
     }
 
-    return $transportIcon . ' ' . $bookingData['client_name'] . ($icons !== '' ? ' ' . $icons : '');
+    $leadIcons = $transportIcon . ($paymentIcon !== '' ? ' ' . $paymentIcon : '');
+
+    return $leadIcons . ' ' . $bookingData['client_name'] . ($icons !== '' ? ' ' . $icons : '');
 }
 
 /**
  * Same icon treatment and ordering as buildBookingCalendarSummary(), for a tentative
  * prebooking's calendar title. Keeps the "TENTATIVE" prefix. Driver icon only
- * applies if $data has a driver_id set (prebookings usually won't yet).
- * Overlap is only checked when a start_time is set — an "all day, time TBC"
- * prebooking has nothing to compare against a defaulted 1-hour slot for.
+ * applies if $data has a driver_id set (prebookings usually won't yet). No payment
+ * icon — prebookings don't track payment_received. Overlap is only checked when a
+ * start_time is set — an "all day, time TBC" prebooking has nothing to compare
+ * against a defaulted 1-hour slot for.
  */
 function buildPrebookingCalendarSummary(array $data, string $pickup, string $destination): string
 {
     global $pdo;
 
-    $isAirport = stripos($pickup, 'airport') !== false || stripos($destination, 'airport') !== false;
-    $transportIcon = $isAirport ? '✈️' : '🚗';
+    $transportIcon = resolveTransportIcon($pickup, $destination);
     $icons = '';
 
     if (!empty($data['start_time']) && !empty($data['trip_date'])) {
