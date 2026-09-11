@@ -98,12 +98,13 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_COLUMN);
             <th style="width: 100px;">Category</th>
             <th>Message</th>
             <th style="width: 200px;">Context</th>
+            <th style="width: 50px;">Copy</th>
         </tr>
     </thead>
     <tbody>
         <?php if (empty($logs)): ?>
             <tr>
-                <td colspan="5" style="text-align: center; padding: 40px; color: #999;">
+                <td colspan="6" style="text-align: center; padding: 40px; color: #999;">
                     No logs found
                 </td>
             </tr>
@@ -126,6 +127,17 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_COLUMN);
                         <?php else: ?>
                             <span style="color: #ccc;">—</span>
                         <?php endif; ?>
+                    </td>
+                    <td>
+                        <button type="button" class="at-log-copy-btn"
+                            data-timestamp="<?= htmlspecialchars(date('d/m/Y H:i:s', strtotime($log['timestamp']))) ?>"
+                            data-level="<?= htmlspecialchars($log['level']) ?>"
+                            data-category="<?= htmlspecialchars($log['category']) ?>"
+                            data-message="<?= htmlspecialchars($log['message']) ?>"
+                            data-context="<?= htmlspecialchars($log['context'] ?? '') ?>"
+                            title="Copy this log entry">
+                            📋
+                        </button>
                     </td>
                 </tr>
             <?php endforeach; ?>
@@ -152,6 +164,46 @@ $(document).ready(function() {
     }
 
     $('#levelFilter, #categoryFilter, #limitFilter').on('change', applyFilters);
+
+    // Copy a log entry to the clipboard as plain text, ready to paste
+    $(document).on('click', '.at-log-copy-btn', function() {
+        const btn = $(this);
+        const parts = [
+            '[' + btn.attr('data-timestamp') + '] ' + btn.attr('data-level') + ' | ' + btn.attr('data-category'),
+            'Message: ' + btn.attr('data-message')
+        ];
+        const context = btn.attr('data-context');
+        if (context) {
+            parts.push('Context: ' + context);
+        }
+        const text = parts.join('\n');
+
+        function showCopied() {
+            const original = btn.html();
+            btn.html('✅').prop('disabled', true);
+            setTimeout(function() {
+                btn.html(original).prop('disabled', false);
+            }, 1200);
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(showCopied).catch(function(err) {
+                window.logJsError('warning', 'Log entry clipboard write failed', { error: String(err) });
+                alert('Could not copy — please copy manually.');
+            });
+        } else {
+            // Fallback for browsers without the Clipboard API
+            const temp = $('<textarea class="at-log-copy-clipboard-helper">').val(text).appendTo('body').select();
+            try {
+                document.execCommand('copy');
+                showCopied();
+            } catch (err) {
+                window.logJsError('warning', 'Log entry clipboard fallback failed', { error: String(err) });
+                alert('Could not copy — please copy manually.');
+            }
+            temp.remove();
+        }
+    });
 
     // Clear all logs
     $('#clearAllBtn').on('click', function() {
