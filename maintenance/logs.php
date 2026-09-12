@@ -93,12 +93,12 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_COLUMN);
 <table class="log-table">
     <thead>
         <tr>
+            <th style="width: 50px;">Copy</th>
             <th style="width: 140px;">Date & Time</th>
             <th style="width: 80px;">Level</th>
             <th style="width: 100px;">Category</th>
             <th>Message</th>
             <th style="width: 200px;">Context</th>
-            <th style="width: 50px;">Copy</th>
         </tr>
     </thead>
     <tbody>
@@ -111,6 +111,17 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_COLUMN);
         <?php else: ?>
             <?php foreach ($logs as $log): ?>
                 <tr>
+                    <td>
+                        <button type="button" class="at-log-copy-btn"
+                            data-timestamp="<?= htmlspecialchars(date('d/m/Y H:i:s', strtotime($log['timestamp']))) ?>"
+                            data-level="<?= htmlspecialchars($log['level']) ?>"
+                            data-category="<?= htmlspecialchars($log['category']) ?>"
+                            data-message="<?= htmlspecialchars($log['message']) ?>"
+                            data-context="<?= htmlspecialchars($log['context'] ?? '') ?>"
+                            title="Copy this log entry">
+                            📋
+                        </button>
+                    </td>
                     <td><?= date('d/m/Y H:i:s', strtotime($log['timestamp'])) ?></td>
                     <td>
                         <span class="log-level log-level-<?= $log['level'] ?>">
@@ -127,17 +138,6 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_COLUMN);
                         <?php else: ?>
                             <span style="color: #ccc;">—</span>
                         <?php endif; ?>
-                    </td>
-                    <td>
-                        <button type="button" class="at-log-copy-btn"
-                            data-timestamp="<?= htmlspecialchars(date('d/m/Y H:i:s', strtotime($log['timestamp']))) ?>"
-                            data-level="<?= htmlspecialchars($log['level']) ?>"
-                            data-category="<?= htmlspecialchars($log['category']) ?>"
-                            data-message="<?= htmlspecialchars($log['message']) ?>"
-                            data-context="<?= htmlspecialchars($log['context'] ?? '') ?>"
-                            title="Copy this log entry">
-                            📋
-                        </button>
                     </td>
                 </tr>
             <?php endforeach; ?>
