@@ -31,6 +31,15 @@ if (isset($_GET['id'])) {
                 $end_t = new DateTime($booking['end_time']);
                 $interval = $start_t->diff($end_t);
                 $booking['duration'] = $interval->h + ($interval->i / 60);
+
+                // 'cost' is the combined total actually charged (base fare +
+                // after-hours surcharge, if any) — used as-is everywhere else
+                // (Reports, Financials, WhatsApp message). For the edit form's
+                // cost field specifically, we need the base fare on its own:
+                // if we fed the combined total back into the field, a repeat
+                // save with the after-hours prompt confirmed would add the
+                // surcharge a second time on top of the last saved total.
+                $booking['base_cost'] = round((float) $booking['cost'] - (float) ($booking['after_hours_charge'] ?? 0), 2);
             } else {
                 $error_message = "Booking not found.";
             }
@@ -167,10 +176,12 @@ if (isset($_GET['id'])) {
                 <label for="cost">Cost <span class="required">*</span></label>
                 <select id="cost" name="cost" required>
                     <?php
-                    $isStandardCost = in_array($booking['cost'], $costs);
+                    // Compared/selected against the base fare (surcharge excluded)
+                    // — see $booking['base_cost'] above — not the combined total.
+                    $isStandardCost = in_array($booking['base_cost'], $costs);
                     foreach ($costs as $c):
                         ?>
-                        <option value="<?php echo htmlspecialchars($c); ?>" <?php if ($c == $booking['cost']) echo 'selected'; ?>>
+                        <option value="<?php echo htmlspecialchars($c); ?>" <?php if ($c == $booking['base_cost']) echo 'selected'; ?>>
                             R<?php echo htmlspecialchars(number_format($c, 2)); ?>
                         </option>
                     <?php endforeach; ?>
@@ -522,9 +533,9 @@ $(document).ready(function () {
         }
     }
 
-    // Initialize cost on page load
+    // Initialize cost on page load (base fare, surcharge excluded — see PHP above)
     if ($('#cost').val() === 'other') {
-        $('#otherCost').val(<?php echo floatval($booking['cost']); ?>);
+        $('#otherCost').val(<?php echo floatval($booking['base_cost']); ?>);
         $('#otherCostGroup').removeClass('hidden');
         $('#otherCost').prop('required', true);
     } else {
