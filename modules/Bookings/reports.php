@@ -64,8 +64,13 @@ $currentWeekSunday->setTime(23, 59, 59);
         $endDate   = clone $startDate;
         $endDate->modify('last day of this month');
 
+        // Same driver-commission-vs-cost rule as Financials: with a driver
+        // assigned, income is the commission (booking_fee) even when it's
+        // explicitly R0 — not the full trip cost, which goes to the driver.
         $stmt = $pdo->prepare(
-            "SELECT COALESCE(SUM(cost), 0) AS total_income, COUNT(*) AS booking_count
+            "SELECT COALESCE(SUM(
+                CASE WHEN driver_id IS NOT NULL THEN COALESCE(booking_fee, 0) ELSE cost END
+             ), 0) AS total_income, COUNT(*) AS booking_count
              FROM bookings WHERE trip_date BETWEEN ? AND ?"
         );
         $stmt->execute([$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);

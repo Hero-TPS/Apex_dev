@@ -88,8 +88,15 @@ function getWeeklyMetrics(PDO $pdo, int $startUnix, int $endUnix): array
     $endDateStr   = $endDateObj->format('Y-m-d');
 
     // === BOOKINGS ===
+    // When a driver is assigned, only the commission (booking_fee) counts as
+    // income here — even when it's explicitly R0 (no_booking_fee) — not the
+    // full trip cost, which goes to the driver. COALESCE(booking_fee, cost)
+    // alone can't tell "no driver" from "driver, zero fee" apart since both
+    // store NULL/0 differently, so branch on driver_id explicitly.
     $stmt = $pdo->prepare(
-        "SELECT COALESCE(SUM(COALESCE(booking_fee, cost)), 0) AS income, COUNT(*) AS trips
+        "SELECT COALESCE(SUM(
+            CASE WHEN driver_id IS NOT NULL THEN COALESCE(booking_fee, 0) ELSE cost END
+         ), 0) AS income, COUNT(*) AS trips
          FROM bookings WHERE trip_date BETWEEN ? AND ?"
     );
     $stmt->execute([$startDateStr, $endDateStr]);
@@ -206,8 +213,11 @@ function getMonthlyMetrics(PDO $pdo, int $year, int $month): array
     $endDateStr   = $endDate->format('Y-m-d');
 
     // === BOOKINGS ===
+    // Same driver-commission-vs-cost logic as getWeeklyMetrics() — see comment there.
     $stmt = $pdo->prepare(
-        "SELECT COALESCE(SUM(COALESCE(booking_fee, cost)), 0) AS income, COUNT(*) AS trips
+        "SELECT COALESCE(SUM(
+            CASE WHEN driver_id IS NOT NULL THEN COALESCE(booking_fee, 0) ELSE cost END
+         ), 0) AS income, COUNT(*) AS trips
          FROM bookings WHERE trip_date BETWEEN ? AND ?"
     );
     $stmt->execute([$startDateStr, $endDateStr]);

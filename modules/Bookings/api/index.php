@@ -940,7 +940,9 @@ function handleWeeklyBookingsByMonth()
             $endStr   = $sunday->format('Y-m-d');
 
             $stmt = $pdo->prepare(
-                "SELECT COALESCE(SUM(cost), 0) AS total_income, COUNT(*) AS booking_count
+                "SELECT COALESCE(SUM(
+                    CASE WHEN driver_id IS NOT NULL THEN COALESCE(booking_fee, 0) ELSE cost END
+                 ), 0) AS total_income, COUNT(*) AS booking_count
                  FROM bookings WHERE trip_date BETWEEN ? AND ?"
             );
             $stmt->execute([$startStr, $endStr]);
@@ -1214,6 +1216,24 @@ function handleAssignDriver()
             'fee'            => $booking_fee,
             'no_booking_fee' => $no_booking_fee,
         ]);
+
+        // Sync the Google Calendar event so the 👤 icon (and driver info in
+        // the event description) reflects this immediately, instead of
+        // waiting for the booking's next edit-save to regenerate the title.
+        $bookingDetails = getBookingById($pdo, $bookingId);
+        if ($bookingDetails && !empty($bookingDetails['google_calendar_event_id'])) {
+            $bookingDetails['pickup_location'] = $bookingDetails['was_swapped']
+                ? $bookingDetails['original_destination'] : $bookingDetails['original_pickup'];
+            $bookingDetails['destination'] = $bookingDetails['was_swapped']
+                ? $bookingDetails['original_pickup'] : $bookingDetails['original_destination'];
+
+            $tz = new DateTimeZone(TIME_ZONE);
+            $start_datetime = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time'], $tz);
+            $end_datetime = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['end_time'], $tz);
+
+            updateBookingInGoogleCalendar($bookingDetails, $start_datetime, $end_datetime);
+        }
+
         jsonResponse(['success' => true, 'message' => $driver_id ? 'Driver assigned.' : 'Driver removed.']);
 
     } catch (PDOException $e) {

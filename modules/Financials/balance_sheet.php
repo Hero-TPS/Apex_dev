@@ -1,4 +1,5 @@
 <?php
+// modules/Financials/balance_sheet.php
 $page_title      = 'Balance Sheet';
 $page_subtitle   = 'Monthly Balance Sheet Report';
 $show_breadcrumb = true;
@@ -313,8 +314,10 @@ include ROOT_DIR . '/includes/header.php';
                     $method  = strtoupper($b['payment_method'] ?? 'cash');
                     $hasDriver = !empty($b['driver_id']);
                     $desc    = $hasDriver ? 'Driver booking fee' : 'Booked trip';
-                    $amount  = $hasDriver && isset($b['booking_fee']) && $b['booking_fee'] !== null
-                                   ? (float) $b['booking_fee']
+                    // With a driver assigned, always use the commission — including
+                    // an explicit R0 fee — never fall back to the full trip cost.
+                    $amount  = $hasDriver
+                                   ? (float) ($b['booking_fee'] ?? 0)
                                    : (float) $b['cost'];
                 ?>
                 <tr>
