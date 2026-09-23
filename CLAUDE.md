@@ -9,6 +9,7 @@
 - add a comment at the top (if not already added) to every file with path from root. Most files have it. ex: modules/Bookings/api/index.php. Do it only for files that are updated during chats. No need to rescan all files in the repo.
 
 - Discuss before building code. ask first. or when you are explicitly told to build code.
+- Two ways he applies delivered files to the repo: (1) **Zip + git**, at the laptop with VS Code — files delivered as a zip whose internal paths already match the repo, extracted with `unzip -o`, then `git add -A && git commit && git push` (full steps in `DEV_WORKFLOW.md`). (2) **Copy-paste commit**, on the road via GitHub's mobile web editor — one file at a time, pasted and committed directly, no zip. Before delivering finished code files in a session, ask which of the two he wants this time — don't infer it or assume it carries over from a previous session.
 
 ## Conventions
 - PHP/MySQL. Timezone always `Africa/Johannesburg` — use the `TIME_ZONE` constant.
