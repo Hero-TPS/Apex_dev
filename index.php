@@ -2,6 +2,13 @@
 // index.php — Public brochure landing page
 // Stylesheet: assets/css/frontend.css (linked in header_public.php)
 require_once __DIR__ . '/config.php';
+
+// TEMPORARY: root redirects straight to the dashboard while the brochure page
+// below is unused. Brochure markup is left intact — remove this block to
+// restore it as the public landing page.
+header('Location: ' . BASE_URL . '/dashboard/');
+exit;
+
 include ROOT_DIR . '/includes/header_public.php';
 ?>
 
@@ -263,4 +270,3 @@ document.getElementById('enquiry-form').addEventListener('submit', function (e) 
 </script>
 
 <?php include ROOT_DIR . '/includes/footer_public.php'; ?>
-
