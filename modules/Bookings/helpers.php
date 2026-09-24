@@ -148,8 +148,9 @@ function resolveTransportIcon(string $pickup, string $destination): string
 
 /**
  * Builds the Google Calendar event title for a booking:
- * "{transport icon} {payment icon if paid} {Client Name}{overlap icon if any}{driver icon if assigned}"
- * — no cost in the title (that's already in the event description).
+ * "{transport icon} {payment icon if paid} {overlap icon if any} {driver icon if assigned} {Client Name}"
+ * — all icons lead, client name always comes last. No cost in the title
+ * (that's already in the event description).
  *
  * Transport icon: see resolveTransportIcon(). Payment icon (💰) shows only when
  * payment_received is truthy on the booking record. Overlap uses the same shared
@@ -163,40 +164,37 @@ function buildBookingCalendarSummary(array $bookingData): string
     $destination = $bookingData['destination'] ?? $bookingData['original_destination'] ?? '';
     $transportIcon = resolveTransportIcon($pickup, $destination);
     $paymentIcon = !empty($bookingData['payment_received']) ? '💰' : '';
-    $icons = '';
 
     $overlaps = [];
     if (!empty($bookingData['id']) && !empty($bookingData['trip_date'])) {
         $overlapMap = getBookingOverlapsForDates($pdo, [$bookingData['trip_date']]);
         $overlaps = $overlapMap[(int) $bookingData['id']] ?? [];
     }
-    if (!empty($overlaps)) {
-        $icons .= '⚠️';
-    }
+    $overlapIcon = !empty($overlaps) ? '⚠️' : '';
+    $driverIcon = !empty($bookingData['driver_id']) ? '👤' : '';
 
-    if (!empty($bookingData['driver_id'])) {
-        $icons .= '👤';
-    }
+    $icons = $transportIcon
+        . ($paymentIcon !== '' ? ' ' . $paymentIcon : '')
+        . ($overlapIcon !== '' ? ' ' . $overlapIcon : '')
+        . ($driverIcon !== '' ? ' ' . $driverIcon : '');
 
-    $leadIcons = $transportIcon . ($paymentIcon !== '' ? ' ' . $paymentIcon : '');
-
-    return $leadIcons . ' ' . $bookingData['client_name'] . ($icons !== '' ? ' ' . $icons : '');
+    return $icons . ' ' . $bookingData['client_name'];
 }
 
 /**
  * Same icon treatment and ordering as buildBookingCalendarSummary(), for a tentative
- * prebooking's calendar title. Keeps the "TENTATIVE" prefix. Driver icon only
- * applies if $data has a driver_id set (prebookings usually won't yet). No payment
- * icon — prebookings don't track payment_received. Overlap is only checked when a
- * start_time is set — an "all day, time TBC" prebooking has nothing to compare
- * against a defaulted 1-hour slot for.
+ * prebooking's calendar title. Keeps the "TENTATIVE" prefix, then all icons, then the
+ * client name last. Driver icon only applies if $data has a driver_id set (prebookings
+ * usually won't yet). No payment icon — prebookings don't track payment_received.
+ * Overlap is only checked when a start_time is set — an "all day, time TBC" prebooking
+ * has nothing to compare against a defaulted 1-hour slot for.
  */
 function buildPrebookingCalendarSummary(array $data, string $pickup, string $destination): string
 {
     global $pdo;
 
     $transportIcon = resolveTransportIcon($pickup, $destination);
-    $icons = '';
+    $overlapIcon = '';
 
     if (!empty($data['start_time']) && !empty($data['trip_date'])) {
         $tz = new DateTimeZone(defined('TIME_ZONE') ? TIME_ZONE : 'UTC');
@@ -205,15 +203,17 @@ function buildPrebookingCalendarSummary(array $data, string $pickup, string $des
         $end->modify('+1 hour');
         $overlaps = getOverlapsForCandidateSlot($pdo, $data['trip_date'], $start->format('H:i:s'), $end->format('H:i:s'));
         if (!empty($overlaps)) {
-            $icons .= '⚠️';
+            $overlapIcon = '⚠️';
         }
     }
 
-    if (!empty($data['driver_id'])) {
-        $icons .= '👤';
-    }
+    $driverIcon = !empty($data['driver_id']) ? '👤' : '';
 
-    return '📋 TENTATIVE: ' . $transportIcon . ' ' . $data['client_name'] . ($icons !== '' ? ' ' . $icons : '');
+    $icons = $transportIcon
+        . ($overlapIcon !== '' ? ' ' . $overlapIcon : '')
+        . ($driverIcon !== '' ? ' ' . $driverIcon : '');
+
+    return '📋 TENTATIVE: ' . $icons . ' ' . $data['client_name'];
 }
 
 /**
