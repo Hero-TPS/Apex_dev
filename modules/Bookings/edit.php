@@ -90,6 +90,19 @@ if (isset($_GET['id'])) {
                 </select>
             </div>
             <input type="hidden" id="phone" name="phone" value="">
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="passengerName">Picking Up (if not the client)</label>
+                    <input type="text" id="passengerName" name="passenger_name" placeholder="Name of person being collected"
+                        value="<?php echo htmlspecialchars($booking['passenger_name'] ?? ''); ?>">
+                </div>
+                <div class="form-group">
+                    <label for="passengerPhone">Passenger Phone</label>
+                    <input type="tel" id="passengerPhone" name="passenger_phone"
+                        value="<?php echo htmlspecialchars($booking['passenger_phone'] ?? ''); ?>">
+                </div>
+            </div>
             <div class="form-row">
                 <div class="form-group">
                     <label for="date">Trip Date <span class="required">*</span></label>
