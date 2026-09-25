@@ -149,12 +149,41 @@ function buildWhatsAppUrl(string $phone, string $message): string
 }
 
 /**
+ * Builds a "👤 Picking up: ..." WhatsApp message line for the passenger, shown
+ * only when passenger_name is filled AND differs (case-insensitive, trimmed)
+ * from the client's own name — i.e. only when someone other than the booking
+ * contact is actually being collected. Adds passenger_phone as a sub-line
+ * when present. Returns '' when there's nothing to show.
+ * Used by: createWhatsAppMessage(), createEveningConfirmationMessage(),
+ *          createDriverBookingMessage()
+ *
+ * @param array $bookingDetails  May contain: passenger_name, passenger_phone, client_name
+ */
+function buildPassengerInfoLine(array $bookingDetails): string
+{
+    $passengerName = trim($bookingDetails['passenger_name'] ?? '');
+    $clientName = trim($bookingDetails['client_name'] ?? '');
+
+    if ($passengerName === '' || strcasecmp($passengerName, $clientName) === 0) {
+        return '';
+    }
+
+    $line = "👤 Picking up: " . $passengerName . "\n";
+    $passengerPhone = trim($bookingDetails['passenger_phone'] ?? '');
+    if ($passengerPhone !== '') {
+        $line .= "📱 Passenger phone: " . $passengerPhone . "\n";
+    }
+
+    return $line;
+}
+
+/**
  * Build the WhatsApp evening confirmation message for tomorrow's booking.
  * Used by: modules/Bookings/api/index.php (tomorrows_bookings, mark_confirmed)
  *
  * @param array $bookingDetails  Must contain: client_name, trip_date, start_time,
  *                               pickup_location, destination.
- *                               Optional: driver_name, driver_phone
+ *                               Optional: driver_name, driver_phone, passenger_name, passenger_phone
  */
 function createEveningConfirmationMessage(array $bookingDetails): string
 {
@@ -171,12 +200,15 @@ function createEveningConfirmationMessage(array $bookingDetails): string
         }
     }
 
+    $passengerInfo = buildPassengerInfoLine($bookingDetails);
+
     return "Good day " . $bookingDetails['client_name'] . "! 👋\n\n" .
         "Just confirming your booking for tomorrow:\n\n" .
         "📅 Date: " . $forDate . "\n" .
         "🕐 Pickup Time: " . $forTime . "\n" .
         "📍 From: " . $bookingDetails['pickup_location'] . "\n" .
         "🎯 To: " . $bookingDetails['destination'] . "\n" .
+        $passengerInfo .
         $driverLine .
         "\nSee you tomorrow! 🚗";
 }
@@ -190,7 +222,7 @@ function createEveningConfirmationMessage(array $bookingDetails): string
  * @param array $bookingDetails  Must contain: trip_date, start_time, client_name,
  *                               pickup_location, destination, cost, and optionally
  *                               flight_number, description, updated_at, date_created,
- *                               driver_name, driver_phone
+ *                               driver_name, driver_phone, passenger_name, passenger_phone
  */
 function createWhatsAppMessage(PDO $pdo, array $bookingDetails): string
 {
@@ -210,6 +242,8 @@ function createWhatsAppMessage(PDO $pdo, array $bookingDetails): string
     $displayNotes = appendAfterHoursNotice($bookingDetails['after_hours_charge'] ?? null, $displayNotes);
     $notesInfo = !empty($displayNotes)
         ? "📝 Notes: " . $displayNotes . "\n" : '';
+
+    $passengerInfo = buildPassengerInfoLine($bookingDetails);
 
     $driverInfo = '';
     if (!empty($bookingDetails['driver_name'])) {
@@ -237,6 +271,7 @@ function createWhatsAppMessage(PDO $pdo, array $bookingDetails): string
         "📍 Pickup: " . $bookingDetails['pickup_location'] . "\n" .
         "📅 Date: " . $forDate . " at " . $startTime . "\n" .
         "🎯 Destination: " . $bookingDetails['destination'] . "\n" .
+        $passengerInfo .
         $costInfo .
         $paymentReceivedInfo .
         $flightInfo .
@@ -594,7 +629,8 @@ function calculateTripDistanceKm(string $origin, string $destination): ?float
  *
  * @param array $bookingDetails  Must contain: trip_date, start_time, client_name,
  *                               pickup_location, destination, cost, payment_method,
- *                               driver_name, and optionally booking_fee
+ *                               driver_name, and optionally booking_fee, flight_number,
+ *                               passenger_name, passenger_phone
  */
 function createDriverBookingMessage(array $bookingDetails): string
 {
@@ -618,8 +654,12 @@ function createDriverBookingMessage(array $bookingDetails): string
     if (!empty($bookingDetails['client_phone'])) {
         $msg .= "📱 Client phone: " . $bookingDetails['client_phone'] . "\n";
     }
+    $msg .= buildPassengerInfoLine($bookingDetails);
     $msg .= "📍 Pickup: " . ($bookingDetails['pickup_location'] ?? '') . "\n";
     $msg .= "🎯 Destination: " . ($bookingDetails['destination'] ?? '') . "\n";
+    if (!empty($bookingDetails['flight_number'])) {
+        $msg .= "✈️ Flight Number: " . $bookingDetails['flight_number'] . "\n";
+    }
     $msg .= "💰 Trip Cost: R" . number_format($cost, 2) . "\n";
 
     if ($noBookingFee) {
