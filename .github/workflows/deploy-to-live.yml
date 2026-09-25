@@ -1,3 +1,4 @@
+# .github/workflows/deploy-to-live.yml
 name: Deploy to Live
 
 on:
@@ -20,7 +21,7 @@ jobs:
 
       - name: Prepare deploy files
         run: |
-          rsync -av --progress dev/ deploy/ \
+          rsync -av --checksum --progress dev/ deploy/ \
             --exclude='.git/' \
             --exclude='.github/' \
             --exclude='.gitignore' \
@@ -38,7 +39,7 @@ jobs:
 
       - name: Sync files to live repo
         run: |
-          rsync -av --delete --progress deploy/ live/ \
+          rsync -av --checksum --delete --progress deploy/ live/ \
             --exclude='.git/' \
             --exclude='.github/' \
             --exclude='config.php'
