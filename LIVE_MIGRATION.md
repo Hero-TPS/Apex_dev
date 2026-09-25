@@ -37,8 +37,8 @@ ALTER TABLE contacts
 
 ### [bookings] Add `passenger_name` and `passenger_phone` columns
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 ```sql
 ALTER TABLE bookings
