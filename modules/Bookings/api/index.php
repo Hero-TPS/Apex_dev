@@ -256,6 +256,8 @@ function handleAddBooking()
         }
 
         $flight_number = $_POST['flight_number'] ?? '';
+        $passenger_name = trim($_POST['passenger_name'] ?? '') ?: null;
+        $passenger_phone = trim($_POST['passenger_phone'] ?? '') ?: null;
         $description = $_POST['description'] ?? '';
         $driver_id = intval($_POST['driver_id'] ?? 0) ?: null;
         $no_booking_fee = isset($_POST['no_booking_fee']) ? 1 : 0;
@@ -329,8 +331,9 @@ function handleAddBooking()
                 contact_id, trip_date, start_time, end_time,
                 original_pickup, original_destination, was_swapped, cost, payment_method, payment_received,
                 flight_number, description, driver_id, booking_fee, no_booking_fee, driver_notes,
-                pickup_is_custom, distance_km, is_round_trip, after_hours_charge
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                pickup_is_custom, distance_km, is_round_trip, after_hours_charge,
+                passenger_name, passenger_phone
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -353,7 +356,9 @@ function handleAddBooking()
             $pickup_is_custom,
             $distance_km,
             $is_round_trip,
-            $after_hours_charge
+            $after_hours_charge,
+            $passenger_name,
+            $passenger_phone
         ]);
 
         $booking_id = $pdo->lastInsertId();
@@ -518,6 +523,8 @@ function handleUpdateBooking()
             $cost = trim($_REQUEST['cost'] ?? '');
             $other_cost = trim($_REQUEST['other_cost'] ?? '');
             $flight_number = trim($_REQUEST['flight_number'] ?? '');
+            $passenger_name = trim($_REQUEST['passenger_name'] ?? '') ?: null;
+            $passenger_phone = trim($_REQUEST['passenger_phone'] ?? '') ?: null;
             $description_input = trim($_REQUEST['description'] ?? '');
             $payment_method = trim($_REQUEST['payment_method'] ?? 'cash');
             $payment_received = isset($_REQUEST['payment_received']) && $_REQUEST['payment_received'] == '1' ? 1 : 0;
@@ -613,6 +620,7 @@ function handleUpdateBooking()
                 cost = ?, flight_number = ?, description = ?, payment_method = ?, payment_received = ?,
                 driver_id = ?, booking_fee = ?, no_booking_fee = ?, driver_notes = ?,
                 pickup_is_custom = ?, distance_km = ?, is_round_trip = ?, after_hours_charge = ?,
+                passenger_name = ?, passenger_phone = ?,
                 last_confirmed_at = NULL,
                 updated_at = NOW()
             WHERE id = ?";
@@ -639,6 +647,8 @@ function handleUpdateBooking()
                 $distance_km,
                 $is_round_trip,
                 $after_hours_charge,
+                $passenger_name,
+                $passenger_phone,
                 $booking_id
             ]);
 
@@ -1010,7 +1020,7 @@ function handleTomorrowsBookings()
     try {
         $sql = "
             SELECT b.id, b.trip_date, b.start_time, b.original_pickup, b.original_destination,
-                   b.was_swapped, b.cost, b.last_confirmed_at,
+                   b.was_swapped, b.cost, b.last_confirmed_at, b.passenger_name, b.passenger_phone,
                    c.name AS client_name, c.phone AS client_phone
             FROM bookings b
             JOIN contacts c ON b.contact_id = c.id
