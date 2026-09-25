@@ -35,6 +35,21 @@ ALTER TABLE contacts
 
 ---
 
+### [bookings] Add `passenger_name` and `passenger_phone` columns
+
+- [ ] Done on dev
+- [ ] Done on live
+
+```sql
+ALTER TABLE bookings
+    ADD COLUMN IF NOT EXISTS passenger_name VARCHAR(150) NULL,
+    ADD COLUMN IF NOT EXISTS passenger_phone VARCHAR(30) NULL;
+```
+
+> Optional fields on Add/Edit Booking for when the person being picked up isn't the client who made the booking. When `passenger_name` is filled and differs from the client's own name, a "👤 Picking up: ..." line (plus phone, if given) is added to the client WhatsApp confirmation, the evening reminder, and the driver message (`buildPassengerInfoLine()`, `createWhatsAppMessage()`, `createEveningConfirmationMessage()`, `createDriverBookingMessage()` in `includes/helpers.php`). The driver message also now includes the booking's flight number, if set.
+
+---
+
 **Notes:**
 - Each entry requires two checkboxes: **Done on dev** and **Done on live**
 - Always run on dev first and verify before running on live
