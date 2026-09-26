@@ -60,6 +60,19 @@ $showOtherCost = $savedCost !== '' && !$costInList;
             <input type="text" value="<?= e($prebooking['client_name']) ?>" disabled>
         </div>
 
+        <div class="form-row">
+            <div class="form-group">
+                <label for="passengerName">Picking Up (if not the client)</label>
+                <input type="text" id="passengerName" name="passenger_name" placeholder="Name of person being collected"
+                    value="<?= e($prebooking['passenger_name'] ?? '') ?>">
+            </div>
+            <div class="form-group">
+                <label for="passengerPhone">Passenger Phone</label>
+                <input type="tel" id="passengerPhone" name="passenger_phone"
+                    value="<?= e($prebooking['passenger_phone'] ?? '') ?>">
+            </div>
+        </div>
+
         <div class="form-group">
             <label for="trip_date">Date <span class="required">*</span></label>
             <input type="date" id="trip_date" name="trip_date"
@@ -221,6 +234,8 @@ $showOtherCost = $savedCost !== '' && !$costInList;
                     swap_locations:       $('#swapLocations').is(':checked') ? '1' : '',
                     cost:                 costVal,
                     description:          $('#description').val().trim(),
+                    passenger_name:       $('#passengerName').val().trim(),
+                    passenger_phone:      $('#passengerPhone').val().trim(),
                 },
                 dataType: 'json',
                 success: function (res) {
