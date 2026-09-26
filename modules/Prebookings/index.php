@@ -63,6 +63,8 @@ $prebookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     'was_swapped'          => $p['was_swapped'] ?? 0,
                     'cost'                 => $p['cost'] ?? '',
                     'description'          => $p['description'] ?? '',
+                    'passenger_name'       => $p['passenger_name'] ?? '',
+                    'passenger_phone'      => $p['passenger_phone'] ?? '',
                 ]);
                 $waUrl = $waPhone ? buildWhatsAppUrl($p['client_phone'], $waMsg) : '#';
             ?>
