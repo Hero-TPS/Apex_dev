@@ -111,6 +111,17 @@ if (isset($_GET['id'])) {
         <div class="detail-item">
             <strong>Phone:</strong> <?= htmlspecialchars($booking['client_phone']) ?>
         </div>
+        <?php
+        $passengerName = trim($booking['passenger_name'] ?? '');
+        $showPassenger = $passengerName !== '' && strcasecmp($passengerName, trim($booking['client_name'] ?? '')) !== 0;
+        ?>
+        <?php if ($showPassenger): ?>
+        <div class="detail-item full-width">
+            <strong>Picking Up:</strong> <?= htmlspecialchars($passengerName) ?><?php if (!empty($booking['passenger_phone'])): ?>
+                — <?= htmlspecialchars($booking['passenger_phone']) ?>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
         <div class="detail-item">
             <strong>Date:</strong> <?= date('d M Y', strtotime($booking['trip_date'])) ?>
         </div>
