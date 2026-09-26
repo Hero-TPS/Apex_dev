@@ -30,6 +30,17 @@ $timeOptions  = generateTimeOptions();
             <input type="hidden" id="contact_id" name="contact_id" required>
         </div>
 
+        <div class="form-row">
+            <div class="form-group">
+                <label for="passengerName">Picking Up (if not the client)</label>
+                <input type="text" id="passengerName" name="passenger_name" placeholder="Name of person being collected">
+            </div>
+            <div class="form-group">
+                <label for="passengerPhone">Passenger Phone</label>
+                <input type="tel" id="passengerPhone" name="passenger_phone">
+            </div>
+        </div>
+
         <div class="form-group">
             <label for="trip_date">Date <span class="required">*</span></label>
             <input type="date" id="trip_date" name="trip_date" required>
@@ -262,6 +273,8 @@ $(document).ready(function () {
             swap_locations:       $('#swapLocations').is(':checked') ? '1' : '',
             cost:                 costVal,
             description:          $('#description').val().trim(),
+            passenger_name:       $('#passengerName').val().trim(),
+            passenger_phone:      $('#passengerPhone').val().trim(),
         };
 
         $.ajax({
