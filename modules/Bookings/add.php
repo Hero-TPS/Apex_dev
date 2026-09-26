@@ -48,6 +48,8 @@ $prefill_destination  = isset($_GET['destination'])    ? htmlspecialchars(urldec
 $prefill_swap         = isset($_GET['swap_locations']) && $_GET['swap_locations'] === '1';
 $prefill_cost         = isset($_GET['cost'])           ? htmlspecialchars(urldecode($_GET['cost']))           : '';
 $prefill_description  = isset($_GET['description'])    ? htmlspecialchars(urldecode($_GET['description']))    : '';
+$prefill_passenger_name  = isset($_GET['passenger_name'])  ? htmlspecialchars(urldecode($_GET['passenger_name']))  : '';
+$prefill_passenger_phone = isset($_GET['passenger_phone']) ? htmlspecialchars(urldecode($_GET['passenger_phone'])) : '';
 $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_prebooking'] : 0;
 ?>
 
@@ -74,11 +76,13 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
         <div class="form-row">
             <div class="form-group">
                 <label for="passengerName">Picking Up (if not the client)</label>
-                <input type="text" id="passengerName" name="passenger_name" placeholder="Name of person being collected">
+                <input type="text" id="passengerName" name="passenger_name" placeholder="Name of person being collected"
+                    value="<?= $prefill_passenger_name ?>">
             </div>
             <div class="form-group">
                 <label for="passengerPhone">Passenger Phone</label>
-                <input type="tel" id="passengerPhone" name="passenger_phone">
+                <input type="tel" id="passengerPhone" name="passenger_phone"
+                    value="<?= $prefill_passenger_phone ?>">
             </div>
         </div>
 
