@@ -283,28 +283,6 @@ function createWhatsAppMessage(PDO $pdo, array $bookingDetails): string
 }
 
 
-/**
- * Build the WA cleanup/re-engagement message for clients without bookings.
- * Sent during the Phase 1 client list cleanup campaign.
- * The message text can be edited here — no form needed.
- *
- * NOTE: The Clients view builds the equivalent message in JavaScript (client-side)
- * so that it can be opened directly as a wa.me link. This PHP function is provided
- * for Phase 2 server-side use (e.g. batch list generation, previews).
- *
- * @param string $clientName  The client's display name
- */
-function createCleanupWhatsAppMessage(string $clientName): string
-{
-    return "Hi " . $clientName . " 👋 André Matthews suggested I reach out to you.\n\n" .
-        "I'm " . BUSINESS_OWNER . " from " . BUSINESS_NAME . " — I've taken over his personal transport services in the Helderberg area since he retired.\n\n" .
-        "Just checking whether transport is something you still need from time to time. I'd be happy to assist if so.\n\n" .
-        "This is a once-off message — I won't follow up unless I hear from you.\n\n" .
-        "Kind regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
-    // ======================================================
-}
-
-
 
 /**
  * Build a WhatsApp reminder message for a prebooking.
@@ -355,6 +333,75 @@ function createPrebookingWhatsAppMessage(array $prebookingDetails): string
         $notesLine .
         "\nPlease let us know when you have all the details so we can finalise your booking. 😊\n\n" .
         "Regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
+}
+
+/**
+ * Build the WhatsApp message to send to an allocated driver about a booking.
+ * Used by: modules/Bookings/view.php
+ *
+ * @param array $bookingDetails  Must contain: trip_date, start_time, client_name,
+ *                               pickup_location, destination, cost, payment_method,
+ *                               driver_name, and optionally booking_fee, flight_number,
+ *                               passenger_name, passenger_phone
+ */
+function createDriverBookingMessage(array $bookingDetails): string
+{
+    $timezone = new DateTimeZone(TIME_ZONE);
+    $start = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time'], $timezone);
+    $forDate = $start->format('d/m/y');
+    $forTime = $start->format('H:i');
+
+    $driverName = $bookingDetails['driver_name'] ?? 'Driver';
+    $cost = (float) ($bookingDetails['cost'] ?? 0);
+    $isEft = ($bookingDetails['payment_method'] === 'eft');
+    $noBookingFee = !empty($bookingDetails['no_booking_fee']);
+    $bookingFee = (!$noBookingFee && isset($bookingDetails['booking_fee']) && $bookingDetails['booking_fee'] !== null)
+        ? (float) $bookingDetails['booking_fee']
+        : null;
+
+    $msg = "Good day " . $driverName . "! 🚗\n\n";
+    $msg .= "You have a booking allocated to you:\n\n";
+    $msg .= "📅 Date: " . $forDate . " at " . $forTime . "\n";
+    $msg .= "👤 Client: " . ($bookingDetails['client_name'] ?? '') . "\n";
+    if (!empty($bookingDetails['client_phone'])) {
+        $msg .= "📱 Client phone: " . $bookingDetails['client_phone'] . "\n";
+    }
+    $msg .= buildPassengerInfoLine($bookingDetails);
+    $msg .= "📍 Pickup: " . ($bookingDetails['pickup_location'] ?? '') . "\n";
+    $msg .= "🎯 Destination: " . ($bookingDetails['destination'] ?? '') . "\n";
+    if (!empty($bookingDetails['flight_number'])) {
+        $msg .= "✈️ Flight Number: " . $bookingDetails['flight_number'] . "\n";
+    }
+    $msg .= "💰 Trip Cost: R" . number_format($cost, 2) . "\n";
+
+    if ($noBookingFee) {
+        $msg .= "\n✅ No booking fee — full amount goes to you.\n";
+        if ($isEft) {
+            $msg .= "📲 This is an EFT booking with no booking fee. Apex Transit will pay you R" . number_format($cost, 2) . " once payment is received from the client.\n";
+        } else {
+            $msg .= "💵 This is a cash booking with no booking fee. No payment due to Apex Transit\n";
+        }
+    } elseif ($bookingFee !== null && $bookingFee > 0) {
+        $msg .= "💼 Apex Booking Fee: R" . number_format($bookingFee, 2) . "\n";
+        if ($isEft) {
+            $netAmount = $cost - $bookingFee;
+            $msg .= "\n📲 This is an EFT booking. Apex Transit will pay you R" . number_format($netAmount, 2) . " (after deducting the booking fee) once payment is received from the client.\n";
+        } else {
+            $msg .= "\n💵 This is a cash booking. Please pay Apex Transit the booking fee of R" . number_format($bookingFee, 2) . ".\n";
+        }
+    } elseif ($isEft) {
+        $msg .= "\n📲 This is an EFT booking.\n";
+    } else {
+        $msg .= "\n💵 This is a cash booking.\n";
+    }
+
+    if (!empty($bookingDetails['driver_notes'])) {
+        $msg .= "\n📝 Notes: " . $bookingDetails['driver_notes'] . "\n";
+    }
+
+    $msg .= "\nThank you! 🙏";
+    $msg .= "\nDrive safe! 🚗";
+    return $msg;
 }
 
 
@@ -622,75 +669,6 @@ function calculateTripDistanceKm(string $origin, string $destination): ?float
 
     return round($element['distance']['value'] / 1000, 1);
 }
-
-/**
- * Build the WhatsApp message to send to an allocated driver about a booking.
- * Used by: modules/Bookings/view.php
- *
- * @param array $bookingDetails  Must contain: trip_date, start_time, client_name,
- *                               pickup_location, destination, cost, payment_method,
- *                               driver_name, and optionally booking_fee, flight_number,
- *                               passenger_name, passenger_phone
- */
-function createDriverBookingMessage(array $bookingDetails): string
-{
-    $timezone = new DateTimeZone(TIME_ZONE);
-    $start = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time'], $timezone);
-    $forDate = $start->format('d/m/y');
-    $forTime = $start->format('H:i');
-
-    $driverName = $bookingDetails['driver_name'] ?? 'Driver';
-    $cost = (float) ($bookingDetails['cost'] ?? 0);
-    $isEft = ($bookingDetails['payment_method'] === 'eft');
-    $noBookingFee = !empty($bookingDetails['no_booking_fee']);
-    $bookingFee = (!$noBookingFee && isset($bookingDetails['booking_fee']) && $bookingDetails['booking_fee'] !== null)
-        ? (float) $bookingDetails['booking_fee']
-        : null;
-
-    $msg = "Good day " . $driverName . "! 🚗\n\n";
-    $msg .= "You have a booking allocated to you:\n\n";
-    $msg .= "📅 Date: " . $forDate . " at " . $forTime . "\n";
-    $msg .= "👤 Client: " . ($bookingDetails['client_name'] ?? '') . "\n";
-    if (!empty($bookingDetails['client_phone'])) {
-        $msg .= "📱 Client phone: " . $bookingDetails['client_phone'] . "\n";
-    }
-    $msg .= buildPassengerInfoLine($bookingDetails);
-    $msg .= "📍 Pickup: " . ($bookingDetails['pickup_location'] ?? '') . "\n";
-    $msg .= "🎯 Destination: " . ($bookingDetails['destination'] ?? '') . "\n";
-    if (!empty($bookingDetails['flight_number'])) {
-        $msg .= "✈️ Flight Number: " . $bookingDetails['flight_number'] . "\n";
-    }
-    $msg .= "💰 Trip Cost: R" . number_format($cost, 2) . "\n";
-
-    if ($noBookingFee) {
-        $msg .= "\n✅ No booking fee — full amount goes to you.\n";
-        if ($isEft) {
-            $msg .= "📲 This is an EFT booking with no booking fee. Apex Transit will pay you after payment received from client.\n";
-        } else {
-            $msg .= "💵 This is a cash booking with no booking fee. No payment due to Apex Transit\n";
-        }
-    } elseif ($bookingFee !== null && $bookingFee > 0) {
-        $msg .= "💼 Apex Booking Fee: R" . number_format($bookingFee, 2) . "\n";
-        if ($isEft) {
-            $msg .= "\n📲 This is an EFT booking. Apex Transit will pay you after deducting the booking fee and payment received from client.\n";
-        } else {
-            $msg .= "\n💵 This is a cash booking. Please pay Apex Transit the booking fee of R" . number_format($bookingFee, 2) . ".\n";
-        }
-    } elseif ($isEft) {
-        $msg .= "\n📲 This is an EFT booking.\n";
-    } else {
-        $msg .= "\n💵 This is a cash booking.\n";
-    }
-
-    if (!empty($bookingDetails['driver_notes'])) {
-        $msg .= "\n📝 Notes: " . $bookingDetails['driver_notes'] . "\n";
-    }
-
-    $msg .= "\nThank you! 🙏";
-    $msg .= "\nDrive safe! 🚗";
-    return $msg;
-}
-
 
 // --- OUTPUT HELPERS ---
 
