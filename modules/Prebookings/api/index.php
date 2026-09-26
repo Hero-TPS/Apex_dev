@@ -106,6 +106,8 @@ function handleList()
                     'was_swapped'          => $row['was_swapped'] ?? 0,
                     'cost'                 => $row['cost'] ?? '',
                     'description'          => $row['description'] ?? '',
+                    'passenger_name'       => $row['passenger_name'] ?? '',
+                    'passenger_phone'      => $row['passenger_phone'] ?? '',
                 ])),
             ];
         }
@@ -129,6 +131,8 @@ function handleAdd()
     $originalDest = trim($_POST['original_destination'] ?? '');
     $cost         = trim($_POST['cost'] ?? '');
     $description  = trim($_POST['description'] ?? '');
+    $passengerName  = trim($_POST['passenger_name'] ?? '') ?: null;
+    $passengerPhone = trim($_POST['passenger_phone'] ?? '') ?: null;
 
     if ($contactId <= 0) {
         jsonResponse(['success' => false, 'message' => 'Please select a client.'], 400);
@@ -153,10 +157,10 @@ function handleAdd()
         }
 
         $ins = $pdo->prepare("
-            INSERT INTO prebookings (contact_id, trip_date, start_time, original_pickup, original_destination, was_swapped, cost, description)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO prebookings (contact_id, trip_date, start_time, original_pickup, original_destination, was_swapped, cost, description, passenger_name, passenger_phone)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $ins->execute([$contactId, $tripDate, $startTimeVal, $pickupVal, $destVal, $wasSwapped, $costVal, $descVal]);
+        $ins->execute([$contactId, $tripDate, $startTimeVal, $pickupVal, $destVal, $wasSwapped, $costVal, $descVal, $passengerName, $passengerPhone]);
         $prebookingId = (int) $pdo->lastInsertId();
 
         reactivateContactIfArchived($pdo, $contactId);
@@ -205,6 +209,8 @@ function handleUpdate()
     $originalDest = trim($_POST['original_destination'] ?? '');
     $cost         = trim($_POST['cost'] ?? '');
     $description  = trim($_POST['description'] ?? '');
+    $passengerName  = trim($_POST['passenger_name'] ?? '') ?: null;
+    $passengerPhone = trim($_POST['passenger_phone'] ?? '') ?: null;
 
     if ($id <= 0) {
         jsonResponse(['success' => false, 'message' => 'Invalid prebooking ID.'], 400);
@@ -239,10 +245,10 @@ function handleUpdate()
         // Update the database record
         $upd = $pdo->prepare("
             UPDATE prebookings
-            SET trip_date = ?, start_time = ?, original_pickup = ?, original_destination = ?, was_swapped = ?, cost = ?, description = ?
+            SET trip_date = ?, start_time = ?, original_pickup = ?, original_destination = ?, was_swapped = ?, cost = ?, description = ?, passenger_name = ?, passenger_phone = ?
             WHERE id = ?
         ");
-        $upd->execute([$tripDate, $startTimeVal, $pickupVal, $destVal, $wasSwapped, $costVal, $descVal, $id]);
+        $upd->execute([$tripDate, $startTimeVal, $pickupVal, $destVal, $wasSwapped, $costVal, $descVal, $passengerName, $passengerPhone, $id]);
 
         // Update Google Calendar event if one exists
         $calData = [
@@ -361,6 +367,8 @@ function handleConvert()
             'swap_locations'  => !empty($pre['was_swapped']) ? '1' : '',
             'cost'            => $pre['cost'] ?? '',
             'description'     => $pre['description'] ?? '',
+            'passenger_name'  => $pre['passenger_name'] ?? '',
+            'passenger_phone' => $pre['passenger_phone'] ?? '',
             'from_prebooking' => $id,
         ], fn($v) => $v !== '' && $v !== null));
 
