@@ -37,8 +37,8 @@ ALTER TABLE contacts
 
 ### [bookings] Add `passenger_name` and `passenger_phone` columns
 
-- [x] Done on dev
-- [x] Done on live
+- [ ] Done on dev
+- [ ] Done on live
 
 ```sql
 ALTER TABLE bookings
@@ -47,6 +47,21 @@ ALTER TABLE bookings
 ```
 
 > Optional fields on Add/Edit Booking for when the person being picked up isn't the client who made the booking. When `passenger_name` is filled and differs from the client's own name, a "👤 Picking up: ..." line (plus phone, if given) is added to the client WhatsApp confirmation, the evening reminder, and the driver message (`buildPassengerInfoLine()`, `createWhatsAppMessage()`, `createEveningConfirmationMessage()`, `createDriverBookingMessage()` in `includes/helpers.php`). The driver message also now includes the booking's flight number, if set.
+
+---
+
+### [prebookings] Add `passenger_name` and `passenger_phone` columns
+
+- [x] Done on dev
+- [x] Done on live
+
+```sql
+ALTER TABLE prebookings
+    ADD COLUMN IF NOT EXISTS passenger_name VARCHAR(150) NULL,
+    ADD COLUMN IF NOT EXISTS passenger_phone VARCHAR(30) NULL;
+```
+
+> Same optional "picking up someone else" fields as on Bookings, now on Add/Edit Prebooking too, shown in the prebooking WhatsApp reminder message (`createPrebookingWhatsAppMessage()` in `includes/helpers.php`) via the same `buildPassengerInfoLine()` helper. Carried over automatically when a prebooking is converted to a booking (`handleConvert()` in `modules/Prebookings/api/index.php` now passes both fields through to `modules/Bookings/add.php` as prefill query params).
 
 ---
 
