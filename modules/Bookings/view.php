@@ -141,21 +141,12 @@ if (isset($_GET['id'])) {
         <div class="detail-item">
             <strong>Cost:</strong> R <?= number_format((float) $booking['cost'], 2) ?>
         </div>
-        <div class="detail-item">
-            <strong>Distance:</strong>
-            <?= $booking['distance_km'] !== null ? number_format((float) $booking['distance_km'], 1) . ' km' : '—' ?>
-            <?= !empty($booking['is_round_trip']) ? ' (round trip)' : '' ?>
-        </div>
         <?php
             $viewRatePerKm = (float) getSystemVariable($pdo, 'rate_per_km');
-            if ($booking['distance_km'] !== null && $viewRatePerKm > 0):
-                $viewCalculatedCost = (float) $booking['distance_km'] * $viewRatePerKm;
+            $viewCalculatedCost = ($booking['distance_km'] !== null && $viewRatePerKm > 0)
+                ? (float) $booking['distance_km'] * $viewRatePerKm
+                : null;
         ?>
-        <div class="detail-item">
-            <strong>Calculated Cost (@ R<?= number_format($viewRatePerKm, 2) ?>/km):</strong>
-            R <?= number_format($viewCalculatedCost, 2) ?>
-        </div>
-        <?php endif; ?>
         <?php if (!empty($booking['earmarked_rent']) || !empty($booking['earmarked_debt'])): ?>
         <div class="detail-item">
             <strong>Earmarked:</strong>
@@ -189,30 +180,10 @@ if (isset($_GET['id'])) {
         <div class="detail-item full-width">
             <strong>Notes:</strong> <?= nl2br(htmlspecialchars(appendAfterHoursNotice($booking['after_hours_charge'] ?? null, appendAirportPickupNotice($pdo, $booking['pickup_location'], $booking['description'])) ?: 'None')) ?>
         </div>
-        <div class="detail-item" id="status-display">
-            <strong>Status:</strong>
-            <?= $booking['status'] === 'completed' ? '✅ Completed' : '⏳ Confirmed' ?>
-        </div>
         <?php if (!empty($booking['driver_name'])): ?>
         <div class="detail-item">
             <strong>Driver:</strong> 🚗 <?= htmlspecialchars($booking['driver_name']) ?>
         </div>
-        <?php endif; ?>
-        <div class="detail-item">
-            <strong>Created:</strong>
-            <?php
-            $createdDate = new DateTime($booking['date_created'], new DateTimeZone(TIME_ZONE));
-            echo $createdDate->format('d/m/Y H:i');
-            ?>
-        </div>
-        <?php if (!empty($booking['updated_at'])): ?>
-            <div class="detail-item">
-                <strong>Last Updated:</strong>
-                <?php
-                $updatedDate = new DateTime($booking['updated_at'], new DateTimeZone(TIME_ZONE));
-                echo $updatedDate->format('d/m/Y H:i');
-                ?>
-            </div>
         <?php endif; ?>
 
         <!-- Gate Code -->
@@ -357,6 +328,46 @@ if (isset($_GET['id'])) {
         <div id="msg-history-section" class="section-content">
             <div id="msg-history-loading">Loading...</div>
             <div id="msg-history-list"></div>
+        </div>
+    </div>
+
+    <!-- More Info -->
+    <div class="menu-section">
+        <h3 class="menu-toggle" data-target="more-info-section">ℹ️ More Info</h3>
+        <div id="more-info-section" class="section-content--padded">
+            <div class="booking-detail-grid">
+                <div class="detail-item">
+                    <strong>Distance:</strong>
+                    <?= $booking['distance_km'] !== null ? number_format((float) $booking['distance_km'], 1) . ' km' : '—' ?>
+                    <?= !empty($booking['is_round_trip']) ? ' (round trip)' : '' ?>
+                </div>
+                <?php if ($viewCalculatedCost !== null): ?>
+                <div class="detail-item">
+                    <strong>Calculated Cost (@ R<?= number_format($viewRatePerKm, 2) ?>/km):</strong>
+                    R <?= number_format($viewCalculatedCost, 2) ?>
+                </div>
+                <?php endif; ?>
+                <div class="detail-item" id="status-display">
+                    <strong>Status:</strong>
+                    <?= $booking['status'] === 'completed' ? '✅ Completed' : '⏳ Confirmed' ?>
+                </div>
+                <div class="detail-item">
+                    <strong>Created:</strong>
+                    <?php
+                    $createdDate = new DateTime($booking['date_created'], new DateTimeZone(TIME_ZONE));
+                    echo $createdDate->format('d/m/Y H:i');
+                    ?>
+                </div>
+                <?php if (!empty($booking['updated_at'])): ?>
+                    <div class="detail-item">
+                        <strong>Last Updated:</strong>
+                        <?php
+                        $updatedDate = new DateTime($booking['updated_at'], new DateTimeZone(TIME_ZONE));
+                        echo $updatedDate->format('d/m/Y H:i');
+                        ?>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 
@@ -529,6 +540,11 @@ if (isset($_GET['id'])) {
             $('.menu-toggle[data-target="more-actions-section"]').on('click', function () {
                 var section = $('#more-actions-section');
                 section.slideToggle(200);
+            });
+
+            // More Info section toggle
+            $('.menu-toggle[data-target="more-info-section"]').on('click', function () {
+                $('#more-info-section').slideToggle(200);
             });
 
             // Manage Driver section toggle
