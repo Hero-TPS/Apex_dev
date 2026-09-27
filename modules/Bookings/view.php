@@ -321,15 +321,6 @@ if (isset($_GET['id'])) {
             </div>
         </div>
     </div>
-    
-    <!-- Message History -->
-    <div class="menu-section">
-        <h3 class="menu-toggle" data-target="msg-history-section">📨 Message History</h3>
-        <div id="msg-history-section" class="section-content">
-            <div id="msg-history-loading">Loading...</div>
-            <div id="msg-history-list"></div>
-        </div>
-    </div>
 
     <!-- More Info -->
     <div class="menu-section">
@@ -368,6 +359,15 @@ if (isset($_GET['id'])) {
                     </div>
                 <?php endif; ?>
             </div>
+        </div>
+    </div>
+
+    <!-- Message History -->
+    <div class="menu-section">
+        <h3 class="menu-toggle" data-target="msg-history-section">📨 Message History</h3>
+        <div id="msg-history-section" class="section-content">
+            <div id="msg-history-loading">Loading...</div>
+            <div id="msg-history-list"></div>
         </div>
     </div>
 
