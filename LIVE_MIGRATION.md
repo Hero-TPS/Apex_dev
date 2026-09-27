@@ -37,8 +37,8 @@ ALTER TABLE contacts
 
 ### [bookings] Add `passenger_name` and `passenger_phone` columns
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 ```sql
 ALTER TABLE bookings
@@ -62,6 +62,20 @@ ALTER TABLE prebookings
 ```
 
 > Same optional "picking up someone else" fields as on Bookings, now on Add/Edit Prebooking too, shown in the prebooking WhatsApp reminder message (`createPrebookingWhatsAppMessage()` in `includes/helpers.php`) via the same `buildPassengerInfoLine()` helper. Carried over automatically when a prebooking is converted to a booking (`handleConvert()` in `modules/Prebookings/api/index.php` now passes both fields through to `modules/Bookings/add.php` as prefill query params).
+
+---
+
+### [fuel_logs] Add `vehicle_changed` column
+
+- [x] Done on dev
+- [x] Done on live
+
+```sql
+ALTER TABLE fuel_logs
+    ADD COLUMN IF NOT EXISTS vehicle_changed TINYINT(1) NOT NULL DEFAULT 0;
+```
+
+> A "🚙 Vehicle changed at this fill-up" checkbox on Add/Edit Fuel Log — a note that the odometer reset/jumped because a different vehicle was used, no calc changes. Shown as a 🚙 badge next to the date in the Fuel Log list. Also excluded from the recent-average used by the new trip-km sanity check on Add Fuel Log (`modules/Fuel/api/index.php`'s `get_recent_trip_avg` action) — a flagged entry's trip km is expected to be unrelated to the trend, so it shouldn't skew or trigger the warning for the next entry either.
 
 ---
 
