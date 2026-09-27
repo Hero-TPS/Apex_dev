@@ -1,4 +1,5 @@
 <?php
+// modules/Fuel/add.php
 $page_title = 'Log Fuel';
 $page_subtitle = 'Track fuel expenses';
 $show_breadcrumb = true;
@@ -24,6 +25,18 @@ $last_odo = 0;
 $stmt = $pdo->query("SELECT odo_km FROM fuel_logs ORDER BY id DESC LIMIT 1");
 if ($row = $stmt->fetch()) {
     $last_odo = $row['odo_km'];
+}
+
+// Recent trip-km average (last 10 fill-ups, excluding any flagged as a vehicle
+// change — a changed vehicle's trip is expected to be unrelated to the trend)
+// for the sanity-check warning below. Needs at least 3 to be meaningful.
+$recent_trip_avg = 0;
+$recent_trip_count = 0;
+$stmt = $pdo->query("SELECT trip_km FROM fuel_logs WHERE vehicle_changed = 0 ORDER BY id DESC LIMIT 10");
+$recentTrips = $stmt->fetchAll(PDO::FETCH_COLUMN);
+if (count($recentTrips) >= 3) {
+    $recent_trip_count = count($recentTrips);
+    $recent_trip_avg = array_sum($recentTrips) / $recent_trip_count;
 }
 ?>
 
@@ -70,6 +83,14 @@ if ($row = $stmt->fetch()) {
             </label>
         </div>
 
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="vehicle_changed" name="vehicle_changed" value="1">
+                🚙 Vehicle changed at this fill-up
+            </label>
+            <small style="color: #666; display: block; margin-top: 5px;">Check this if the odometer reading is from a different vehicle than your last fill-up.</small>
+        </div>
+
         <button type="submit" class="btn" id="submitBtn">💾 Save Log</button>
     </form>
     <div id="result"></div>
@@ -78,6 +99,8 @@ if ($row = $stmt->fetch()) {
 <script>
 $(document).ready(function() {
     const lastOdo = <?= $last_odo ?>;
+    const recentTripAvg = <?= (float) $recent_trip_avg ?>;
+    const recentTripCount = <?= (int) $recent_trip_count ?>;
 
     // Update helper text based on meter type
     function updateHelper() {
@@ -114,10 +137,30 @@ $(document).ready(function() {
         const fuelPrice = parseFloat($('#fuel_price').val());
         const totalCost = parseFloat($('#total_cost').val());
         const paymentMethod = $('#payment_method').is(':checked') ? 'eft' : 'cash';
+        const vehicleChanged = $('#vehicle_changed').is(':checked') ? 1 : 0;
 
         let calculatedTrip = 0;
         if (meterType === 'odo' && kmValue > lastOdo) {
             calculatedTrip = kmValue - lastOdo;
+        }
+
+        // Trip-km sanity check: warn (and require confirmation) if this fill's
+        // trip is way outside the recent average. Skipped when the vehicle
+        // just changed — a different vehicle's trip isn't comparable.
+        const effectiveTrip = (meterType === 'trip') ? kmValue : calculatedTrip;
+        if (!vehicleChanged && recentTripCount >= 3) {
+            const tooHigh = effectiveTrip > recentTripAvg * 1.75;
+            const tooLow  = effectiveTrip < recentTripAvg * 0.5;
+            if (tooHigh || tooLow) {
+                const msg = 'This trip (' + effectiveTrip.toFixed(1) + ' km) is ' +
+                    (tooHigh ? 'much higher' : 'much lower') +
+                    ' than your recent average (' + recentTripAvg.toFixed(1) + ' km over your last ' + recentTripCount + ' fill-ups).\n\n' +
+                    'Double-check the odometer/trip reading you entered.\n\n' +
+                    'Save anyway?';
+                if (!confirm(msg)) {
+                    return;
+                }
+            }
         }
 
         const submitBtn = $('#submitBtn');
@@ -136,7 +179,8 @@ $(document).ready(function() {
                 calculated_trip: calculatedTrip,
                 fuel_price: fuelPrice,
                 total_cost: totalCost,
-                payment_method: paymentMethod
+                payment_method: paymentMethod,
+                vehicle_changed: vehicleChanged
             },
             dataType: 'json',
             success: function(response) {
