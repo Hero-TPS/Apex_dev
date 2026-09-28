@@ -291,6 +291,10 @@ if ($lastOverrideId !== null) {
         `);
     }
 
+    function escapeHtml(str) {
+        return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
     function buildWeekBlock(log) {
         let costsHtml = '—';
         if (log.additional_costs && log.additional_costs.length > 0) {
@@ -335,6 +339,7 @@ if ($lastOverrideId !== null) {
                 <div class="metric-row"><span>Net This Week:</span><strong class="net-amount ${parseFloat(log.financials.net || 0) >= 0 ? 'profit' : 'loss'}">R${parseFloat(log.financials.net || 0).toFixed(2)}</strong></div>
                 <div class="metric-row"><span>Paid In:</span><span>R${parseFloat(log.financials.shortfall_paid || 0).toFixed(2)}</span></div>
                 ${balanceRowsHtml}
+                ${log.notes ? `<div class="metric-row"><span>Notes:</span><span class="at-uber-notes">${escapeHtml(log.notes)}</span></div>` : ''}
                 <div class="metric-row">
                     <span></span>
                     <span>
