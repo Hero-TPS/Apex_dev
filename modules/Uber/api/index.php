@@ -162,6 +162,7 @@ function handleAdd()
         $totalTrips    = intval($_POST['total_trips'] ?? 0);
         $totalTimeOnline = floatval($_POST['total_time_online'] ?? 0);
         $shortfallPaid      = floatval($_POST['shortfall_paid'] ?? 0);
+        $notes         = trim($_POST['notes'] ?? '') ?: null;
 
         // Additional costs come in as two parallel arrays: reasons[] and amounts[]
         $reasons = $_POST['cost_reasons'] ?? [];
@@ -187,10 +188,10 @@ function handleAdd()
         // Insert uber_income record
         $stmt = $pdo->prepare("
             INSERT INTO uber_income 
-            (week_start, week_end, total_income, cash_received, total_trips, total_time_online, shortfall_paid, created_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            (week_start, week_end, total_income, cash_received, total_trips, total_time_online, shortfall_paid, notes, created_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
-        $stmt->execute([$weekStart, $weekEnd, $totalIncome, $cashReceived, $totalTrips, $totalTimeOnline, $shortfallPaid]);
+        $stmt->execute([$weekStart, $weekEnd, $totalIncome, $cashReceived, $totalTrips, $totalTimeOnline, $shortfallPaid, $notes]);
 
         $uberIncomeId = $pdo->lastInsertId();
 
@@ -222,6 +223,7 @@ function handleUpdate()
         $totalTrips    = intval($_POST['total_trips'] ?? 0);
         $totalTimeOnline = floatval($_POST['total_time_online'] ?? 0);
         $shortfallPaid      = floatval($_POST['shortfall_paid'] ?? 0);
+        $notes         = trim($_POST['notes'] ?? '') ?: null;
 
         // Additional costs come in as two parallel arrays: reasons[] and amounts[]
         $reasons = $_POST['cost_reasons'] ?? [];
@@ -233,10 +235,10 @@ function handleUpdate()
 
         $stmt = $pdo->prepare("
             UPDATE uber_income 
-            SET total_income = ?, cash_received = ?, total_trips = ?, total_time_online = ?, shortfall_paid = ?
+            SET total_income = ?, cash_received = ?, total_trips = ?, total_time_online = ?, shortfall_paid = ?, notes = ?
             WHERE id = ?
         ");
-        $stmt->execute([$totalIncome, $cashReceived, $totalTrips, $totalTimeOnline, $shortfallPaid, $id]);
+        $stmt->execute([$totalIncome, $cashReceived, $totalTrips, $totalTimeOnline, $shortfallPaid, $notes, $id]);
 
         // Delete existing additional costs and re-save
         $pdo->prepare("DELETE FROM uber_additional_costs WHERE uber_income_id = ?")->execute([$id]);
