@@ -155,3 +155,11 @@
 .uber-since-correction-table tr:hover {
     background-color: #f5f5f5;
 }
+
+.at-uber-notes {
+    white-space: pre-wrap;
+    text-align: right;
+    max-width: 65%;
+    overflow-wrap: anywhere;
+}
+
