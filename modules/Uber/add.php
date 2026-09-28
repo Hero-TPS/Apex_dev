@@ -1,4 +1,5 @@
 <?php
+// modules/Uber/add.php
 $page_title = 'Log Uber Income';
 $page_subtitle = 'Log Weekly Uber Earnings';
 $show_breadcrumb = true;
@@ -110,6 +111,11 @@ $car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
             </div>
         </div>
 
+        <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea id="notes" name="notes" rows="3" placeholder="Optional comments about this week"></textarea>
+        </div>
+
         <button type="submit" class="btn" id="submitBtn">💾 Save Income</button>
     </form>
     <div id="result"></div>
@@ -198,6 +204,7 @@ $car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
                 total_trips: $('#total_trips').val(),
                 total_time_online: $('#total_time_online').val(),
                 shortfall_paid: $('#shortfall_paid').val(),
+                notes: $('#notes').val().trim(),
                 'cost_reasons[]': $('select[name="cost_reasons[]"]').map(function () { return $(this).val(); }).get(),
                 'cost_amounts[]': $('input[name="cost_amounts[]"]').map(function () { return $(this).val(); }).get()
             };
