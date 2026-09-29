@@ -96,6 +96,7 @@ if ($lastOverrideId !== null) {
             'shortfall_paid'  => $fin['shortfall_paid'],
             'balance'         => $balEntry['balance'],
             'is_override'     => $balEntry['is_override'],
+            'notes'           => $wr['notes'] ?? null,
         ];
     }
 }
@@ -225,11 +226,12 @@ if ($lastOverrideId !== null) {
         doc.setFontSize(14);
         doc.text('Uber Rental Balance — Since Last Correction', 14, 15);
 
-        const rows = exportRows.map(function (w) {
+        const rows = [];
+        exportRows.forEach(function (w) {
             const balanceText = w.balance !== null
                 ? 'R' + parseFloat(w.balance).toFixed(2) + (w.is_override ? ' (corrected)' : '')
                 : '—';
-            return [
+            rows.push([
                 w.week_display,
                 'R' + parseFloat(w.card_income).toFixed(2),
                 'R' + parseFloat(w.car_rental).toFixed(2),
@@ -238,7 +240,10 @@ if ($lastOverrideId !== null) {
                 'R' + parseFloat(w.net).toFixed(2),
                 'R' + parseFloat(w.shortfall_paid).toFixed(2),
                 balanceText
-            ];
+            ]);
+            if (w.notes) {
+                rows.push([{ content: 'Notes: ' + w.notes, colSpan: 8, styles: { fontStyle: 'italic' } }]);
+            }
         });
 
         doc.autoTable({
@@ -269,6 +274,7 @@ if ($lastOverrideId !== null) {
                     <td>R${parseFloat(w.shortfall_paid).toFixed(2)}</td>
                     <td>${balanceText}</td>
                 </tr>
+                ${w.notes ? `<tr class="uber-since-correction-notes-row"><td colspan="8"><strong>Notes:</strong> ${escapeHtml(w.notes)}</td></tr>` : ''}
             `;
         }).join('');
 
@@ -345,6 +351,7 @@ if ($lastOverrideId !== null) {
                     <span>
                         <button type="button" class="action-btn correct-balance-btn" data-id="${log.id}" data-current="${currentBalanceForInput}" data-has-override="${bal.is_override}">⚙️ Correct Balance</button>
                         <button type="button" class="action-btn correct-rental-btn" data-id="${log.id}" data-current="${log.financials.car_rental_is_override ? log.financials.car_rental : ''}" data-has-override="${log.financials.car_rental_is_override}">🔧 Override Rental</button>
+                        <button type="button" class="action-btn note-btn" data-id="${log.id}" data-current="${escapeHtml(log.notes || '')}">📝 ${log.notes ? 'Edit' : 'Add'} Note</button>
                     </span>
                 </div>
                 <div class="balance-correction-form hidden" data-id="${log.id}">
@@ -360,6 +367,11 @@ if ($lastOverrideId !== null) {
                     <button type="button" class="action-btn save-rental-btn" data-id="${log.id}">💾 Save</button>
                     ${log.financials.car_rental_is_override ? `<button type="button" class="action-btn delete-btn clear-rental-btn" data-id="${log.id}">🗑️ Clear</button>` : ''}
                     <button type="button" class="action-btn cancel-rental-btn">✖ Cancel</button>
+                </div>
+                <div class="note-form hidden" data-id="${log.id}">
+                    <textarea class="note-input" rows="3" placeholder="Comments about this week"></textarea>
+                    <button type="button" class="action-btn save-note-btn" data-id="${log.id}">💾 Save</button>
+                    <button type="button" class="action-btn cancel-note-btn">✖ Cancel</button>
                 </div>
                 <div class="metric-row">
                     <span></span>
@@ -564,6 +576,43 @@ if ($lastOverrideId !== null) {
                 }
             });
         }
+
+        // Open the note form for a week
+        $(document).on('click', '.note-btn', function () {
+            const id = $(this).data('id');
+            const current = $(this).attr('data-current') || '';
+            const form = $('.note-form[data-id="' + id + '"]');
+            form.find('.note-input').val(current);
+            form.removeClass('hidden');
+        });
+
+        $(document).on('click', '.cancel-note-btn', function () {
+            $(this).closest('.note-form').addClass('hidden');
+        });
+
+        $(document).on('click', '.save-note-btn', function () {
+            const id = $(this).data('id');
+            const form = $(this).closest('.note-form');
+            const value = form.find('.note-input').val().trim();
+
+            $.ajax({
+                url: '<?= BASE_URL ?>/modules/Uber/api/index.php',
+                type: 'POST',
+                data: { action: 'update_notes', id: id, notes: value },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.success) {
+                        showNotification('✓ ' + res.message + ' — reloading…', 'success');
+                        setTimeout(function () { location.reload(); }, 1200);
+                    } else {
+                        showNotification('✗ ' + res.message, 'error');
+                    }
+                },
+                error: function () {
+                    showNotification('❌ Failed to save note', 'error');
+                }
+            });
+        });
 
         function showNotification(message, type) {
             const className = type === 'success' ? 'success-message' : 'error-message';
