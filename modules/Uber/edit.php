@@ -1,4 +1,5 @@
 <?php
+// modules/Uber/edit.php
 $page_title = 'Edit Uber Income';
 $page_subtitle = 'Edit Weekly Record';
 $show_breadcrumb = true;
@@ -25,22 +26,28 @@ $cost_reasons = fetchColumn($pdo, 'uber_cost_reasons', 'reason', 'reason ASC');
 
 <div class="content">
     <h2>✏️ Edit Uber Income</h2>
-    <div id="edit-form-container"><p>Loading...</p></div>
+    <div id="edit-form-container">
+        <p>Loading...</p>
+    </div>
 </div>
 
 <script>
-const costReasons = <?= json_encode($cost_reasons) ?>;
+    const costReasons = <?= json_encode($cost_reasons) ?>;
 
-function buildReasonOptions(selected = '') {
-    let options = '<option value="">Select reason</option>';
-    costReasons.forEach(r => {
-        options += `<option value="${r}" ${r === selected ? 'selected' : ''}>${r}</option>`;
-    });
-    return options;
-}
+    function escapeHtml(str) {
+        return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
 
-function costRowTemplate(reason, amount) {
-    return `
+    function buildReasonOptions(selected = '') {
+        let options = '<option value="">Select reason</option>';
+        costReasons.forEach(r => {
+            options += `<option value="${r}" ${r === selected ? 'selected' : ''}>${r}</option>`;
+        });
+        return options;
+    }
+
+    function costRowTemplate(reason, amount) {
+        return `
         <div class="cost-row" style="display:flex;gap:10px;margin-bottom:8px;">
             <select name="cost_reasons[]" style="flex:2;">
                 ${buildReasonOptions(reason)}
@@ -49,34 +56,34 @@ function costRowTemplate(reason, amount) {
             <button type="button" class="action-btn delete-btn remove-cost-row">✖</button>
         </div>
     `;
-}
+    }
 
-$(document).ready(function () {
-    const id = <?= $id ?>;
+    $(document).ready(function() {
+        const id = <?= $id ?>;
 
-    // Load existing record
-    $.ajax({
-        url: '<?= BASE_URL ?>/modules/Uber/api/index.php?action=get_single&id=' + id,
-        dataType: 'json',
-        success: function (res) {
-            if (!res.success) {
-                $('#edit-form-container').html('<p class="error-message">Record not found.</p>');
-                return;
-            }
-            const r = res.record;
-            window.carRentalPrice = r.financials.car_rental;
+        // Load existing record
+        $.ajax({
+            url: '<?= BASE_URL ?>/modules/Uber/api/index.php?action=get_single&id=' + id,
+            dataType: 'json',
+            success: function(res) {
+                if (!res.success) {
+                    $('#edit-form-container').html('<p class="error-message">Record not found.</p>');
+                    return;
+                }
+                const r = res.record;
+                window.carRentalPrice = r.financials.car_rental;
 
-            // Build additional cost rows
-            let costRowsHtml = '';
-            if (r.additional_costs && r.additional_costs.length > 0) {
-                r.additional_costs.forEach(c => {
-                    costRowsHtml += costRowTemplate(c.reason, c.amount);
-                });
-            } else {
-                costRowsHtml = costRowTemplate('', '');
-            }
+                // Build additional cost rows
+                let costRowsHtml = '';
+                if (r.additional_costs && r.additional_costs.length > 0) {
+                    r.additional_costs.forEach(c => {
+                        costRowsHtml += costRowTemplate(c.reason, c.amount);
+                    });
+                } else {
+                    costRowsHtml = costRowTemplate('', '');
+                }
 
-            $('#edit-form-container').html(`
+                $('#edit-form-container').html(`
                 <form id="edit-uber-form">
                     <input type="hidden" name="id" value="${r.id}">
 
@@ -117,6 +124,11 @@ $(document).ready(function () {
                         </div>
                     </div>
 
+                    <div class="form-group">
+                        <label for="notes">Notes</label>
+                        <textarea id="notes" name="notes" rows="3" placeholder="Optional comments about this week">${escapeHtml(r.notes)}</textarea>
+                    </div>
+
                     <div class="form-actions" style="margin-top:20px;">
                         <button type="submit" class="action-btn edit-btn">💾 Save Changes</button>
                         <a href="<?= BASE_URL ?>/modules/Uber/index.php" class="action-btn">✖ Cancel</a>
@@ -124,76 +136,76 @@ $(document).ready(function () {
                 </form>
             `);
 
-            recalcShortfall();
-        },
-        error: function () {
-            $('#edit-form-container').html('<p class="error-message">Failed to load record.</p>');
-        }
-    });
-
-    function recalcShortfall() {
-        const totalIncome = parseFloat($('#total_income').val()) || 0;
-        const cashReceived = parseFloat($('#cash_received').val()) || 0;
-        const cardIncome = totalIncome - cashReceived;
-
-        let fines = 0;
-        let repairs = 0;
-        $('.cost-row').each(function () {
-            const reason = $(this).find('select[name="cost_reasons[]"]').val();
-            const amount = parseFloat($(this).find('input[name="cost_amounts[]"]').val()) || 0;
-            if (reason === 'Fines') {
-                fines += amount;
-            } else if (reason === 'Vehicle Repairs') {
-                repairs += amount;
-            }
-        });
-
-        const deductions = (window.carRentalPrice || 0) + fines + repairs;
-        const net = cardIncome - deductions;
-
-        $('#shortfallCardIncome').text(cardIncome.toFixed(2));
-        $('#shortfallFines').text(fines.toFixed(2));
-        $('#shortfallRepairs').text(repairs.toFixed(2));
-        $('#shortfallNet').text(net.toFixed(2));
-    }
-
-    // Add cost row
-    $(document).on('click', '#add-cost-row', function () {
-        $('#cost-rows').append(costRowTemplate('', ''));
-    });
-
-    // Remove cost row
-    $(document).on('click', '.remove-cost-row', function () {
-        $(this).closest('.cost-row').remove();
-        recalcShortfall();
-    });
-
-    // Live-recalculate the shortfall as relevant fields change
-    $(document).on('input change', '#total_income, #cash_received, #shortfall_paid, select[name="cost_reasons[]"], input[name="cost_amounts[]"]', recalcShortfall);
-
-    // Submit
-    $(document).on('submit', '#edit-uber-form', function (e) {
-        e.preventDefault();
-        const formData = $(this).serialize() + '&action=update';
-
-        $.ajax({
-            url: '<?= BASE_URL ?>/modules/Uber/api/index.php',
-            type: 'POST',
-            data: formData,
-            dataType: 'json',
-            success: function (res) {
-                if (res.success) {
-                    window.location.href = '<?= BASE_URL ?>/modules/Uber/index.php';
-                } else {
-                    alert('❌ ' + res.message);
-                }
+                recalcShortfall();
             },
-            error: function () {
-                alert('❌ Failed to save changes.');
+            error: function() {
+                $('#edit-form-container').html('<p class="error-message">Failed to load record.</p>');
             }
         });
+
+        function recalcShortfall() {
+            const totalIncome = parseFloat($('#total_income').val()) || 0;
+            const cashReceived = parseFloat($('#cash_received').val()) || 0;
+            const cardIncome = totalIncome - cashReceived;
+
+            let fines = 0;
+            let repairs = 0;
+            $('.cost-row').each(function() {
+                const reason = $(this).find('select[name="cost_reasons[]"]').val();
+                const amount = parseFloat($(this).find('input[name="cost_amounts[]"]').val()) || 0;
+                if (reason === 'Fines') {
+                    fines += amount;
+                } else if (reason === 'Vehicle Repairs') {
+                    repairs += amount;
+                }
+            });
+
+            const deductions = (window.carRentalPrice || 0) + fines + repairs;
+            const net = cardIncome - deductions;
+
+            $('#shortfallCardIncome').text(cardIncome.toFixed(2));
+            $('#shortfallFines').text(fines.toFixed(2));
+            $('#shortfallRepairs').text(repairs.toFixed(2));
+            $('#shortfallNet').text(net.toFixed(2));
+        }
+
+        // Add cost row
+        $(document).on('click', '#add-cost-row', function() {
+            $('#cost-rows').append(costRowTemplate('', ''));
+        });
+
+        // Remove cost row
+        $(document).on('click', '.remove-cost-row', function() {
+            $(this).closest('.cost-row').remove();
+            recalcShortfall();
+        });
+
+        // Live-recalculate the shortfall as relevant fields change
+        $(document).on('input change', '#total_income, #cash_received, #shortfall_paid, select[name="cost_reasons[]"], input[name="cost_amounts[]"]', recalcShortfall);
+
+        // Submit
+        $(document).on('submit', '#edit-uber-form', function(e) {
+            e.preventDefault();
+            const formData = $(this).serialize() + '&action=update';
+
+            $.ajax({
+                url: '<?= BASE_URL ?>/modules/Uber/api/index.php',
+                type: 'POST',
+                data: formData,
+                dataType: 'json',
+                success: function(res) {
+                    if (res.success) {
+                        window.location.href = '<?= BASE_URL ?>/modules/Uber/index.php';
+                    } else {
+                        alert('❌ ' + res.message);
+                    }
+                },
+                error: function() {
+                    alert('❌ Failed to save changes.');
+                }
+            });
+        });
     });
-});
 </script>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>
