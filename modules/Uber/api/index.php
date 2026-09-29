@@ -39,6 +39,9 @@ try {
         case 'set_rental_override':
             handleSetRentalOverride();
             break;
+        case 'update_notes':
+            handleUpdateNotes();
+            break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
     }
@@ -251,6 +254,37 @@ function handleUpdate()
     } catch (PDOException $e) {
         logError('UBER', 'Failed to update Uber income', ['error' => $e->getMessage(), 'record_id' => $id ?? null]);
         jsonResponse(['success' => false, 'message' => 'Failed to update Uber income'], 500);
+    }
+}
+
+/**
+ * Lightweight standalone update for just the notes field — used by the inline
+ * "Add/Edit Note" button on the weekly view, so a note can be added or fixed
+ * without opening the full Edit form.
+ * Used by: modules/Uber/index.php
+ */
+function handleUpdateNotes()
+{
+    global $pdo;
+
+    $id    = intval($_POST['id'] ?? 0);
+    $notes = trim($_POST['notes'] ?? '') ?: null;
+
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid record ID'], 400);
+    }
+
+    try {
+        $stmt = $pdo->prepare("UPDATE uber_income SET notes = ? WHERE id = ?");
+        $stmt->execute([$notes, $id]);
+
+        logInfo('UBER', 'Uber income note updated', ['record_id' => $id]);
+
+        jsonResponse(['success' => true, 'message' => 'Note saved']);
+
+    } catch (PDOException $e) {
+        logError('UBER', 'Failed to update Uber income note', ['error' => $e->getMessage(), 'record_id' => $id]);
+        jsonResponse(['success' => false, 'message' => 'Failed to save note'], 500);
     }
 }
 
