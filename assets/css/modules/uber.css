@@ -170,4 +170,11 @@
     padding-top: 4px;
     padding-bottom: 8px;
 }
+.uber-since-correction-notes-row td {
+    font-style: italic;
+    color: #555;
+    background: #fafafa;
+    padding-top: 4px;
+    padding-bottom: 8px;
+}
 
