@@ -1,3 +1,4 @@
+/* assets/css/modules/uber.css */
 /* ========================
    Uber module
    Loaded via @import from the base styles.css
@@ -178,3 +179,37 @@
     padding-bottom: 8px;
 }
 
+/* Weekly note editor — mirrors the balance-correction and rental
+   override UI above, same pattern, own class names */
+.action-btn.note-btn,
+.action-btn.save-note-btn,
+.action-btn.cancel-note-btn {
+    width: auto;
+    white-space: normal;
+}
+
+.note-btn { background-color: #16a085; }
+.note-btn:hover { background-color: #128f77; }
+
+.save-note-btn { background-color: #27ae60; }
+.save-note-btn:hover { background-color: #229954; }
+
+.cancel-note-btn { background-color: #95a5a6; }
+.cancel-note-btn:hover { background-color: #7f8c8d; }
+
+.note-form {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 12px;
+}
+.note-form:not(.hidden) {
+    display: flex;
+}
+.note-form .note-input {
+    flex: 1 1 100%;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
