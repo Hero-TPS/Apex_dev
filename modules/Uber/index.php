@@ -348,7 +348,7 @@ if ($lastOverrideId !== null) {
                 ${log.notes ? `<div class="metric-row"><span>Notes:</span><span class="at-uber-notes">${escapeHtml(log.notes)}</span></div>` : ''}
                 <div class="metric-row">
                     <span></span>
-                    <span>
+                    <span class="at-uber-actions">
                         <button type="button" class="action-btn correct-balance-btn" data-id="${log.id}" data-current="${currentBalanceForInput}" data-has-override="${bal.is_override}">⚙️ Correct Balance</button>
                         <button type="button" class="action-btn correct-rental-btn" data-id="${log.id}" data-current="${log.financials.car_rental_is_override ? log.financials.car_rental : ''}" data-has-override="${log.financials.car_rental_is_override}">🔧 Override Rental</button>
                         <button type="button" class="action-btn note-btn" data-id="${log.id}" data-current="${escapeHtml(log.notes || '')}">📝 ${log.notes ? 'Edit' : 'Add'} Note</button>
@@ -375,7 +375,7 @@ if ($lastOverrideId !== null) {
                 </div>
                 <div class="metric-row">
                     <span></span>
-                    <span>
+                    <span class="at-uber-actions">
                         <a href="<?= BASE_URL ?>/modules/Uber/edit.php?id=${log.id}" class="action-btn edit-btn">✏️ Edit</a>
                         <button class="action-btn delete-btn" data-id="${log.id}">🗑️ Delete</button>
                     </span>
