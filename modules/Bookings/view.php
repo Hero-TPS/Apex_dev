@@ -32,18 +32,10 @@ if (isset($_GET['id'])) {
 
                 $showGpsButton = empty($booking['pickup_is_custom']);
 
-                // Build Waze URLs: GPS coordinates always belong to the client's home address location.
-                // Not swapped: GPS applies to the pickup side. Swapped: GPS applies to the destination side.
-                $hasGps = !empty($booking['client_pickup_lat']) && !empty($booking['client_pickup_lng']);
-                $gpsUrl = 'https://waze.com/ul?ll=' . $booking['client_pickup_lat'] . ',' . $booking['client_pickup_lng'] . '&navigate=yes';
-
-                if (!$booking['was_swapped']) {
-                    $wazePickupUrl = ($showGpsButton && $hasGps) ? $gpsUrl : 'https://waze.com/ul?q=' . urlencode($booking['pickup_location']) . '&navigate=yes';
-                    $wazeDestUrl   = 'https://waze.com/ul?q=' . urlencode($booking['destination']) . '&navigate=yes';
-                } else {
-                    $wazePickupUrl = 'https://waze.com/ul?q=' . urlencode($booking['pickup_location']) . '&navigate=yes';
-                    $wazeDestUrl   = ($showGpsButton && $hasGps) ? $gpsUrl : 'https://waze.com/ul?q=' . urlencode($booking['destination']) . '&navigate=yes';
-                }
+                // Waze URLs (GPS-aware and swap-aware) — shared with the driver WhatsApp message
+                $wazeUrls = buildWazeUrls($booking);
+                $wazePickupUrl = $wazeUrls['pickup'];
+                $wazeDestUrl   = $wazeUrls['destination'];
 
                 // Fetch drivers and booking fee for the Manage Driver section
                 $driversStmt = $pdo->query("SELECT id, name, phone FROM drivers WHERE active = 1 ORDER BY name ASC");
@@ -170,8 +162,7 @@ if (isset($_GET['id'])) {
             <strong>Flight:</strong>
             <?php
             if (!empty($booking['flight_number'])):
-                $flight_number_clean = preg_replace('/\s+/', '', $booking['flight_number']);
-                $flightradar_link = "https://www.flightradar24.com/data/flights/" . strtolower($flight_number_clean);
+                $flightradar_link = buildFlightradarUrl($booking['flight_number']);
                 ?>
                 <?= htmlspecialchars($booking['flight_number']) ?>
                 <a href="<?= $flightradar_link ?>" target="_blank" class="map-link">Track Flight</a>
