@@ -339,13 +339,64 @@ function createPrebookingWhatsAppMessage(array $prebookingDetails): string
 }
 
 /**
+ * Build the Waze navigation URLs for a booking's pickup and destination.
+ * The client's saved GPS pin always belongs to the client's home address, so it
+ * is used for the pickup side when the trip is not swapped, and for the
+ * destination side when it is swapped. A GPS pin is only used when the pickup
+ * is not a custom ("other") address. Anything without a pin falls back to an
+ * address search.
+ * Used by: modules/Bookings/view.php, createDriverBookingMessage()
+ *
+ * @param array $booking  Must contain: pickup_location, destination (already
+ *                        swapped for display), was_swapped, and optionally
+ *                        pickup_is_custom, client_pickup_lat, client_pickup_lng
+ * @return array{pickup: string, destination: string}
+ */
+function buildWazeUrls(array $booking): array
+{
+    $hasGps = !empty($booking['client_pickup_lat']) && !empty($booking['client_pickup_lng']);
+    $useGps = $hasGps && empty($booking['pickup_is_custom']);
+    $gpsUrl = $hasGps
+        ? 'https://waze.com/ul?ll=' . $booking['client_pickup_lat'] . ',' . $booking['client_pickup_lng'] . '&navigate=yes'
+        : '';
+
+    $pickupSearchUrl = 'https://waze.com/ul?q=' . urlencode($booking['pickup_location'] ?? '') . '&navigate=yes';
+    $destSearchUrl   = 'https://waze.com/ul?q=' . urlencode($booking['destination'] ?? '') . '&navigate=yes';
+
+    if (empty($booking['was_swapped'])) {
+        return [
+            'pickup'      => $useGps ? $gpsUrl : $pickupSearchUrl,
+            'destination' => $destSearchUrl,
+        ];
+    }
+
+    return [
+        'pickup'      => $pickupSearchUrl,
+        'destination' => $useGps ? $gpsUrl : $destSearchUrl,
+    ];
+}
+
+/**
+ * Build the Flightradar24 tracking URL for a flight number
+ * (spaces removed, lowercased — e.g. "BA 6201" becomes .../ba6201).
+ * Used by: modules/Bookings/view.php, createDriverBookingMessage()
+ */
+function buildFlightradarUrl(string $flightNumber): string
+{
+    $clean = preg_replace('/\s+/', '', $flightNumber);
+    return 'https://www.flightradar24.com/data/flights/' . strtolower($clean);
+}
+
+/**
  * Build the WhatsApp message to send to an allocated driver about a booking.
  * Used by: modules/Bookings/view.php
  *
  * @param array $bookingDetails  Must contain: trip_date, start_time, client_name,
  *                               pickup_location, destination, cost, payment_method,
  *                               driver_name, and optionally booking_fee, flight_number,
- *                               passenger_name, passenger_phone
+ *                               passenger_name, passenger_phone, was_swapped,
+ *                               pickup_is_custom, client_pickup_lat, client_pickup_lng
+ *                               (the last four drive the Waze links)
  */
 function createDriverBookingMessage(array $bookingDetails): string
 {
@@ -370,10 +421,14 @@ function createDriverBookingMessage(array $bookingDetails): string
         $msg .= "📱 Client phone: " . $bookingDetails['client_phone'] . "\n";
     }
     $msg .= buildPassengerInfoLine($bookingDetails);
+    $wazeUrls = buildWazeUrls($bookingDetails);
     $msg .= "📍 Pickup: " . ($bookingDetails['pickup_location'] ?? '') . "\n";
+    $msg .= "🧭 Waze: " . $wazeUrls['pickup'] . "\n";
     $msg .= "🎯 Destination: " . ($bookingDetails['destination'] ?? '') . "\n";
+    $msg .= "🧭 Waze: " . $wazeUrls['destination'] . "\n";
     if (!empty($bookingDetails['flight_number'])) {
         $msg .= "✈️ Flight Number: " . $bookingDetails['flight_number'] . "\n";
+        $msg .= "📡 Track: " . buildFlightradarUrl($bookingDetails['flight_number']) . "\n";
     }
     $msg .= "💰 Trip Cost: R" . number_format($cost, 2) . "\n";
 
