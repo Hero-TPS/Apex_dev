@@ -21,7 +21,7 @@ include ROOT_DIR . '/includes/header.php';
 <div id="notification-area"></div>
 
 <!-- Bookings Table -->
-<table class="bookings-table">
+<table class="bookings-table at-bookings-index-table">
     <thead>
         <tr>
             <th>Date</th>
