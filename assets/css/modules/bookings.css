@@ -239,11 +239,11 @@
 
 /* Bookings index (desktop): the 10-column table is wider than the
    900px .container (overflow: hidden), which clipped the Actions column.
-   Scroll the table sideways instead. Scoped via :has() to the Bookings
+   Scroll the table sideways instead. Scoped via .at-bookings-index-table to the Bookings
    index only, since .bookings-table is shared with other pages. Mobile
    (<= 768px) uses the stacked card layout in styles.css and is untouched. */
 @media screen and (min-width: 769px) {
-    .bookings-table:has(#bookings-table-body) {
+    .bookings-table.at-bookings-index-table {
         display: block;
         overflow-x: auto;
     }
