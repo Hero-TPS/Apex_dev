@@ -32,6 +32,14 @@ if (isset($_GET['id'])) {
 
                 $showGpsButton = empty($booking['pickup_is_custom']);
 
+                // The client's saved GPS pin belongs to their home address: the pickup side
+                // normally, the destination side when swapped (same rule as buildWazeUrls()).
+                // Not applicable when the pickup is a custom "other" address.
+                $hasGps = !empty($booking['client_pickup_lat']) && !empty($booking['client_pickup_lng']);
+                $gpsPinSide = ($hasGps && $showGpsButton)
+                    ? ($booking['was_swapped'] ? 'destination' : 'pickup')
+                    : null;
+
                 // Waze URLs (GPS-aware and swap-aware) — shared with the driver WhatsApp message
                 $wazeUrls = buildWazeUrls($booking);
                 $wazePickupUrl = $wazeUrls['pickup'];
@@ -122,11 +130,13 @@ if (isset($_GET['id'])) {
         </div>
         <div class="detail-item full-width">
             <strong>Pickup:</strong> <?= htmlspecialchars($booking['pickup_location']) ?>
+            <?php if ($gpsPinSide === 'pickup'): ?><span title="GPS marked">📍</span><?php endif; ?>
             <a href="<?= htmlspecialchars($wazePickupUrl) ?>" target="_blank"
                 class="map-link">Waze</a>
         </div>
         <div class="detail-item full-width">
             <strong>Destination:</strong> <?= htmlspecialchars($booking['destination']) ?>
+            <?php if ($gpsPinSide === 'destination'): ?><span title="GPS marked">📍</span><?php endif; ?>
             <a href="<?= htmlspecialchars($wazeDestUrl) ?>" target="_blank"
                 class="map-link">Waze</a>
         </div>
@@ -195,7 +205,6 @@ if (isset($_GET['id'])) {
         <div class="detail-item full-width">
             <strong>Pickup GPS:</strong>
             <div class="gate-code-row">
-                <?php $hasGps = !empty($booking['client_pickup_lat']) && !empty($booking['client_pickup_lng']); ?>
                 <button id="markGpsBtn" class="page-action-btn <?= $hasGps ? 'toggle' : 'save' ?>">
                     📍 <?= $hasGps ? 'Update Pickup GPS' : 'Mark Pickup GPS' ?>
                 </button>
