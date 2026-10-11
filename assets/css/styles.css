@@ -1,3 +1,4 @@
+/* assets/css/styles.css */
 @import url("modules/bookings.css");
 @import url("modules/dashboard.css");
 @import url("modules/financials.css");
@@ -7,6 +8,7 @@
 @import url("modules/outreach.css");
 @import url("modules/distcalc.css");
 @import url("modules/budgeting.css");
+@import url("modules/invoices.css");
 
 /* ========================
    Base & Layout
@@ -476,49 +478,6 @@ textarea {
   grid-column: 1 / -1;
 }
 
-.invoice-container {
-  padding: 30px;
-}
-.invoice-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  border-bottom: 2px solid #eee;
-  padding-bottom: 20px;
-  margin-bottom: 20px;
-}
-.invoice-header h1 {
-  margin: 0;
-  color: #333;
-}
-.company-details {
-  text-align: right;
-  font-size: 14px;
-  color: #555;
-}
-.invoice-meta {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 30px;
-  font-size: 14px;
-}
-.meta-right {
-  text-align: right;
-}
-.invoice-total {
-  text-align: right;
-  margin-top: 20px;
-  font-size: 18px;
-  font-weight: bold;
-  border-top: 2px solid #eee;
-  padding-top: 10px;
-}
-.invoice-footer {
-  text-align: center;
-  margin-top: 40px;
-  font-size: 12px;
-  color: #888;
-}
 .invoice-actions {
   text-align: center;
   margin-top: 10px;

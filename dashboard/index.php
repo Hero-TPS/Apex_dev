@@ -30,6 +30,15 @@ include ROOT_DIR . '/includes/header.php';
         </div>
     </div>
 
+    <!-- Invoices -->
+    <div class="menu-section">
+        <h3 class="menu-toggle" data-target="invoices-section">🧾 Invoices</h3>
+        <div id="invoices-section" class="menu-content">
+            <a href="<?= BASE_URL ?>/modules/Invoices/create.php" class="dashboard-button db-view">Create Invoice</a>
+            <a href="<?= BASE_URL ?>/modules/Invoices/" class="dashboard-button db-reports">View Invoices</a>
+        </div>
+    </div>
+
     <!-- Prebookings -->
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="prebookings-section">📋 Prebookings</h3>

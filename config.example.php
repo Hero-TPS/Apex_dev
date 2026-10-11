@@ -62,6 +62,7 @@ define('ADMIN_PASSWORD_HASH', 'your_bcrypt_hash_here');
 // -----------------------------------------------------------------------------
 define('BUSINESS_NAME',  'Your Business Name');
 define('BUSINESS_OWNER', 'Owner Full Name');
+define('BUSINESS_ADDRESS', "123 Example Street\nSuburb\nTown, 7130"); // Shown on invoices — use \n for line breaks
 define('BUSINESS_PHONE', '+27821234567');       // Display format, with country code
 define('BUSINESS_WHATSAPP', '27821234567');     // Digits only — no +, spaces, or dashes
 define('BUSINESS_EMAIL', 'you@example.com');

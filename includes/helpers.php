@@ -486,6 +486,17 @@ const SYSTEM_VARIABLES = [
         'type' => 'textarea',
         'default' => "Please ensure that your phone is on and connected after you've landed.",
     ],
+    'invoice_payment_details' => [
+        'label' => 'Invoice Payment Details (bank / EFT)',
+        'type' => 'textarea',
+        'default' => "Bank: (your bank)\nAccount holder: (your name)\nAccount number: (your account number)\nBranch code: (branch code)",
+    ],
+    'invoice_payment_terms_days' => ['label' => 'Invoice Payment Terms (days until due)', 'type' => 'number', 'default' => 7],
+    'invoice_footer_note' => [
+        'label' => 'Invoice Footer Note',
+        'type' => 'text',
+        'default' => 'Thank you for your business!',
+    ],
     'ai_prompt_template' => [
         'label' => 'AI Budget Prompt Template',
         'type' => 'textarea',
