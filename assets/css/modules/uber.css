@@ -171,13 +171,6 @@
     padding-top: 4px;
     padding-bottom: 8px;
 }
-.uber-since-correction-notes-row td {
-    font-style: italic;
-    color: #555;
-    background: #fafafa;
-    padding-top: 4px;
-    padding-bottom: 8px;
-}
 
 /* Weekly note editor — mirrors the balance-correction and rental
    override UI above, same pattern, own class names */
