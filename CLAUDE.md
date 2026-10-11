@@ -10,6 +10,10 @@
 
 - Discuss before building code. ask first. or when you are explicitly told to build code.
 
+## Local Copy & Git
+- The local copy of the repo is only a backup copy — the site is not run from a local server. Don't remind him to add gitignored files such as `config.php`, etc.
+- He pushes from local using SSH keys. Always give SSH-style remotes/clone URLs (`git@github.com:Hero-TPS/Apex_dev.git`), never HTTPS links.
+
 ## Conventions
 - PHP/MySQL. Timezone always `Africa/Johannesburg` — use the `TIME_ZONE` constant.
 - Styles live in `assets/css/styles.css` (base/shared rules only) plus one file per module in `assets/css/modules/{module}.css`, loaded via `@import` at the very top of `styles.css`. New module-specific CSS goes in that module's file, not appended to the base file. No inline `<style>` blocks in PHP files — if you find one, it belongs in a module CSS file instead. Module-specific classes use an `at-` prefix.
