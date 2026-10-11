@@ -37,8 +37,8 @@ ALTER TABLE contacts
 
 ### [bookings] Add `passenger_name` and `passenger_phone` columns
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 ```sql
 ALTER TABLE bookings
@@ -52,8 +52,8 @@ ALTER TABLE bookings
 
 ### [prebookings] Add `passenger_name` and `passenger_phone` columns
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 ```sql
 ALTER TABLE prebookings
@@ -67,8 +67,8 @@ ALTER TABLE prebookings
 
 ### [fuel_logs] Add `vehicle_changed` column
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 ```sql
 ALTER TABLE fuel_logs
