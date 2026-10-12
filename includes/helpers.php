@@ -491,7 +491,13 @@ const SYSTEM_VARIABLES = [
         'type' => 'textarea',
         'default' => "Bank: (your bank)\nAccount holder: (your name)\nAccount number: (your account number)\nBranch code: (branch code)",
     ],
-    'invoice_payment_terms_days' => ['label' => 'Invoice Payment Terms (days until due)', 'type' => 'number', 'default' => 7],
+    'invoice_payment_terms' => [
+        'label' => 'Invoice Payment Terms',
+        'type' => 'text',
+        'default' => '',
+        'optional' => true,
+        'hint' => 'Free text shown on unpaid invoices, e.g. "Payment due within 7 days". Leave empty to show nothing.',
+    ],
     'invoice_footer_note' => [
         'label' => 'Invoice Footer Note',
         'type' => 'text',

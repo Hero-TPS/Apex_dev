@@ -141,6 +141,20 @@ ALTER TABLE bookings
 
 ---
 
+### [invoices] Make `due_date` optional
+
+- [ ] Done on dev
+- [ ] Done on live
+
+```sql
+ALTER TABLE invoices
+    MODIFY due_date DATE NULL;
+```
+
+> Invoices no longer calculate a due date from a "days until due" number. Payment terms are now free text (`invoice_payment_terms` system variable, empty by default, shown on unpaid invoices only when filled in), so new invoices are saved without a due date. The column is kept (not dropped) so any invoices already created keep their stored value; it is no longer displayed. Run this after the `[invoices] Create invoices and invoice_items tables` entry above.
+
+---
+
 **Notes:**
 - Each entry requires two checkboxes: **Done on dev** and **Done on live**
 - Always run on dev first and verify before running on live

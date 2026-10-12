@@ -64,6 +64,20 @@ body.at-inv-body-bg {
   border-bottom: 1px solid #dfe5ea;
 }
 
+.at-inv-brand {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.at-inv-logo {
+  display: block;
+  flex: 0 0 auto;
+  width: 96px;
+  height: 96px;
+  border-radius: 12px;
+}
+
 .at-inv-business {
   margin: 0 0 6px;
   font-size: 24px;
@@ -269,6 +283,10 @@ body.at-inv-body-bg {
   border-left-color: #8393a3;
 }
 
+.at-inv-label--spaced {
+  margin-top: 14px;
+}
+
 .at-inv-reference {
   margin-top: 8px;
   color: #5b6b7a;
@@ -341,6 +359,15 @@ body.at-inv-body-bg {
   .at-inv-head,
   .at-inv-parties {
     flex-direction: column;
+  }
+
+  .at-inv-logo {
+    width: 72px;
+    height: 72px;
+  }
+
+  .at-inv-brand {
+    gap: 14px;
   }
 
   .at-inv-title-block {

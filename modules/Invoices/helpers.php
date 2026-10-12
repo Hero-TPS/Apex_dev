@@ -25,13 +25,13 @@ function getInvoiceBusinessDetails(): array
  * Invoice-related system variables (editable under Maintenance).
  * Used by: partials/invoice_document.php, api/index.php
  *
- * @return array{payment_details:string,terms_days:int,footer_note:string}
+ * @return array{payment_details:string,payment_terms:string,footer_note:string}
  */
 function getInvoiceSettings(PDO $pdo): array
 {
     return [
         'payment_details' => trim((string) getSystemVariable($pdo, 'invoice_payment_details')),
-        'terms_days'      => max(0, (int) getSystemVariable($pdo, 'invoice_payment_terms_days')),
+        'payment_terms'   => trim((string) getSystemVariable($pdo, 'invoice_payment_terms')),
         'footer_note'     => trim((string) getSystemVariable($pdo, 'invoice_footer_note')),
     ];
 }
@@ -259,8 +259,6 @@ function createInvoice(PDO $pdo, int $contactId, array $bookingIds, string $issu
         throw new InvalidArgumentException('Invalid invoice date.');
     }
 
-    $settings = getInvoiceSettings($pdo);
-    $due = (clone $issue)->modify('+' . $settings['terms_days'] . ' days');
     $year = (int) $issue->format('Y');
 
     $attempts = 0;
@@ -305,13 +303,13 @@ function createInvoice(PDO $pdo, int $contactId, array $bookingIds, string $issu
                 INSERT INTO invoices (
                     invoice_year, invoice_seq, invoice_number, public_token, contact_id,
                     bill_to_name, bill_to_address, bill_to_email,
-                    issue_date, due_date, total, notes
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    issue_date, total, notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $year, $seq, $number, $token, $contactId,
                 $contact['name'], $contact['address'] ?: null, $contact['email'] ?: null,
-                $issue->format('Y-m-d'), $due->format('Y-m-d'), $total,
+                $issue->format('Y-m-d'), $total,
                 ($notes !== null && trim($notes) !== '') ? trim($notes) : null,
             ]);
             $invoiceId = (int) $pdo->lastInsertId();

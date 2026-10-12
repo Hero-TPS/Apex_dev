@@ -105,8 +105,12 @@ $overdueCount = (int) $overdueStmt->fetchColumn();
                     <?php endif; ?>
                 <?php else: ?>
                     <input type="text" name="variables[<?= htmlspecialchars($name) ?>]"
-                        value="<?= htmlspecialchars($value) ?>" required>
-                    <small>Default: <?= htmlspecialchars($def['default']) ?></small>
+                        value="<?= htmlspecialchars($value) ?>" <?= empty($def['optional']) ? 'required' : '' ?>>
+                    <?php if (!empty($def['hint'])): ?>
+                        <small><?= htmlspecialchars($def['hint']) ?></small>
+                    <?php else: ?>
+                        <small>Default: <?= htmlspecialchars($def['default']) ?></small>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         <?php endforeach; ?>

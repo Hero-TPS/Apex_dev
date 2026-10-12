@@ -11,7 +11,9 @@
 
 $business = getInvoiceBusinessDetails();
 $statusKey = $summary['status'];
-$showPaymentBlock = $summary['balance'] > 0.004;
+$hasPaymentDetails = $settings['payment_details'] !== '';
+$hasPaymentTerms = $settings['payment_terms'] !== '';
+$showPaymentBlock = $summary['balance'] > 0.004 && ($hasPaymentDetails || $hasPaymentTerms);
 ?>
 <div class="at-inv-sheet">
     <div class="at-inv-accent"></div>
@@ -19,8 +21,11 @@ $showPaymentBlock = $summary['balance'] > 0.004;
     <div class="at-inv-body">
         <header class="at-inv-head">
             <div class="at-inv-brand">
-                <h1 class="at-inv-business"><?= htmlspecialchars($business['name']) ?></h1>
-                <div class="at-inv-business-details">
+                <img class="at-inv-logo" src="<?= BASE_URL ?>/assets/android-chrome-192x192.png"
+                    width="96" height="96" alt="<?= htmlspecialchars($business['name']) ?> logo">
+                <div class="at-inv-brand-text">
+                    <h1 class="at-inv-business"><?= htmlspecialchars($business['name']) ?></h1>
+                    <div class="at-inv-business-details">
                     <?php if (trim($business['address']) !== ''): ?>
                         <?= nl2br(htmlspecialchars($business['address'])) ?><br>
                     <?php endif; ?>
@@ -30,6 +35,7 @@ $showPaymentBlock = $summary['balance'] > 0.004;
                     <?php if ($business['email'] !== ''): ?>
                         <?= htmlspecialchars($business['email']) ?>
                     <?php endif; ?>
+                    </div>
                 </div>
             </div>
             <div class="at-inv-title-block">
@@ -56,10 +62,6 @@ $showPaymentBlock = $summary['balance'] > 0.004;
                 <tr>
                     <th>Invoice date</th>
                     <td><?= date('d M Y', strtotime($invoice['issue_date'])) ?></td>
-                </tr>
-                <tr>
-                    <th>Due date</th>
-                    <td><?= date('d M Y', strtotime($invoice['due_date'])) ?></td>
                 </tr>
                 <tr>
                     <th>Amount due</th>
@@ -109,11 +111,17 @@ $showPaymentBlock = $summary['balance'] > 0.004;
             </div>
         </section>
 
-        <?php if ($showPaymentBlock && $settings['payment_details'] !== ''): ?>
+        <?php if ($showPaymentBlock): ?>
             <section class="at-inv-payment">
-                <div class="at-inv-label">Payment details</div>
-                <div><?= nl2br(htmlspecialchars($settings['payment_details'])) ?></div>
-                <div class="at-inv-reference">Please use <strong><?= htmlspecialchars($invoice['invoice_number']) ?></strong> as your payment reference.</div>
+                <?php if ($hasPaymentTerms): ?>
+                    <div class="at-inv-label">Payment terms</div>
+                    <div class="at-inv-payment-terms"><?= nl2br(htmlspecialchars($settings['payment_terms'])) ?></div>
+                <?php endif; ?>
+                <?php if ($hasPaymentDetails): ?>
+                    <div class="at-inv-label<?= $hasPaymentTerms ? ' at-inv-label--spaced' : '' ?>">Payment details</div>
+                    <div><?= nl2br(htmlspecialchars($settings['payment_details'])) ?></div>
+                    <div class="at-inv-reference">Please use <strong><?= htmlspecialchars($invoice['invoice_number']) ?></strong> as your payment reference.</div>
+                <?php endif; ?>
             </section>
         <?php endif; ?>
 
