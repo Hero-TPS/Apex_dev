@@ -56,7 +56,7 @@ $balanceWalk = calculateUberBalanceWalk($pdo);
 
 // === EXPORT SINCE LAST CORRECTION ===
 // Finds the most recent week with a correction set, then gathers every
-// week from that point forward (inclusive) for the PDF export button.
+// week from that point forward (inclusive) for the PDF and CSV export buttons.
 $lastOverrideId = null;
 foreach ($balanceWalk as $wid => $entry) {
     if ($entry['is_override']) {
@@ -115,6 +115,7 @@ if ($lastOverrideId !== null) {
 
         <div id="sinceCorrectionTableContainer" class="uber-since-correction-container hidden">
             <button type="button" id="exportSinceCorrectionBtn" class="action-btn export-since-correction-btn">📄 Export to PDF</button>
+            <button type="button" id="exportSinceCorrectionCsvBtn" class="action-btn export-since-correction-btn">📊 Export to CSV</button>
             <div id="sinceCorrectionTable"></div>
         </div>
     <?php endif; ?>
@@ -258,6 +259,50 @@ if ($lastOverrideId !== null) {
         doc.save('uber-balance-since-last-correction.pdf');
     }
 
+    // CSV export for opening in Google Sheets / LibreOffice (File > Import).
+    // Amounts are plain numbers (no "R" prefix) so the sheet can sum them,
+    // and notes get their own column instead of a separate row.
+    function exportSinceLastCorrectionCsv() {
+        const csvCell = function (value) {
+            const text = String(value ?? '');
+            return '"' + text.replace(/"/g, '""') + '"';
+        };
+        const money = function (value) {
+            return parseFloat(value).toFixed(2);
+        };
+
+        const lines = [
+            ['Week', 'Card Income', 'Rental', 'Fines', 'Repairs', 'Net', 'Paid In', 'Balance', 'Corrected', 'Notes']
+                .map(csvCell).join(',')
+        ];
+
+        exportRows.forEach(function (w) {
+            lines.push([
+                csvCell(w.week_display),
+                money(w.card_income),
+                money(w.car_rental),
+                money(w.fines),
+                money(w.vehicle_repairs),
+                money(w.net),
+                money(w.shortfall_paid),
+                w.balance !== null ? money(w.balance) : '',
+                csvCell(w.is_override ? 'Yes' : ''),
+                csvCell(w.notes)
+            ].join(','));
+        });
+
+        // BOM so the en dash in the week range survives the import
+        const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'uber-balance-since-last-correction.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
     function renderSinceCorrectionTable() {
         const rowsHtml = exportRows.map(function (w) {
             const balanceText = w.balance !== null
@@ -386,6 +431,7 @@ if ($lastOverrideId !== null) {
 
     $(document).ready(function () {
         $('#exportSinceCorrectionBtn').on('click', exportSinceLastCorrection);
+        $('#exportSinceCorrectionCsvBtn').on('click', exportSinceLastCorrectionCsv);
         $('#viewSinceCorrectionBtn').on('click', function () {
             const container = $('#sinceCorrectionTableContainer');
             if (container.hasClass('hidden')) {
