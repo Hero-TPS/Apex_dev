@@ -1,6 +1,6 @@
 <?php
 // modules/Invoices/index.php
-// List of all invoices with payment status and quick actions.
+// List of all invoices with payment status and quick actions (view, edit, mark paid, copy link, delete).
 $page_title = 'Invoices';
 $page_subtitle = 'Invoices';
 $show_breadcrumb = true;
@@ -50,7 +50,7 @@ include ROOT_DIR . '/includes/header.php';
         <p>Create your first invoice from a client's bookings.</p>
     </div>
 <?php else: ?>
-    <div class="at-inv-summary">
+    <div class="at-inv-summary" id="outstandingSummary">
         <strong>Outstanding:</strong> <?= htmlspecialchars(formatInvoiceMoney($outstanding)) ?>
         across <?= (int) $outstandingCount ?> invoice<?= $outstandingCount === 1 ? '' : 's' ?>
     </div>
@@ -69,7 +69,7 @@ include ROOT_DIR . '/includes/header.php';
         </thead>
         <tbody>
             <?php foreach ($invoices as $inv): ?>
-                <tr id="invoice-row-<?= (int) $inv['id'] ?>">
+                <tr id="invoice-row-<?= (int) $inv['id'] ?>" data-balance="<?= htmlspecialchars((string) $inv['balance']) ?>">
                     <td data-label="Invoice"><strong><?= htmlspecialchars($inv['invoice_number']) ?></strong></td>
                     <td data-label="Date"><?= date('d/m/Y', strtotime($inv['issue_date'])) ?></td>
                     <td data-label="Client"><?= htmlspecialchars($inv['bill_to_name']) ?></td>
@@ -84,6 +84,15 @@ include ROOT_DIR . '/includes/header.php';
                         <div class="actions-container">
                             <a href="<?= BASE_URL ?>/modules/Invoices/view.php?id=<?= (int) $inv['id'] ?>"
                                 class="action-btn view-details-btn">View</a>
+                            <a href="<?= BASE_URL ?>/modules/Invoices/edit.php?id=<?= (int) $inv['id'] ?>"
+                                class="action-btn edit-btn">Edit</a>
+                            <?php if ($inv['status'] === 'paid'): ?>
+                                <button type="button" class="action-btn convert-btn at-inv-toggle-paid"
+                                    data-id="<?= (int) $inv['id'] ?>" data-paid="1">Mark unpaid</button>
+                            <?php else: ?>
+                                <button type="button" class="action-btn invoice-btn at-inv-toggle-paid"
+                                    data-id="<?= (int) $inv['id'] ?>" data-paid="0">Mark paid</button>
+                            <?php endif; ?>
                             <button type="button" class="action-btn edit-btn at-inv-copy-link"
                                 data-url="<?= htmlspecialchars(buildInvoicePublicUrl($inv['public_token'])) ?>">Copy link</button>
                             <button type="button" class="action-btn delete-btn at-inv-delete"
@@ -118,6 +127,63 @@ include ROOT_DIR . '/includes/header.php';
         function showMessage(cls, text) {
             notificationArea.html($('<div>').addClass(cls).text(text));
         }
+
+        function formatMoney(n) {
+            return 'R ' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+
+        // Recalculate the Outstanding line from each row's balance.
+        function updateOutstanding() {
+            var total = 0, count = 0;
+            $('tr[id^="invoice-row-"]').each(function () {
+                var balance = parseFloat($(this).attr('data-balance')) || 0;
+                if (balance > 0.004) {
+                    total += balance;
+                    count++;
+                }
+            });
+            $('#outstandingSummary').html('<strong>Outstanding:</strong> ' + formatMoney(total) +
+                ' across ' + count + ' invoice' + (count === 1 ? '' : 's'));
+        }
+
+        // Mark paid / Mark unpaid: flips every trip on the invoice, no page reload.
+        $('.at-inv-toggle-paid').on('click', function () {
+            var btn = $(this);
+            var id = btn.data('id');
+            var markPaid = String(btn.attr('data-paid')) !== '1';
+            btn.prop('disabled', true);
+            $.ajax({
+                type: 'POST',
+                url: '<?= BASE_URL ?>/modules/Invoices/api/index.php',
+                data: { action: 'mark_paid', invoice_id: id, paid: markPaid ? 1 : 0 },
+                dataType: 'json',
+                success: function (response) {
+                    btn.prop('disabled', false);
+                    if (!response.success) {
+                        showMessage('error-message', response.message || 'Could not update the invoice.');
+                        return;
+                    }
+                    var row = $('#invoice-row-' + id);
+                    row.attr('data-balance', response.balance);
+                    row.find('.at-inv-status')
+                        .attr('class', 'at-inv-status at-inv-status--' + response.status)
+                        .text(response.status_label);
+                    if (response.status === 'paid') {
+                        btn.attr('data-paid', '1').text('Mark unpaid')
+                            .removeClass('invoice-btn').addClass('convert-btn');
+                    } else {
+                        btn.attr('data-paid', '0').text('Mark paid')
+                            .removeClass('convert-btn').addClass('invoice-btn');
+                    }
+                    updateOutstanding();
+                    showMessage('success-message', response.message);
+                },
+                error: function () {
+                    btn.prop('disabled', false);
+                    showMessage('error-message', 'Could not update the invoice. Please try again.');
+                }
+            });
+        });
 
         $('.at-inv-copy-link').on('click', function () {
             var url = $(this).data('url');
@@ -159,6 +225,7 @@ include ROOT_DIR . '/includes/header.php';
                 success: function (response) {
                     if (response.success) {
                         $('#invoice-row-' + id).remove();
+                        updateOutstanding();
                         showMessage('success-message', response.message);
                     } else {
                         showMessage('error-message', response.message || 'Could not delete the invoice.');
