@@ -1,9 +1,9 @@
 /* assets/css/modules/invoices.css
    Invoices module: the printable invoice sheet (view.php / public.php),
-   the invoice list, and the "pick bookings" page. Classes use the at-inv- prefix. */
+   the invoice list, and the create / edit "pick bookings" pages. Classes use the at-inv- prefix. */
 
 /* ========================
-   Page shell (standalone invoice pages)
+   Page shell (public.php is standalone; view.php sits inside the site header/footer)
 ======================== */
 
 body.at-inv-body-bg {
@@ -22,14 +22,6 @@ body.at-inv-body-bg {
   gap: 10px;
   justify-content: center;
   margin-bottom: 12px;
-}
-
-.at-inv-copy-note {
-  text-align: center;
-  min-height: 20px;
-  margin-bottom: 8px;
-  font-size: 14px;
-  color: #1e7e34;
 }
 
 /* ========================
@@ -314,11 +306,30 @@ body.at-inv-body-bg {
 }
 
 /* ========================
-   Create invoice (pick bookings)
+   Create / edit invoice (pick bookings)
 ======================== */
 
-.at-inv-client-form select {
-  max-width: 420px;
+/* Client search box (same suggestions list as Add Booking) */
+.at-inv-client-form {
+  position: relative;
+  max-width: 500px;
+}
+
+.at-inv-client-form .suggestions-box {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.at-inv-client-form .suggestion-item.active {
+  background: #f5f5f5;
+}
+
+.at-inv-edit-client {
+  margin: 10px 0 16px;
+}
+
+.at-inv-edit-client .client-subline {
+  display: block;
 }
 
 .at-inv-pick-tools {
@@ -328,7 +339,9 @@ body.at-inv-body-bg {
   margin: 10px 0;
 }
 
-.at-inv-pick-table .at-inv-pick {
+.at-inv-pick-table .at-inv-pick,
+.at-inv-pick-table .at-inv-paid-pick,
+.at-inv-pick-table .at-inv-keep {
   width: 20px;
   height: 20px;
 }
@@ -408,8 +421,18 @@ body.at-inv-body-bg {
   }
 
   .at-inv-actions,
-  .at-inv-copy-note {
+  #notification-area {
     display: none !important;
+  }
+
+  /* view.php: hide the site header so only the invoice sheet prints
+     (the base print rules already hide the breadcrumbs and floating menu). */
+  body.at-inv-view .header {
+    display: none !important;
+  }
+
+  body.at-inv-view .content {
+    padding: 0;
   }
 
   .at-inv-sheet {
