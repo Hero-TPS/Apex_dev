@@ -1,6 +1,6 @@
 <?php
 // modules/Invoices/create.php
-// Pick a client, tick the bookings to bill, and create one invoice.
+// Search for a client, tick the bookings to bill, and create one invoice.
 $page_title = 'Create Invoice';
 $page_subtitle = 'Create Invoice';
 $show_breadcrumb = true;
@@ -60,20 +60,103 @@ include ROOT_DIR . '/includes/header.php';
     <div class="error-message">Could not load bookings. If this is the first time, run the invoices entry in LIVE_MIGRATION.md on this database.</div>
 <?php else: ?>
 
-    <form method="get" class="at-inv-client-form">
+    <div class="at-inv-client-form">
         <div class="form-group">
-            <label for="contact_id">Client</label>
-            <select id="contact_id" name="contact_id" onchange="this.form.submit()">
-                <option value="">— Choose a client —</option>
-                <?php foreach ($clients as $c): ?>
-                    <option value="<?= (int) $c['id'] ?>" <?= (int) $c['id'] === $contactId ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($c['name']) ?><?= !empty($c['is_archived']) ? ' (archived)' : '' ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
+            <label for="clientSearch">Client</label>
+            <input type="text" id="clientSearch" placeholder="Search client by name or phone..." autocomplete="off"
+                value="<?= htmlspecialchars($selectedClientName) ?>">
+            <div id="clientSuggestions" class="suggestions-box"></div>
         </div>
-        <noscript><button type="submit" class="page-action-btn primary">Load bookings</button></noscript>
-    </form>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            var clientSearch = $('#clientSearch');
+            var suggestionsBox = $('#clientSuggestions');
+            var clients = <?= json_encode($clients, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
+            var selected = -1;
+
+            function escapeHtml(str) {
+                var div = document.createElement('div');
+                div.appendChild(document.createTextNode(str || ''));
+                return div.innerHTML;
+            }
+
+            function highlight(items) {
+                items.removeClass('active');
+                if (selected >= 0) {
+                    items.eq(selected).addClass('active');
+                }
+            }
+
+            // Choosing a client reloads the page with that client's bookings.
+            function selectClient(client) {
+                suggestionsBox.hide();
+                window.location.href = '?contact_id=' + encodeURIComponent(client.id);
+            }
+
+            clientSearch.on('input focus', function () {
+                var query = $(this).val().trim().toLowerCase();
+                if (query.length === 0) {
+                    suggestionsBox.hide();
+                    return;
+                }
+                var filtered = clients.filter(function (c) {
+                    return (c.name && c.name.toLowerCase().includes(query)) ||
+                        (c.phone && c.phone.toLowerCase().includes(query));
+                });
+                suggestionsBox.empty();
+                selected = -1;
+                if (filtered.length > 0) {
+                    filtered.forEach(function (client) {
+                        var archivedNote = client.is_archived == 1
+                            ? '<br><small class="archived-note">📦 archived</small>'
+                            : '';
+                        var item = $('<div class="suggestion-item">' + escapeHtml(client.name) +
+                            '<br><small>' + escapeHtml(client.phone || '') + '</small>' +
+                            '<br><small>' + escapeHtml(client.address || '') + '</small>' + archivedNote + '</div>');
+                        item.data('client', client);
+                        item.on('click', function () {
+                            selectClient($(this).data('client'));
+                        });
+                        suggestionsBox.append(item);
+                    });
+                } else {
+                    suggestionsBox.html('<div class="suggestion-item">No clients with bookings found</div>');
+                }
+                suggestionsBox.show();
+            });
+
+            clientSearch.on('keydown', function (e) {
+                var items = suggestionsBox.find('.suggestion-item');
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    selected = Math.min(selected + 1, items.length - 1);
+                    highlight(items);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    selected = Math.max(selected - 1, -1);
+                    highlight(items);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (selected >= 0 && items.eq(selected).data('client')) {
+                        selectClient(items.eq(selected).data('client'));
+                    }
+                }
+            });
+
+            $(document).on('click', function (e) {
+                if (!$(e.target).closest('#clientSearch, #clientSuggestions').length) {
+                    suggestionsBox.hide();
+                }
+            });
+            $(document).on('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    suggestionsBox.hide();
+                }
+            });
+        });
+    </script>
 
     <div id="notification-area"></div>
 
