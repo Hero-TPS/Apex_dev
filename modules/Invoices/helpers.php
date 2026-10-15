@@ -163,11 +163,12 @@ function getInvoiceByToken(PDO $pdo, string $token): ?array
 /**
  * Line items for an invoice, oldest trip first, each with the live
  * payment_received flag of its booking (0 if the booking no longer exists).
+ * live_booking_id is NULL when the booking has since been deleted.
  */
 function getInvoiceItems(PDO $pdo, int $invoiceId): array
 {
     $stmt = $pdo->prepare("
-        SELECT ii.*, COALESCE(b.payment_received, 0) AS payment_received
+        SELECT ii.*, COALESCE(b.payment_received, 0) AS payment_received, b.id AS live_booking_id
         FROM invoice_items ii
         LEFT JOIN bookings b ON b.id = ii.booking_id
         WHERE ii.invoice_id = ?
@@ -216,12 +217,13 @@ function getClientBookingsForInvoicing(PDO $pdo, int $contactId): array
 }
 
 /**
- * Clients that have at least one booking, for the client picker.
+ * Clients that have at least one booking, for the client search on the
+ * Create Invoice page (searched by name or phone).
  */
 function getClientsWithBookings(PDO $pdo): array
 {
     return $pdo->query("
-        SELECT c.id, c.name, c.is_archived
+        SELECT c.id, c.name, c.phone, c.address, c.is_archived
         FROM contacts c
         WHERE EXISTS (SELECT 1 FROM bookings b WHERE b.contact_id = c.id)
         ORDER BY c.name ASC
@@ -345,6 +347,207 @@ function createInvoice(PDO $pdo, int $contactId, array $bookingIds, string $issu
             throw $e;
         }
     }
+}
+
+/**
+ * Edit an invoice: change its date and notes, add or remove bookings, and set
+ * which of its trips are paid. The client cannot be changed (delete the
+ * invoice and create a new one for that).
+ *
+ * Runs in a single transaction. Lines for bookings that stay on the invoice
+ * keep their frozen description and amount; lines for newly added bookings
+ * are frozen now; lines for removed bookings are deleted and the booking is
+ * released so it can be invoiced again. Lines whose booking was deleted
+ * ("orphans") are kept only if listed in $keepItemIds. The invoice total is
+ * recalculated from the remaining lines. The invoice number never changes.
+ * Used by: api/index.php (update)
+ *
+ * @param PDO         $pdo
+ * @param int         $invoiceId
+ * @param int[]       $bookingIds      Bookings that should be on the invoice
+ * @param int[]       $keepItemIds     invoice_items.id of orphan lines to keep
+ * @param int[]       $paidBookingIds  Subset of $bookingIds that are paid
+ * @param string      $issueDate       'Y-m-d'
+ * @param string|null $notes
+ * @return array{id:int,invoice_number:string}
+ * @throws InvalidArgumentException  For problems the user can fix
+ * @throws Throwable                 For anything unexpected
+ */
+function updateInvoice(
+    PDO $pdo,
+    int $invoiceId,
+    array $bookingIds,
+    array $keepItemIds,
+    array $paidBookingIds,
+    string $issueDate,
+    ?string $notes
+): array {
+    $normalise = fn(array $ids): array => array_values(array_unique(array_filter(array_map('intval', $ids), fn($v) => $v > 0)));
+    $bookingIds = $normalise($bookingIds);
+    $keepItemIds = $normalise($keepItemIds);
+    $paidBookingIds = array_values(array_intersect($normalise($paidBookingIds), $bookingIds));
+
+    $issue = DateTime::createFromFormat('Y-m-d', $issueDate, new DateTimeZone(TIME_ZONE));
+    if (!$issue || $issue->format('Y-m-d') !== $issueDate) {
+        throw new InvalidArgumentException('Invalid invoice date.');
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        // Locking the invoice row stops two edits of the same invoice overlapping.
+        $stmt = $pdo->prepare("SELECT id, invoice_number, contact_id FROM invoices WHERE id = ? FOR UPDATE");
+        $stmt->execute([$invoiceId]);
+        $invoice = $stmt->fetch();
+        if (!$invoice) {
+            throw new InvalidArgumentException('Invoice not found.');
+        }
+        $contactId = (int) $invoice['contact_id'];
+
+        // Existing lines, and whether each line's booking still exists.
+        $stmt = $pdo->prepare("
+            SELECT ii.id, ii.booking_id, b.id AS live_booking_id
+            FROM invoice_items ii
+            LEFT JOIN bookings b ON b.id = ii.booking_id
+            WHERE ii.invoice_id = ?
+        ");
+        $stmt->execute([$invoiceId]);
+        $existing = $stmt->fetchAll();
+
+        $existingByBooking = [];   // booking_id => item id (booking still exists)
+        $orphanItemIds = [];       // item ids whose booking was deleted
+        foreach ($existing as $row) {
+            if ($row['live_booking_id'] === null) {
+                $orphanItemIds[] = (int) $row['id'];
+            } else {
+                $existingByBooking[(int) $row['booking_id']] = (int) $row['id'];
+            }
+        }
+
+        // Bookings that should be on the invoice: this client's, and either
+        // free or already on this invoice.
+        $selectedBookings = [];
+        if (!empty($bookingIds)) {
+            $placeholders = implode(',', array_fill(0, count($bookingIds), '?'));
+            $stmt = $pdo->prepare("
+                SELECT * FROM bookings
+                WHERE id IN ($placeholders) AND contact_id = ? AND (invoice_id IS NULL OR invoice_id = ?)
+                FOR UPDATE
+            ");
+            $stmt->execute(array_merge($bookingIds, [$contactId, $invoiceId]));
+            $selectedBookings = $stmt->fetchAll();
+            if (count($selectedBookings) !== count($bookingIds)) {
+                throw new InvalidArgumentException(
+                    'One or more selected bookings are on another invoice or do not belong to this client. Reload the page and try again.'
+                );
+            }
+        }
+
+        // Lines to add (selected bookings without a line yet), oldest trip first.
+        $toAdd = array_values(array_filter($selectedBookings, fn($b) => !isset($existingByBooking[(int) $b['id']])));
+        usort($toAdd, fn($a, $b) => [$a['trip_date'], $a['start_time'], $a['id']] <=> [$b['trip_date'], $b['start_time'], $b['id']]);
+
+        // Lines to remove: bookings no longer selected, and orphans not kept.
+        $removeBookingIds = [];
+        $removeItemIds = [];
+        foreach ($existingByBooking as $bookingId => $itemId) {
+            if (!in_array($bookingId, $bookingIds, true)) {
+                $removeBookingIds[] = $bookingId;
+                $removeItemIds[] = $itemId;
+            }
+        }
+        foreach ($orphanItemIds as $itemId) {
+            if (!in_array($itemId, $keepItemIds, true)) {
+                $removeItemIds[] = $itemId;
+            }
+        }
+
+        $remaining = count($existing) - count($removeItemIds) + count($toAdd);
+        if ($remaining < 1) {
+            throw new InvalidArgumentException('An invoice needs at least one trip. To remove the invoice completely, delete it instead.');
+        }
+
+        if (!empty($removeItemIds)) {
+            $ph = implode(',', array_fill(0, count($removeItemIds), '?'));
+            $pdo->prepare("DELETE FROM invoice_items WHERE invoice_id = ? AND id IN ($ph)")
+                ->execute(array_merge([$invoiceId], $removeItemIds));
+        }
+        if (!empty($removeBookingIds)) {
+            $ph = implode(',', array_fill(0, count($removeBookingIds), '?'));
+            $pdo->prepare("UPDATE bookings SET invoice_id = NULL WHERE invoice_id = ? AND id IN ($ph)")
+                ->execute(array_merge([$invoiceId], $removeBookingIds));
+        }
+
+        if (!empty($toAdd)) {
+            $itemStmt = $pdo->prepare("
+                INSERT INTO invoice_items (invoice_id, booking_id, trip_date, description, amount)
+                VALUES (?, ?, ?, ?, ?)
+            ");
+            foreach ($toAdd as $booking) {
+                $item = buildInvoiceItemFromBooking($booking);
+                $itemStmt->execute([$invoiceId, $item['booking_id'], $item['trip_date'], $item['description'], $item['amount']]);
+            }
+            $ph = implode(',', array_fill(0, count($toAdd), '?'));
+            $pdo->prepare("UPDATE bookings SET invoice_id = ? WHERE id IN ($ph)")
+                ->execute(array_merge([$invoiceId], array_map(fn($b) => (int) $b['id'], $toAdd)));
+        }
+
+        // Paid flags for every booking left on the invoice.
+        $unpaidBookingIds = array_values(array_diff($bookingIds, $paidBookingIds));
+        foreach ([[1, $paidBookingIds], [0, $unpaidBookingIds]] as [$flag, $ids]) {
+            if (empty($ids)) {
+                continue;
+            }
+            $ph = implode(',', array_fill(0, count($ids), '?'));
+            $pdo->prepare("UPDATE bookings SET payment_received = ? WHERE id IN ($ph)")
+                ->execute(array_merge([$flag], $ids));
+        }
+
+        $stmt = $pdo->prepare("SELECT COALESCE(SUM(amount), 0) FROM invoice_items WHERE invoice_id = ?");
+        $stmt->execute([$invoiceId]);
+        $total = round((float) $stmt->fetchColumn(), 2);
+
+        $pdo->prepare("UPDATE invoices SET issue_date = ?, total = ?, notes = ? WHERE id = ?")->execute([
+            $issue->format('Y-m-d'),
+            $total,
+            ($notes !== null && trim($notes) !== '') ? trim($notes) : null,
+            $invoiceId,
+        ]);
+
+        $pdo->commit();
+        return ['id' => $invoiceId, 'invoice_number' => (string) $invoice['invoice_number']];
+
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
+}
+
+/**
+ * Mark every trip on an invoice as paid (or unpaid) by setting
+ * bookings.payment_received on its bookings. Returns the invoice's new
+ * payment summary, or null if the invoice does not exist.
+ * Used by: api/index.php (mark_paid)
+ *
+ * @return array{invoice_number:string,total:float,paid:float,balance:float,status:string}|null
+ */
+function setInvoicePaid(PDO $pdo, int $invoiceId, bool $paid): ?array
+{
+    $stmt = $pdo->prepare("SELECT invoice_number, total FROM invoices WHERE id = ?");
+    $stmt->execute([$invoiceId]);
+    $invoice = $stmt->fetch();
+    if (!$invoice) {
+        return null;
+    }
+
+    $pdo->prepare("UPDATE bookings SET payment_received = ? WHERE invoice_id = ?")
+        ->execute([$paid ? 1 : 0, $invoiceId]);
+
+    $summary = summariseInvoice((float) $invoice['total'], getInvoiceItems($pdo, $invoiceId));
+    $summary['invoice_number'] = (string) $invoice['invoice_number'];
+    return $summary;
 }
 
 /**
