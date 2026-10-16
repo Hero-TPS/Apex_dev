@@ -93,18 +93,6 @@ if (isset($_GET['id'])) {
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="passengerName">Picking Up (if not the client)</label>
-                    <input type="text" id="passengerName" name="passenger_name" placeholder="Name of person being collected"
-                        value="<?php echo htmlspecialchars($booking['passenger_name'] ?? ''); ?>">
-                </div>
-                <div class="form-group">
-                    <label for="passengerPhone">Passenger Phone</label>
-                    <input type="tel" id="passengerPhone" name="passenger_phone"
-                        value="<?php echo htmlspecialchars($booking['passenger_phone'] ?? ''); ?>">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
                     <label for="date">Trip Date <span class="required">*</span></label>
                     <input type="date" id="date" name="trip_date" required value="<?php echo htmlspecialchars($booking['trip_date']); ?>">
                 </div>
@@ -232,6 +220,28 @@ if (isset($_GET['id'])) {
                 <label for="description">Additional Notes</label>
                 <textarea id="description" name="description"><?php echo htmlspecialchars($booking['description']); ?></textarea>
                 <small id="airportNoticeHint" class="at-help-text hidden">✈️ Airport pickup detected — this will be added to the notes automatically: "<?= htmlspecialchars($airport_pickup_notice ?? '') ?>"</small>
+            </div>
+
+            <!-- Pickup person (collapsed unless the booking has one — rarely used) -->
+            <?php $pickupPersonOpen = trim($booking['passenger_name'] ?? '') !== '' || trim($booking['passenger_phone'] ?? '') !== ''; ?>
+            <div class="form-group">
+                <button type="button" id="pickupPersonToggle" class="at-toggle-link" aria-expanded="<?= $pickupPersonOpen ? 'true' : 'false' ?>">
+                    👤 Picking up someone else? <span class="at-toggle-arrow"><?= $pickupPersonOpen ? '▴' : '▾' ?></span>
+                </button>
+                <div id="pickupPersonSection" class="at-pickup-person<?= $pickupPersonOpen ? '' : ' hidden' ?>">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="passengerName">Picking Up (if not the client)</label>
+                            <input type="text" id="passengerName" name="passenger_name" placeholder="Name of person being collected"
+                                value="<?php echo htmlspecialchars($booking['passenger_name'] ?? ''); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label for="passengerPhone">Passenger Phone</label>
+                            <input type="tel" id="passengerPhone" name="passenger_phone"
+                                value="<?php echo htmlspecialchars($booking['passenger_phone'] ?? ''); ?>">
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Driver Allocation -->
@@ -559,6 +569,16 @@ $(document).ready(function () {
     // Initialize driver-related sections on page load
     updateDriverSections();
     updateBookingFee();
+
+    // Pickup person section toggle (fields stay in the form and submit even when collapsed)
+    $('#pickupPersonToggle').on('click', function () {
+        var section = $('#pickupPersonSection');
+        section.toggleClass('hidden');
+        var isOpen = !section.hasClass('hidden');
+        $(this).attr('aria-expanded', isOpen ? 'true' : 'false');
+        $(this).find('.at-toggle-arrow').text(isOpen ? '▴' : '▾');
+    });
+
     $('#editBookingForm').on('submit', function (e) {
         e.preventDefault();
 
