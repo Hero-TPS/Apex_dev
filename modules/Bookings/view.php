@@ -185,6 +185,27 @@ if (isset($_GET['id'])) {
         <div class="detail-item">
             <strong>Driver:</strong> 🚗 <?= htmlspecialchars($booking['driver_name']) ?>
         </div>
+        <?php
+        // Same logic as the driver WhatsApp message (calculateDriverSettlement in includes/helpers.php)
+        $driverSettlement = calculateDriverSettlement($booking);
+        ?>
+        <div class="detail-item">
+            <strong>Driver Due:</strong>
+            <?php if ($driverSettlement['direction'] === 'driver_pays_apex'): ?>
+                💵 Driver pays Apex R<?= number_format($driverSettlement['amount'], 2) ?>
+            <?php elseif ($driverSettlement['direction'] === 'apex_pays_driver'): ?>
+                📲 Apex pays driver R<?= number_format($driverSettlement['amount'], 2) ?>
+                <?php if ($driverSettlement['no_booking_fee']): ?>
+                    (no booking fee)
+                <?php else: ?>
+                    (after R<?= number_format((float) $driverSettlement['fee'], 2) ?> fee)
+                <?php endif; ?>
+            <?php elseif ($driverSettlement['no_booking_fee']): ?>
+                ✅ Nothing due (cash, no booking fee)
+            <?php else: ?>
+                —
+            <?php endif; ?>
+        </div>
         <?php endif; ?>
 
         <!-- Gate Code -->
@@ -242,11 +263,74 @@ if (isset($_GET['id'])) {
             <div class="more-actions-row">
                 <a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=<?= (int) $booking['contact_id'] ?>"
                     class="page-action-btn view-details-btn">📅 All Client Bookings</a>
-                <a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=<?= (int) $booking['contact_id'] ?>&contact_name=<?= urlencode($booking['client_name']) ?>"
-                    class="page-action-btn rebook">➕ Book Again</a>
+                <a href="javascript:void(0)" id="bookAgainBtn" class="page-action-btn rebook">➕ Book Again</a>
                 <a href="<?= BASE_URL ?>/modules/Bookings/invoice.php?id=<?= (int) $booking['id'] ?>" target="_blank"
                     class="page-action-btn invoice">📄 View Invoice</a>
                 <a href="javascript:void(0)" id="deleteBookingBtn" class="page-action-btn delete">🗑️ Delete Booking</a>
+            </div>
+        </div>
+    </div>
+
+    <?php
+    // Book Again URLs. Values are double-encoded on purpose: add.php runs urldecode()
+    // on values PHP has already decoded, which would turn a "+27..." phone into " 27...".
+    // Cost is the base fare (after-hours surcharge excluded), same as edit.php, so the
+    // surcharge prompt on add.php doesn't charge it twice. Date, time, flight number,
+    // notes, driver and the round-trip flag are never copied.
+    $bookAgainUrl = function (array $params): string {
+        $parts = [];
+        foreach ($params as $key => $value) {
+            if ($value === '' || $value === null) {
+                continue;
+            }
+            $parts[] = rawurlencode($key) . '=' . rawurlencode(rawurlencode((string) $value));
+        }
+        return BASE_URL . '/modules/Bookings/add.php?' . implode('&', $parts);
+    };
+
+    $bookAgainBaseCost = round((float) $booking['cost'] - (float) ($booking['after_hours_charge'] ?? 0), 2);
+    $bookAgainClient = [
+        'contact_id'   => (int) $booking['contact_id'],
+        'contact_name' => $booking['client_name'],
+    ];
+    $bookAgainTrip = [
+        'pickup'          => $booking['original_pickup'] ?? '',
+        'destination'     => $booking['original_destination'] ?? '',
+        'cost'            => $bookAgainBaseCost > 0 ? number_format($bookAgainBaseCost, 2, '.', '') : '',
+        'passenger_name'  => trim($booking['passenger_name'] ?? ''),
+        'passenger_phone' => trim($booking['passenger_phone'] ?? ''),
+    ];
+
+    $bookAgainNewUrl    = $bookAgainUrl($bookAgainClient);
+    $bookAgainRepeatUrl = $bookAgainUrl($bookAgainClient + $bookAgainTrip + [
+        'swap_locations' => !empty($booking['was_swapped']) ? '1' : '',
+    ]);
+    $bookAgainReturnUrl = $bookAgainUrl($bookAgainClient + $bookAgainTrip + [
+        'swap_locations' => !empty($booking['was_swapped']) ? '' : '1',
+    ]);
+    ?>
+
+    <!-- Book Again Modal -->
+    <div id="bookAgainModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Book Again</h3>
+            <p>What kind of booking is this?</p>
+            <div class="at-bookagain-choices">
+                <a href="<?= htmlspecialchars($bookAgainNewUrl) ?>" class="page-action-btn rebook">
+                    🆕 New booking
+                    <span class="at-bookagain-hint">Same client, everything else blank</span>
+                </a>
+                <a href="<?= htmlspecialchars($bookAgainRepeatUrl) ?>" class="page-action-btn rebook">
+                    🔁 Repeat this trip
+                    <span class="at-bookagain-hint">Same route, cost and pickup person</span>
+                </a>
+                <a href="<?= htmlspecialchars($bookAgainReturnUrl) ?>" class="page-action-btn rebook">
+                    ↩️ Return trip
+                    <span class="at-bookagain-hint">Same as repeat, with pickup and destination swapped</span>
+                </a>
+            </div>
+            <div class="modal-buttons">
+                <button type="button" id="cancelBookAgainBtn" class="modal-btn cancel-btn">Cancel</button>
             </div>
         </div>
     </div>
@@ -534,6 +618,25 @@ if (isset($_GET['id'])) {
                     },
                     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
                 );
+            });
+
+            // Book Again modal (flex so the overlay keeps its centring)
+            var bookAgainModal = $('#bookAgainModal');
+            $('#bookAgainBtn').on('click', function () {
+                bookAgainModal.css('display', 'flex');
+            });
+            $('#cancelBookAgainBtn').on('click', function () {
+                bookAgainModal.hide();
+            });
+            bookAgainModal.on('click', function (e) {
+                if (e.target === this) {
+                    bookAgainModal.hide();
+                }
+            });
+            $(document).on('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    bookAgainModal.hide();
+                }
             });
 
             // More Actions section toggle
