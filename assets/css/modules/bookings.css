@@ -248,3 +248,42 @@
         overflow-x: auto;
     }
 }
+
+/* Add/Edit Booking: collapsible "Picking up someone else?" section.
+   Link-style toggle so the rarely used pickup person fields stay out of the way. */
+.at-toggle-link {
+    background: none;
+    border: none;
+    padding: 4px 0;
+    color: #2980b9;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+}
+.at-toggle-link:hover {
+    text-decoration: underline;
+}
+.at-pickup-person {
+    margin-top: 10px;
+}
+
+/* Booking view: "Book Again" choice modal — three stacked choices with a hint line each */
+.at-bookagain-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 15px 0;
+}
+.at-bookagain-choices .page-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    text-decoration: none;
+}
+.at-bookagain-hint {
+    font-size: 0.75em;
+    font-weight: normal;
+    opacity: 0.9;
+}
