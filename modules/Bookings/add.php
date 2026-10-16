@@ -51,6 +51,9 @@ $prefill_description  = isset($_GET['description'])    ? htmlspecialchars(urldec
 $prefill_passenger_name  = isset($_GET['passenger_name'])  ? htmlspecialchars(urldecode($_GET['passenger_name']))  : '';
 $prefill_passenger_phone = isset($_GET['passenger_phone']) ? htmlspecialchars(urldecode($_GET['passenger_phone'])) : '';
 $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_prebooking'] : 0;
+
+// Pickup person section opens by itself when Book Again / prebooking passes one in
+$pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone !== '');
 ?>
 
 <div class="form-container">
@@ -71,19 +74,6 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
         <div class="form-group">
             <label for="phone">Phone Number <span class="required">*</span></label>
             <input type="tel" id="phone" name="phone" required>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label for="passengerName">Picking Up (if not the client)</label>
-                <input type="text" id="passengerName" name="passenger_name" placeholder="Name of person being collected"
-                    value="<?= $prefill_passenger_name ?>">
-            </div>
-            <div class="form-group">
-                <label for="passengerPhone">Passenger Phone</label>
-                <input type="tel" id="passengerPhone" name="passenger_phone"
-                    value="<?= $prefill_passenger_phone ?>">
-            </div>
         </div>
 
         <div class="form-row">
@@ -219,6 +209,27 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
             <label for="description">Additional Notes</label>
             <textarea id="description" name="description" placeholder="Any special instructions..."><?= $prefill_description ?></textarea>
             <small id="airportNoticeHint" class="at-help-text hidden">✈️ Airport pickup detected — this will be added to the notes automatically: "<?= htmlspecialchars($airport_pickup_notice) ?>"</small>
+        </div>
+
+        <!-- Pickup person (collapsed unless prefilled — rarely used) -->
+        <div class="form-group">
+            <button type="button" id="pickupPersonToggle" class="at-toggle-link" aria-expanded="<?= $pickupPersonOpen ? 'true' : 'false' ?>">
+                👤 Picking up someone else? <span class="at-toggle-arrow"><?= $pickupPersonOpen ? '▴' : '▾' ?></span>
+            </button>
+            <div id="pickupPersonSection" class="at-pickup-person<?= $pickupPersonOpen ? '' : ' hidden' ?>">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="passengerName">Picking Up (if not the client)</label>
+                        <input type="text" id="passengerName" name="passenger_name" placeholder="Name of person being collected"
+                            value="<?= $prefill_passenger_name ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="passengerPhone">Passenger Phone</label>
+                        <input type="tel" id="passengerPhone" name="passenger_phone"
+                            value="<?= $prefill_passenger_phone ?>">
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Driver Allocation -->
@@ -566,6 +577,15 @@ $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_preb
                 $('#otherCost').val(prefillCost);
             }
         }
+
+        // Pickup person section toggle (fields stay in the form and submit even when collapsed)
+        $('#pickupPersonToggle').on('click', function () {
+            var section = $('#pickupPersonSection');
+            section.toggleClass('hidden');
+            var isOpen = !section.hasClass('hidden');
+            $(this).attr('aria-expanded', isOpen ? 'true' : 'false');
+            $(this).find('.at-toggle-arrow').text(isOpen ? '▴' : '▾');
+        });
 
         // Form submit
         $('#bookingForm').on('submit', function (e) {
