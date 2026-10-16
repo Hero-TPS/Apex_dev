@@ -388,6 +388,58 @@ function buildFlightradarUrl(string $flightNumber): string
 }
 
 /**
+ * Work out who owes whom between Apex Transit and the allocated driver for a booking.
+ * Single source of truth for the driver WhatsApp message and the booking view,
+ * so the two can never disagree.
+ *   - Cash + booking fee:    driver pays Apex the fee.
+ *   - EFT  + booking fee:    Apex pays the driver cost minus fee, once the client has paid.
+ *   - No booking fee + EFT:  Apex pays the driver the full cost, once the client has paid.
+ *   - No booking fee + cash: nothing due.
+ *   - No fee recorded:       nothing stated (matches the driver message).
+ * Used by: createDriverBookingMessage(), modules/Bookings/view.php
+ *
+ * @param array $bookingDetails  Needs: cost, payment_method. Optional: booking_fee, no_booking_fee.
+ * @return array{direction: string, amount: float, fee: ?float, no_booking_fee: bool, is_eft: bool}
+ *               direction is 'driver_pays_apex', 'apex_pays_driver' or 'none'.
+ *               fee is null when waived or not recorded.
+ */
+function calculateDriverSettlement(array $bookingDetails): array
+{
+    $cost = (float) ($bookingDetails['cost'] ?? 0);
+    $isEft = (($bookingDetails['payment_method'] ?? '') === 'eft');
+    $noBookingFee = !empty($bookingDetails['no_booking_fee']);
+    $fee = (!$noBookingFee && isset($bookingDetails['booking_fee']))
+        ? (float) $bookingDetails['booking_fee']
+        : null;
+
+    $direction = 'none';
+    $amount = 0.0;
+
+    if ($noBookingFee) {
+        if ($isEft) {
+            $direction = 'apex_pays_driver';
+            $amount = $cost;
+        }
+    } elseif ($fee !== null && $fee > 0) {
+        if ($isEft) {
+            $direction = 'apex_pays_driver';
+            $amount = $cost - $fee;
+        } else {
+            $direction = 'driver_pays_apex';
+            $amount = $fee;
+        }
+    }
+
+    return [
+        'direction'      => $direction,
+        'amount'         => $amount,
+        'fee'            => $fee,
+        'no_booking_fee' => $noBookingFee,
+        'is_eft'         => $isEft,
+    ];
+}
+
+/**
  * Build the WhatsApp message to send to an allocated driver about a booking.
  * Used by: modules/Bookings/view.php
  *
@@ -407,11 +459,10 @@ function createDriverBookingMessage(array $bookingDetails): string
 
     $driverName = $bookingDetails['driver_name'] ?? 'Driver';
     $cost = (float) ($bookingDetails['cost'] ?? 0);
-    $isEft = ($bookingDetails['payment_method'] === 'eft');
-    $noBookingFee = !empty($bookingDetails['no_booking_fee']);
-    $bookingFee = (!$noBookingFee && isset($bookingDetails['booking_fee']) && $bookingDetails['booking_fee'] !== null)
-        ? (float) $bookingDetails['booking_fee']
-        : null;
+    $settlement = calculateDriverSettlement($bookingDetails);
+    $isEft = $settlement['is_eft'];
+    $noBookingFee = $settlement['no_booking_fee'];
+    $bookingFee = $settlement['fee'];
 
     $msg = "Good day " . $driverName . "! 🚗\n\n";
     $msg .= "You have a booking allocated to you:\n\n";
@@ -435,17 +486,16 @@ function createDriverBookingMessage(array $bookingDetails): string
     if ($noBookingFee) {
         $msg .= "\n✅ No booking fee — full amount goes to you.\n";
         if ($isEft) {
-            $msg .= "📲 This is an EFT booking with no booking fee. Apex Transit will pay you R" . number_format($cost, 2) . " once payment is received from the client.\n";
+            $msg .= "📲 This is an EFT booking with no booking fee. Apex Transit will pay you R" . number_format($settlement['amount'], 2) . " once payment is received from the client.\n";
         } else {
             $msg .= "💵 This is a cash booking with no booking fee. No payment due to Apex Transit\n";
         }
     } elseif ($bookingFee !== null && $bookingFee > 0) {
         $msg .= "💼 Apex Booking Fee: R" . number_format($bookingFee, 2) . "\n";
         if ($isEft) {
-            $netAmount = $cost - $bookingFee;
-            $msg .= "\n📲 This is an EFT booking. Apex Transit will pay you R" . number_format($netAmount, 2) . " (after deducting the booking fee) once payment is received from the client.\n";
+            $msg .= "\n📲 This is an EFT booking. Apex Transit will pay you R" . number_format($settlement['amount'], 2) . " (after deducting the booking fee) once payment is received from the client.\n";
         } else {
-            $msg .= "\n💵 This is a cash booking. Please pay Apex Transit the booking fee of R" . number_format($bookingFee, 2) . ".\n";
+            $msg .= "\n💵 This is a cash booking. Please pay Apex Transit the booking fee of R" . number_format($settlement['amount'], 2) . ".\n";
         }
     } elseif ($isEft) {
         $msg .= "\n📲 This is an EFT booking.\n";
