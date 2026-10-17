@@ -69,8 +69,8 @@ ALTER TABLE invoices
 
 ### [whatsapp] Create `whatsapp_templates` and seed the built-in WhatsApp messages
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 ```sql
 CREATE TABLE IF NOT EXISTS whatsapp_templates (
