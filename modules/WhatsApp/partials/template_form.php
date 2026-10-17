@@ -37,6 +37,14 @@ $clientVariables = getWhatsAppClientVariables();
         <textarea id="body" name="body" class="at-wa-body-input" maxlength="2000" required><?= $isNew ? '' : e($template['body']) ?></textarea>
     </div>
 
+    <?php if ($placement !== 'driver'): ?>
+        <div class="form-group">
+            <label for="body_af">Afrikaans message (optional)</label>
+            <textarea id="body_af" name="body_af" class="at-wa-body-input" maxlength="2000"><?= $isNew ? '' : e($template['body_af'] ?? '') ?></textarea>
+            <span class="client-subline">Sent to clients and bookings set to Afrikaans. Leave empty to send the English message. Uses the same placeholders.</span>
+        </div>
+    <?php endif; ?>
+
     <?php if ($isMenuMessage): ?>
         <div class="form-group">
             <label class="at-wa-check-label">

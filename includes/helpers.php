@@ -273,6 +273,18 @@ const SYSTEM_VARIABLES = [
         'type' => 'textarea',
         'default' => "Please ensure that your phone is on and connected after you've landed.",
     ],
+    'airport_pickup_notice_af' => [
+        'label' => 'Cape Town Airport Pickup Notice (Afrikaans)',
+        'type' => 'text',
+        'default' => 'Maak asseblief seker dat u foon aan en gekoppel is nadat u geland het.',
+        'hint' => 'Sent instead of the English notice to clients set to Afrikaans. Leave empty to send the English notice.',
+    ],
+    'after_hours_notice_af' => [
+        'label' => 'After-Hours Notice (Afrikaans)',
+        'type' => 'text',
+        'default' => "Dit is 'n na-ure rit — 'n na-ure toeslag van R{amount} is by die koste ingesluit.",
+        'hint' => 'Sent for clients set to Afrikaans. {amount} is replaced by the booking\'s after-hours charge. Leave the {amount} in.',
+    ],
     'invoice_payment_details' => [
         'label' => 'Invoice Payment Details (bank / EFT)',
         'type' => 'textarea',
@@ -353,9 +365,12 @@ function isAirportPickupLocation(string $location): bool
  * @param string $pickup  Effective pickup location — caller must already
  *                        have resolved this for was_swapped
  * @param string $notes   Raw stored notes/description text
+ * @param string $lang    'en' (default) or 'af'. Afrikaans uses the
+ *                        airport_pickup_notice_af variable and falls back to the
+ *                        English notice when that is empty.
  * @return string          Notes text ready for display
  */
-function appendAirportPickupNotice(PDO $pdo, string $pickup, ?string $notes): string
+function appendAirportPickupNotice(PDO $pdo, string $pickup, ?string $notes, string $lang = 'en'): string
 {
     $notes = $notes ?? '';
 
@@ -363,7 +378,13 @@ function appendAirportPickupNotice(PDO $pdo, string $pickup, ?string $notes): st
         return $notes;
     }
 
-    $notice = trim((string) getSystemVariable($pdo, 'airport_pickup_notice'));
+    $notice = '';
+    if ($lang === 'af') {
+        $notice = trim((string) getSystemVariable($pdo, 'airport_pickup_notice_af'));
+    }
+    if ($notice === '') {
+        $notice = trim((string) getSystemVariable($pdo, 'airport_pickup_notice'));
+    }
     if ($notice === '' || stripos($notes, $notice) !== false) {
         return $notes;
     }
@@ -407,9 +428,12 @@ function isAfterHoursStartTime(PDO $pdo, string $startTime): bool
  *
  * @param float|string|null $afterHoursCharge  bookings.after_hours_charge value
  * @param string|null       $notes             Raw stored notes/description text
+ * @param string            $lang              'en' (default) or 'af'
+ * @param PDO|null          $pdo               Needed for 'af' (reads the after_hours_notice_af
+ *                                             variable); without it the default Afrikaans text is used
  * @return string                               Notes text ready for display
  */
-function appendAfterHoursNotice($afterHoursCharge, ?string $notes): string
+function appendAfterHoursNotice($afterHoursCharge, ?string $notes, string $lang = 'en', ?PDO $pdo = null): string
 {
     $notes = $notes ?? '';
     $charge = (float) $afterHoursCharge;
@@ -417,6 +441,21 @@ function appendAfterHoursNotice($afterHoursCharge, ?string $notes): string
     if ($charge <= 0) {
         return $notes;
     }
+
+    if ($lang === 'af') {
+        if (stripos($notes, 'na-ure') !== false) {
+            return $notes;
+        }
+        $template = $pdo !== null
+            ? trim((string) getSystemVariable($pdo, 'after_hours_notice_af'))
+            : SYSTEM_VARIABLES['after_hours_notice_af']['default'];
+        if ($template === '' || strpos($template, '{amount}') === false) {
+            $template = SYSTEM_VARIABLES['after_hours_notice_af']['default'];
+        }
+        $notice = str_replace('{amount}', number_format($charge, 2), $template);
+        return trim($notes) === '' ? $notice : rtrim($notes) . "\n" . $notice;
+    }
+
     if (stripos($notes, 'after-hours') !== false) {
         return $notes;
     }

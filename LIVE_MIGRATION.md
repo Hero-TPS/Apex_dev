@@ -239,6 +239,110 @@ Drive safe! 🚗', 1, 120, 1);
 
 ---
 
+### [whatsapp-af] Add Afrikaans text to `whatsapp_templates` and seed the Afrikaans messages
+
+- [ ] Done on dev
+- [ ] Done on live
+
+Run after the `[whatsapp]` entry above.
+
+```sql
+ALTER TABLE whatsapp_templates ADD COLUMN IF NOT EXISTS body_af TEXT NULL AFTER body;
+
+UPDATE whatsapp_templates SET body_af = '{if is_update}
+*BOEKING OPGEDATEER EN BEVESTIG* ✅
+{else}
+*BOEKING BEVESTIG* ✅
+{/if}
+
+Goeie dag {client_name},
+
+📍 Oplaai: {pickup}
+📅 Datum: {date} om {time}
+🎯 Bestemming: {destination}
+{if passenger_name}
+👤 Haal op: {passenger_name}
+📱 Passasier se foon: {passenger_phone}
+{/if}
+💰 Koste: {cost}
+{if payment_received}
+✅ Betaling ontvang
+{/if}
+✈️ Vlugnommer: {flight_number}
+📝 Notas: {notes}
+{if driver_name}
+🚗 U drywer sal wees: {driver_name}
+📱 Drywer se foon: {driver_phone}
+{/if}
+
+{if is_update}
+✏️ Opgedateer: {updated_at}
+{else}
+🕒 Geskep: {created_at}
+{/if}
+
+🚗 Ons sien daarna uit om u van diens te wees. 👍
+
+Groete,
+{business_owner}
+{business_name}' WHERE template_key = 'confirmation' AND body_af IS NULL;
+
+UPDATE whatsapp_templates SET body_af = 'Goeie dag {client_name},
+
+Wanneer u u bagasie gekry het, stuur asseblief vir my ''n boodskap. Ek sal u dan by die oplaaipunt in parkeerarea P2 ontmoet.
+Wanneer u by die terminaal uitstap, is dit die linker uitgang (by Woolworths). Volg die tekens na P2.
+
+Wit Nissan Almera
+CAA 526-434' WHERE template_key = 'pickup_message' AND body_af IS NULL;
+
+UPDATE whatsapp_templates SET body_af = 'Goeie dag {client_name}! 👋
+
+Ons bevestig net u booking vir môre:
+
+📅 Datum: {date}
+🕐 Oplaaityd: {time}
+📍 Van: {pickup}
+🎯 Na: {destination}
+{if passenger_name}
+👤 Haal op: {passenger_name}
+📱 Passasier se foon: {passenger_phone}
+{/if}
+{if driver_name}
+
+🚗 U drywer sal wees: {driver_name}
+📱 Drywer se foon: {driver_phone}
+{/if}
+
+Sien u môre! 🚗' WHERE template_key = 'evening_confirmation' AND body_af IS NULL;
+
+UPDATE whatsapp_templates SET body_af = '*BOEKING HERINNERING* 📋
+
+Goeie dag {client_name},
+
+Ons het ''n voorlopige booking vir u op rekord:
+
+📅 Datum: {date}
+⏰ Tyd: {time}
+📍 Oplaai: {pickup}
+🎯 Bestemming: {destination}
+{if passenger_name}
+👤 Haal op: {passenger_name}
+📱 Passasier se foon: {passenger_phone}
+{/if}
+💰 Koste: {cost}
+📝 Notas: {notes}
+
+Laat weet ons asseblief wanneer u al die besonderhede het sodat ons u booking kan finaliseer. 😊
+
+Groete,
+{business_owner}
+{business_name}' WHERE template_key = 'prebooking_reminder' AND body_af IS NULL;
+```
+
+> Adds an optional Afrikaans text to every WhatsApp message (edit it under Dashboard → Services → WhatsApp Messages). A message with no Afrikaans text is sent in English. Seeds Afrikaans for the booking confirmation, airport pickup message, evening confirmation and prebooking reminder (draft translations, please review). `bank_details` and the driver message have no Afrikaans text (bank details are the same in both languages; the driver message stays English). Each UPDATE only fills a message whose Afrikaans text is still empty, so re-running never overwrites your edits. The Afrikaans airport-pickup and after-hours notices are System Variables (Maintenance), created with their defaults on first use. Contains emoji, so import with the utf8mb4 connection charset.
+
+---
+
 **Notes:**
 - Each entry requires two checkboxes: **Done on dev** and **Done on live**
 - Always run on dev first and verify before running on live

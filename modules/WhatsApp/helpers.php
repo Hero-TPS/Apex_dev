@@ -21,6 +21,39 @@ const WHATSAPP_PLACEMENTS = [
 ];
 
 /**
+ * Languages a message can be sent in. English is the default; a message with no
+ * Afrikaans text is sent in English.
+ */
+const WHATSAPP_LANGUAGES = [
+    'en' => 'English',
+    'af' => 'Afrikaans',
+];
+
+/**
+ * Normalise a stored language value: 'af' stays 'af', anything else is English.
+ * Used by: the message builders below, modules/Bookings/view.php
+ */
+function normalizeWhatsAppLanguage($language): string
+{
+    return $language === 'af' ? 'af' : 'en';
+}
+
+/**
+ * The text of a template for a language: the Afrikaans text when asked for Afrikaans and
+ * one has been written, otherwise the English text.
+ * Used by: renderWhatsAppTemplateByKey(), getWhatsAppClientMessages(), modules/Bookings/view.php
+ *
+ * @param array $template  A whatsapp_templates row
+ */
+function getWhatsAppTemplateBody(array $template, string $language): string
+{
+    if (normalizeWhatsAppLanguage($language) === 'af' && trim((string) ($template['body_af'] ?? '')) !== '') {
+        return $template['body_af'];
+    }
+    return $template['body'];
+}
+
+/**
  * Placeholders that only need the client (usable from the Clients pages).
  * Used by: getWhatsAppVariables(), isClientLevelWhatsAppBody()
  *
@@ -326,10 +359,11 @@ function getWhatsAppClientMenuTemplates(PDO $pdo): array
 }
 
 /**
- * Render a stored template by key. Logs and returns '' when it cannot be found.
+ * Render a stored template by key, in the given language. Logs and returns '' when it
+ * cannot be found.
  * Used by: createWhatsAppMessage() and the other message builders below
  */
-function renderWhatsAppTemplateByKey(PDO $pdo, string $key, array $vars): string
+function renderWhatsAppTemplateByKey(PDO $pdo, string $key, array $vars, string $language = 'en'): string
 {
     try {
         $template = getWhatsAppTemplate($pdo, $key);
@@ -341,7 +375,7 @@ function renderWhatsAppTemplateByKey(PDO $pdo, string $key, array $vars): string
         logError('WHATSAPP', 'WhatsApp template not found', ['key' => $key]);
         return '';
     }
-    return renderWhatsAppTemplate($template['body'], $vars);
+    return renderWhatsAppTemplate(getWhatsAppTemplateBody($template, $language), $vars);
 }
 
 /**
@@ -392,12 +426,13 @@ function buildClientMessageVars(PDO $pdo, string $clientName, string $clientPhon
 }
 
 /**
- * Render the client-level templates for one client (Clients pages).
+ * Render the client-level templates for one client (Clients pages), in that client's language.
  *
- * @param array $templates  From getWhatsAppClientMenuTemplates()
+ * @param array  $templates  From getWhatsAppClientMenuTemplates()
+ * @param string $language   contacts.language ('en' or 'af')
  * @return array<int,array{key:string,label:string,text:string}>
  */
-function getWhatsAppClientMessages(PDO $pdo, array $templates, string $clientName, string $clientPhone = ''): array
+function getWhatsAppClientMessages(PDO $pdo, array $templates, string $clientName, string $clientPhone = '', string $language = 'en'): array
 {
     $vars = buildClientMessageVars($pdo, $clientName, $clientPhone);
     $messages = [];
@@ -405,7 +440,7 @@ function getWhatsAppClientMessages(PDO $pdo, array $templates, string $clientNam
         $messages[] = [
             'key'   => $tpl['template_key'],
             'label' => $tpl['label'],
-            'text'  => renderWhatsAppTemplate($tpl['body'], $vars),
+            'text'  => renderWhatsAppTemplate(getWhatsAppTemplateBody($tpl, $language), $vars),
         ];
     }
     return $messages;
@@ -442,8 +477,9 @@ function buildBookingMessageVars(PDO $pdo, array $b): array
         $passengerPhone = '';
     }
 
-    $notes = appendAirportPickupNotice($pdo, $pickup, $b['description'] ?? '');
-    $notes = appendAfterHoursNotice($b['after_hours_charge'] ?? null, $notes);
+    $lang = normalizeWhatsAppLanguage($b['language'] ?? 'en');
+    $notes = appendAirportPickupNotice($pdo, $pickup, $b['description'] ?? '', $lang);
+    $notes = appendAfterHoursNotice($b['after_hours_charge'] ?? null, $notes, $lang, $pdo);
 
     $isUpdate = !empty($b['updated_at']);
     $updatedAt = $isUpdate ? (new DateTime($b['updated_at'], $tz))->format('d/m/y H:i') : '';
@@ -498,10 +534,11 @@ function buildPrebookingMessageVars(array $d): array
 {
     $tz = new DateTimeZone(TIME_ZONE);
     $date = new DateTime($d['trip_date'], $tz);
+    $tbc = normalizeWhatsAppLanguage($d['language'] ?? 'en') === 'af' ? 'Nog te bevestig' : 'TBC';
 
     $time = !empty($d['start_time'])
         ? (new DateTime($d['trip_date'] . ' ' . $d['start_time'], $tz))->format('H:i')
-        : 'TBC';
+        : $tbc;
 
     $swapped = !empty($d['was_swapped']);
     $rawPickup = $d['original_pickup'] ?? '';
@@ -523,9 +560,9 @@ function buildPrebookingMessageVars(array $d): array
         'client_name'     => $clientName,
         'date'            => $date->format('d/m/y'),
         'time'            => $time,
-        'pickup'          => $pickup !== '' ? $pickup : 'TBC',
-        'destination'     => $destination !== '' ? $destination : 'TBC',
-        'cost'            => $cost > 0 ? 'R' . number_format($cost, 2) : 'TBC',
+        'pickup'          => $pickup !== '' ? $pickup : $tbc,
+        'destination'     => $destination !== '' ? $destination : $tbc,
+        'cost'            => $cost > 0 ? 'R' . number_format($cost, 2) : $tbc,
         'notes'           => (string) ($d['description'] ?? ''),
         'passenger_name'  => $passengerName,
         'passenger_phone' => $passengerPhone,
@@ -537,36 +574,52 @@ function buildPrebookingMessageVars(array $d): array
 // --- Message builders (templates: confirmation, evening_confirmation, prebooking_reminder, driver_notification) ---
 
 /**
- * The booking confirmation message (new or updated booking).
+ * The booking confirmation message (new or updated booking), in the booking's language.
  * Used by: modules/Bookings/api/index.php
  *
- * @param array $bookingDetails  Booking row with pickup_location / destination resolved for was_swapped
+ * @param array $bookingDetails  Booking row (with bookings.language) with pickup_location / destination resolved for was_swapped
  */
 function createWhatsAppMessage(PDO $pdo, array $bookingDetails): string
 {
-    return renderWhatsAppTemplateByKey($pdo, 'confirmation', buildBookingMessageVars($pdo, $bookingDetails));
+    return renderWhatsAppTemplateByKey(
+        $pdo,
+        'confirmation',
+        buildBookingMessageVars($pdo, $bookingDetails),
+        normalizeWhatsAppLanguage($bookingDetails['language'] ?? 'en')
+    );
 }
 
 /**
- * The evening confirmation message for tomorrow's booking.
+ * The evening confirmation message for tomorrow's booking, in the booking's language.
  * Used by: modules/Bookings/api/index.php (tomorrows_bookings)
  */
 function createEveningConfirmationMessage(PDO $pdo, array $bookingDetails): string
 {
-    return renderWhatsAppTemplateByKey($pdo, 'evening_confirmation', buildBookingMessageVars($pdo, $bookingDetails));
+    return renderWhatsAppTemplateByKey(
+        $pdo,
+        'evening_confirmation',
+        buildBookingMessageVars($pdo, $bookingDetails),
+        normalizeWhatsAppLanguage($bookingDetails['language'] ?? 'en')
+    );
 }
 
 /**
- * The reminder message for a prebooking.
+ * The reminder message for a prebooking, in the client's language (a prebooking has no
+ * language of its own, so the caller passes contacts.language as 'language').
  * Used by: modules/Prebookings/index.php, modules/Prebookings/api/index.php
  */
 function createPrebookingWhatsAppMessage(PDO $pdo, array $prebookingDetails): string
 {
-    return renderWhatsAppTemplateByKey($pdo, 'prebooking_reminder', buildPrebookingMessageVars($prebookingDetails));
+    return renderWhatsAppTemplateByKey(
+        $pdo,
+        'prebooking_reminder',
+        buildPrebookingMessageVars($prebookingDetails),
+        normalizeWhatsAppLanguage($prebookingDetails['language'] ?? 'en')
+    );
 }
 
 /**
- * The message sent to an allocated driver about a booking.
+ * The message sent to an allocated driver about a booking. Always English.
  * Used by: modules/Bookings/view.php
  */
 function createDriverBookingMessage(PDO $pdo, array $bookingDetails): string

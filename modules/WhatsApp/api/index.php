@@ -45,6 +45,7 @@ function handleSaveTemplate(): void
     $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT) ?: null;
     $label = trim((string) ($_POST['label'] ?? ''));
     $body = trim(str_replace(["\r\n", "\r"], "\n", (string) ($_POST['body'] ?? '')));
+    $bodyAf = trim(str_replace(["\r\n", "\r"], "\n", (string) ($_POST['body_af'] ?? '')));
     $active = !empty($_POST['active']) ? 1 : 0;
 
     if ($label === '') {
@@ -60,6 +61,10 @@ function handleSaveTemplate(): void
         jsonResponse(['success' => false, 'message' => 'The message is too long (max 2000 characters).'], 400);
     }
 
+    if (mb_strlen($bodyAf) > 2000) {
+        jsonResponse(['success' => false, 'message' => 'The Afrikaans message is too long (max 2000 characters).'], 400);
+    }
+
     $existing = null;
     if ($id !== null) {
         $existing = getWhatsAppTemplateById($pdo, $id);
@@ -73,12 +78,20 @@ function handleSaveTemplate(): void
     if ($error !== null) {
         jsonResponse(['success' => false, 'message' => $error], 400);
     }
+    if ($bodyAf !== '') {
+        $errorAf = validateWhatsAppTemplateBody($bodyAf, $placement);
+        if ($errorAf !== null) {
+            jsonResponse(['success' => false, 'message' => 'Afrikaans message: ' . $errorAf], 400);
+        }
+    }
+    // Empty Afrikaans text is stored as NULL, meaning "send the English text".
+    $bodyAfValue = $bodyAf !== '' ? $bodyAf : null;
 
     if ($existing) {
         // Only booking-menu messages can be hidden; the system messages are always in use.
         $newActive = $placement === 'booking_menu' ? $active : 1;
-        $stmt = $pdo->prepare("UPDATE whatsapp_templates SET label = ?, body = ?, active = ? WHERE id = ?");
-        $stmt->execute([$label, $body, $newActive, $id]);
+        $stmt = $pdo->prepare("UPDATE whatsapp_templates SET label = ?, body = ?, body_af = ?, active = ? WHERE id = ?");
+        $stmt->execute([$label, $body, $bodyAfValue, $newActive, $id]);
 
         logInfo('WHATSAPP', 'WhatsApp message updated', [
             'id' => $id,
@@ -89,10 +102,10 @@ function handleSaveTemplate(): void
         $sortOrder = (int) $pdo->query("SELECT COALESCE(MAX(sort_order), 0) FROM whatsapp_templates WHERE placement = 'booking_menu'")->fetchColumn() + 10;
 
         $stmt = $pdo->prepare("
-            INSERT INTO whatsapp_templates (template_key, label, placement, body, active, sort_order, is_builtin)
-            VALUES (?, ?, 'booking_menu', ?, ?, ?, 0)
+            INSERT INTO whatsapp_templates (template_key, label, placement, body, body_af, active, sort_order, is_builtin)
+            VALUES (?, ?, 'booking_menu', ?, ?, ?, ?, 0)
         ");
-        $stmt->execute([$key, $label, $body, $active, $sortOrder]);
+        $stmt->execute([$key, $label, $body, $bodyAfValue, $active, $sortOrder]);
 
         logInfo('WHATSAPP', 'WhatsApp message added', ['template_key' => $key]);
     }
