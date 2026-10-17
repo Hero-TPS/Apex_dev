@@ -160,6 +160,24 @@ $highlightClientId = $_GET['highlight'] ?? null;
         "Kind regards,\n<?= e(BUSINESS_OWNER) ?>\n<?= e(BUSINESS_NAME) ?>";
 }
 
+        // WhatsApp dropdown for a client row. Same markup as renderWhatsAppMenu() in
+        // modules/WhatsApp/helpers.php; behaviour and logging live in assets/js/whatsapp-menu.js.
+        function buildWaMenu(contact) {
+            var waUrl = 'https://wa.me/' + contact.whatsapp_phone;
+            var items = '';
+            (contact.wa_messages || []).forEach(function (m) {
+                if (!m.text) { return; }
+                items += '<a class="at-wa-menu-item" target="_blank" rel="noopener" href="' + waUrl + '?text=' + encodeURIComponent(m.text) + '"' +
+                    ' data-wa-key="' + escapeHtmlAttr(m.key) + '" data-wa-msg="' + escapeHtmlAttr(m.text) + '"' +
+                    ' data-contact-id="' + contact.id + '">' + escapeHtml(m.label) + '</a>';
+            });
+            items += '<a class="at-wa-menu-item" target="_blank" rel="noopener" href="' + waUrl + '"' +
+                ' data-wa-key="message" data-wa-msg="" data-contact-id="' + contact.id + '">Blank message</a>';
+            return '<div class="at-wa-menu"><button type="button" class="action-btn whatsapp-btn at-wa-menu-toggle"' +
+                ' aria-haspopup="true" aria-expanded="false">WhatsApp ▾</button>' +
+                '<div class="at-wa-menu-list" hidden>' + items + '</div></div>';
+        }
+
         function loadContacts(highlightId = null) {
             var colspan = currentFilter === 'without_bookings' ? 7 : 6;
             tableBody.html('<tr><td colspan="' + colspan + '" style="text-align:center;">Loading clients...</td></tr>');
@@ -195,11 +213,6 @@ $highlightClientId = $_GET['highlight'] ?? null;
         `);
 
                         response.contacts.forEach(function (contact) {
-                            var waGreeting = 'Hi ' + contact.name;
-                            var waHref = contact.whatsapp_phone
-                                ? 'https://wa.me/' + contact.whatsapp_phone + '?text=' + encodeURIComponent(waGreeting)
-                                : '#';
-
                             var gpsIndicator = (contact.pickup_lat && contact.pickup_lng)
                                 ? ' <span title="GPS set">📍</span>'
                                 : '';
@@ -246,9 +259,7 @@ $highlightClientId = $_GET['highlight'] ?? null;
                                 (contact.booking_count > 0 ? '<a href="<?= BASE_URL ?>/modules/Clients/bookings.php?id=' + contact.id + '" class="action-btn view-details-btn">View Bookings</a>' : '') +
                                 '<a href="<?= BASE_URL ?>/modules/Bookings/add.php?contact_id=' + contact.id + '&contact_name=' + encodeURIComponent(contact.name) + '" class="action-btn add-booking-small">Add Booking</a>' +
                                 '<a href="<?= BASE_URL ?>/modules/Clients/edit.php?id=' + contact.id + '" class="action-btn edit-btn">Edit</a>' +
-                                (contact.whatsapp_phone
-                                    ? '<a href="' + waHref + '" target="_blank" class="action-btn whatsapp-btn" onclick="logWhatsAppSend(null, ' + contact.id + ', ' + JSON.stringify(waGreeting) + ', \'message\')">WhatsApp</a>'
-                                    : '') +
+                                (contact.whatsapp_phone ? buildWaMenu(contact) : '') +
                                 waCleanupBtn +
                                 buildGpsButtons(contact) +
                                 waStatusBtns +
@@ -531,28 +542,16 @@ $highlightClientId = $_GET['highlight'] ?? null;
             }, 5000);
         }
 
+        function escapeHtmlAttr(text) {
+            return (text || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
         function escapeHtml(text) {
             var div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
     });
-
-    function logWhatsAppSend(bookingId, contactId, messageContent, messageType) {
-        $.ajax({
-            type: 'POST',
-            url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
-            data: {
-                action: 'log_whatsapp',
-                booking_id: bookingId,
-                contact_id: contactId,
-                message_type: messageType || 'message',
-                message_content: messageContent,
-                sent_by: 'user'
-            },
-            dataType: 'json'
-        });
-    }
 </script>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>

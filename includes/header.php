@@ -17,6 +17,7 @@
     <!--        <script src="assets/js/jquery-3.7.1.min.js"></script>-->
     <script>window.APP_BASE_URL = "<?= BASE_URL ?>";</script>
     <script src="<?= BASE_URL ?>/assets/js/error-logging.js"></script>
+    <script src="<?= BASE_URL ?>/assets/js/whatsapp-menu.js" defer></script>
 </head>
 
 <body>

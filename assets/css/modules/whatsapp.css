@@ -1,0 +1,174 @@
+/* assets/css/modules/whatsapp.css
+   WhatsApp module: the WhatsApp dropdown menu (booking page, Clients pages) and the
+   message template list / add / edit pages. Classes use the at-wa- prefix. */
+
+/* ========================
+   WhatsApp dropdown menu
+   Markup: modules/WhatsApp/helpers.php renderWhatsAppMenu() (also built in modules/Clients/index.php).
+   Behaviour: assets/js/whatsapp-menu.js
+======================== */
+
+.at-wa-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.at-wa-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  min-width: 180px;
+}
+
+.at-wa-menu-list[hidden] {
+  display: none;
+}
+
+.at-wa-menu-item {
+  display: block;
+  padding: 8px 12px;
+  border: 1px solid #cfeedd;
+  border-radius: 5px;
+  background: #f1fbf5;
+  color: #128c7e;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  text-decoration: none;
+  white-space: normal;
+}
+
+.at-wa-menu-item:hover {
+  background: #dff6e8;
+}
+
+/* On the booking page the list floats over the content below the button.
+   In table rows it stays in the flow, so the page container can never clip it. */
+.invoice-actions .at-wa-menu-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 20;
+  min-width: 220px;
+  max-width: calc(100vw - 32px);
+  padding: 6px;
+  border: 1px solid #dfe5ea;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+
+/* ========================
+   Message list (modules/WhatsApp/index.php)
+======================== */
+
+.at-wa-list-intro {
+  margin: 10px 0 20px;
+  color: #555;
+}
+
+.at-wa-list-table .at-wa-preview {
+  max-width: 320px;
+  color: #666;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.at-wa-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #eef1f4;
+  color: #555;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.at-wa-badge--builtin {
+  background: #e8f1fb;
+  color: #2a6aa8;
+}
+
+/* ========================
+   Add / edit form (modules/WhatsApp/partials/template_form.php)
+======================== */
+
+.at-wa-form-meta {
+  margin: 0 0 15px;
+  color: #555;
+}
+
+.at-wa-body-input {
+  width: 100%;
+  min-height: 320px;
+  box-sizing: border-box;
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.at-wa-check-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.at-wa-check-label input {
+  width: auto;
+}
+
+.at-wa-help {
+  margin: 15px 0;
+  padding: 12px 15px;
+  border-radius: 6px;
+  background: #f8f9fa;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #444;
+}
+
+.at-wa-help summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.at-wa-help code {
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #e9ecef;
+  font-size: 12px;
+}
+
+.at-wa-help pre {
+  margin: 8px 0;
+  padding: 10px;
+  border-radius: 5px;
+  background: #e9ecef;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.at-wa-vars {
+  width: 100%;
+  margin-top: 8px;
+  border-collapse: collapse;
+}
+
+.at-wa-vars td {
+  padding: 4px 8px 4px 0;
+  vertical-align: top;
+  border-bottom: 1px solid #e1e8ed;
+}
+
+.at-wa-vars td:first-child {
+  white-space: nowrap;
+}
+
+.at-wa-clientmark {
+  color: #128c7e;
+  font-size: 11px;
+  font-weight: 600;
+}

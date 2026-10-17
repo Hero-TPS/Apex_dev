@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../../config.php';
 require_once ROOT_DIR . '/google-auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once __DIR__ . '/../helpers.php';
+require_once ROOT_DIR . '/modules/WhatsApp/helpers.php';
 
 require_once ROOT_DIR . '/includes/auth_api.php';
 
@@ -1038,7 +1039,7 @@ function handleTomorrowsBookings()
             $row['pickup_location'] = $row['was_swapped'] ? $row['original_destination'] : $row['original_pickup'];
             $row['destination'] = $row['was_swapped'] ? $row['original_pickup'] : $row['original_destination'];
 
-            $message = createEveningConfirmationMessage($row);
+            $message = createEveningConfirmationMessage($pdo, $row);
             $row['whatsapp_url'] = buildWhatsAppUrl($row['client_phone'], $message);
             $row['message_content'] = $message;
             $row['already_confirmed'] = (

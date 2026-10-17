@@ -10,6 +10,7 @@ require_once ROOT_DIR . '/includes/logger.php';
 require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once __DIR__ . '/helpers.php';
+require_once ROOT_DIR . '/modules/WhatsApp/helpers.php';
 $breadcrumb = buildBreadcrumb([
     ['label' => 'Bookings', 'url' => BASE_URL . '/modules/Bookings/'],
     ['label' => 'Booking Details'],
@@ -244,14 +245,24 @@ if (isset($_GET['id'])) {
                 <?= $booking['status'] === 'completed' ? 'Undo Done' : 'Mark Done' ?>
             </button>
         <?php endif; ?>
-        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>?text=<?= urlencode(createWhatsAppMessage($pdo, $booking)) ?>"
-            target="_blank" class="page-action-btn whatsapp"
-            onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, <?= htmlspecialchars(json_encode(createWhatsAppMessage($pdo, $booking)), ENT_QUOTES) ?>, 'confirmation')">💬
-            Send Confirmation</a>
-        <a href="https://wa.me/<?= formatPhoneNumberForWhatsApp($booking['client_phone']) ?>"
-            target="_blank" class="page-action-btn whatsapp"
-            onclick="logWhatsAppSend(<?= (int) $booking['id'] ?>, <?= (int) $booking['contact_id'] ?>, '', 'message')">💬
-            Send Message</a>
+        <?php
+        // WhatsApp dropdown: every message set up under WhatsApp Messages, filled in for this booking
+        $waVars = buildBookingMessageVars($pdo, $booking);
+        $waMessages = [];
+        foreach (getWhatsAppMenuTemplates($pdo) as $waTemplate) {
+            $waMessages[] = [
+                'key'   => $waTemplate['template_key'],
+                'label' => $waTemplate['label'],
+                'text'  => renderWhatsAppTemplate($waTemplate['body'], $waVars),
+            ];
+        }
+        echo renderWhatsAppMenu(
+            formatPhoneNumberForWhatsApp($booking['client_phone']),
+            $waMessages,
+            (int) $booking['id'],
+            (int) $booking['contact_id']
+        );
+        ?>
         <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
             Edit Booking</a>
     </div>
@@ -392,7 +403,7 @@ if (isset($_GET['id'])) {
                     <button id="remove-driver-btn" class="page-action-btn delete">❌ Remove Driver</button>
                     <?php if (!empty($booking['driver_name']) && !empty($booking['driver_phone'])): ?>
                     <?php
-                        $driverMsg = createDriverBookingMessage($booking);
+                        $driverMsg = createDriverBookingMessage($pdo, $booking);
                         $driverPhone = formatPhoneNumberForWhatsApp($booking['driver_phone']);
                     ?>
                     <a href="https://wa.me/<?= $driverPhone ?>?text=<?= urlencode($driverMsg) ?>"

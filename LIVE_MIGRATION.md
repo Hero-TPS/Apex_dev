@@ -67,6 +67,178 @@ ALTER TABLE invoices
 
 ---
 
+### [whatsapp] Create `whatsapp_templates` and seed the built-in WhatsApp messages
+
+- [ ] Done on dev
+- [ ] Done on live
+
+```sql
+CREATE TABLE IF NOT EXISTS whatsapp_templates (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    template_key VARCHAR(50) NOT NULL,
+    label VARCHAR(100) NOT NULL,
+    placement VARCHAR(20) NOT NULL DEFAULT 'booking_menu',
+    body TEXT NOT NULL,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    sort_order INT NOT NULL DEFAULT 100,
+    is_builtin TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_whatsapp_template_key (template_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO whatsapp_templates (template_key, label, placement, body, active, sort_order, is_builtin) VALUES
+('confirmation', 'Booking confirmation', 'booking_menu', '{if is_update}
+*BOOKING UPDATED AND CONFIRMED* ✅
+{else}
+*BOOKING CONFIRMED* ✅
+{/if}
+
+Good day {client_name},
+
+📍 Pickup: {pickup}
+📅 Date: {date} at {time}
+🎯 Destination: {destination}
+{if passenger_name}
+👤 Picking up: {passenger_name}
+📱 Passenger phone: {passenger_phone}
+{/if}
+💰 Cost: {cost}
+{if payment_received}
+✅ Payment Received
+{/if}
+✈️ Flight Number: {flight_number}
+📝 Notes: {notes}
+{if driver_name}
+🚗 Your driver will be: {driver_name}
+📱 Driver phone: {driver_phone}
+{/if}
+
+{if is_update}
+✏️ Updated: {updated_at}
+{else}
+🕒 Created: {created_at}
+{/if}
+
+🚗 Looking forward to being of service to you. 👍
+
+Regards,
+{business_owner}
+{business_name}', 1, 10, 1),
+
+('bank_details', 'Bank details', 'booking_menu', '{payment_details}', 1, 20, 0),
+
+('pickup_message', 'Airport pickup message', 'booking_menu', 'Good day {client_name},
+
+When you collected your bags, please send me a message. I will then meet you at the pickup in parking area P2
+When you walk out of the terminal, it will be the left exit ( by Woolworths). Follow the signs to P2.
+
+White Nissan Almera
+CAA 526-434', 1, 30, 0),
+
+('evening_confirmation', 'Evening confirmation (dashboard)', 'evening', 'Good day {client_name}! 👋
+
+Just confirming your booking for tomorrow:
+
+📅 Date: {date}
+🕐 Pickup Time: {time}
+📍 From: {pickup}
+🎯 To: {destination}
+{if passenger_name}
+👤 Picking up: {passenger_name}
+📱 Passenger phone: {passenger_phone}
+{/if}
+{if driver_name}
+
+🚗 Your driver will be: {driver_name}
+📱 Driver phone: {driver_phone}
+{/if}
+
+See you tomorrow! 🚗', 1, 100, 1),
+
+('prebooking_reminder', 'Prebooking reminder', 'prebooking', '*BOOKING REMINDER* 📋
+
+Good day {client_name},
+
+We have a tentative booking on record for you:
+
+📅 Date: {date}
+⏰ Time: {time}
+📍 Pickup: {pickup}
+🎯 Destination: {destination}
+{if passenger_name}
+👤 Picking up: {passenger_name}
+📱 Passenger phone: {passenger_phone}
+{/if}
+💰 Cost: {cost}
+📝 Notes: {notes}
+
+Please let us know when you have all the details so we can finalise your booking. 😊
+
+Regards,
+{business_owner}
+{business_name}', 1, 110, 1),
+
+('driver_notification', 'Message to driver', 'driver', 'Good day {driver_name}! 🚗
+
+You have a booking allocated to you:
+
+📅 Date: {date} at {time}
+👤 Client: {client_name}
+📱 Client phone: {client_phone}
+{if passenger_name}
+👤 Picking up: {passenger_name}
+📱 Passenger phone: {passenger_phone}
+{/if}
+📍 Pickup: {pickup}
+🧭 Waze: {waze_pickup}
+🎯 Destination: {destination}
+🧭 Waze: {waze_destination}
+{if flight_number}
+✈️ Flight Number: {flight_number}
+📡 Track: {flightradar_url}
+{/if}
+💰 Trip Cost: {trip_cost}
+{if no_booking_fee}
+
+✅ No booking fee — full amount goes to you.
+{if is_eft}
+📲 This is an EFT booking with no booking fee. Apex Transit will pay you {settlement_amount} once payment is received from the client.
+{else}
+💵 This is a cash booking with no booking fee. No payment due to Apex Transit
+{/if}
+{else}
+{if has_booking_fee}
+💼 Apex Booking Fee: {booking_fee}
+
+{if is_eft}
+📲 This is an EFT booking. Apex Transit will pay you {settlement_amount} (after deducting the booking fee) once payment is received from the client.
+{else}
+💵 This is a cash booking. Please pay Apex Transit the booking fee of {settlement_amount}.
+{/if}
+{else}
+
+{if is_eft}
+📲 This is an EFT booking.
+{else}
+💵 This is a cash booking.
+{/if}
+{/if}
+{/if}
+{if driver_notes}
+
+📝 Notes: {driver_notes}
+{/if}
+
+Thank you! 🙏
+Drive safe! 🚗', 1, 120, 1);
+```
+
+> Backs the new WhatsApp module (`modules/WhatsApp/`). Every WhatsApp message the system sends now lives in this table instead of in PHP, and new ones can be added under Dashboard → Services → WhatsApp Messages. A table rather than `system_variables` because the list grows. Bodies use `{placeholders}`, plus `{if name}` / `{else}` / `{/if}` on lines of their own for the conditional parts (passenger, driver, payment received, created vs updated, booking fee / EFT / cash). `placement` says where a message is used: `booking_menu` = the WhatsApp dropdown (a message that only uses client placeholders also appears on the Clients pages), `evening` = Tomorrow's Confirmations, `prebooking` = prebooking reminder, `driver` = message to the driver. `active` hides a `booking_menu` message from the dropdown; `is_builtin` messages cannot be deleted (the system looks them up by `template_key`). The first four built-in rows reproduce the existing hardcoded messages word for word; `bank_details` (text comes from the Invoice Payment Details system variable) and `pickup_message` are the two new presets. Contains emoji, so import with the utf8mb4 connection charset. Safe to re-run: existing keys are skipped. The `whatsapp_log` table is unchanged; sent messages are logged under the template key (`confirmation`, `bank_details`, ...).
+
+---
+
 **Notes:**
 - Each entry requires two checkboxes: **Done on dev** and **Done on live**
 - Always run on dev first and verify before running on live

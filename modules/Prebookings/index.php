@@ -7,6 +7,7 @@ $show_breadcrumb = true;
 require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
+require_once ROOT_DIR . '/modules/WhatsApp/helpers.php';
 $breadcrumb = buildBreadcrumb([['label' => 'Prebookings']]);
 include ROOT_DIR . '/includes/header.php';
 
@@ -54,7 +55,7 @@ $prebookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     : ($p['original_destination'] ?? '');
 
                 $waPhone = formatPhoneNumberForWhatsApp($p['client_phone'] ?? '');
-                $waMsg   = createPrebookingWhatsAppMessage([
+                $waMsg   = createPrebookingWhatsAppMessage($pdo, [
                     'client_name'          => $p['client_name'],
                     'trip_date'            => $p['trip_date'],
                     'start_time'           => $p['start_time'] ?? '',

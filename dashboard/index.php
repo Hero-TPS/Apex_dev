@@ -92,6 +92,7 @@ include ROOT_DIR . '/includes/header.php';
         <div id="services-section" class="menu-content">
             <a href="<?= BASE_URL ?>/maintenance/" class="dashboard-button db-maintenance">Manage Lists</a>
             <a href="<?= BASE_URL ?>/maintenance/logs.php" class="dashboard-button db-maintenance">System Logs</a>
+            <a href="<?= BASE_URL ?>/modules/WhatsApp/" class="dashboard-button db-maintenance">WhatsApp Messages</a>
             <a href="<?= BASE_URL ?>/modules/DistanceCalculator/" class="dashboard-button db-distcalc">Trip Distance Calculator</a>
         </div>
     </div>

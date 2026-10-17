@@ -4,6 +4,7 @@
 require_once __DIR__ . '/../../../config.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once ROOT_DIR . '/modules/Bookings/helpers.php'; // for deleteBookingFromGoogleCalendar() when archiving cancels future bookings
+require_once ROOT_DIR . '/modules/WhatsApp/helpers.php'; // client-level WhatsApp messages for the clients list menu
 
 header('Content-Type: application/json');
 require_once ROOT_DIR . '/includes/auth_api.php';
@@ -83,8 +84,14 @@ function handleGetClients()
         // deleted on archive — this doesn't touch that.
         $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
 
+        // Messages that only need the client (bank details, pickup message, ...) for the WhatsApp menu
+        $waTemplates = getWhatsAppClientMenuTemplates($pdo);
+
         foreach ($contacts as &$contact) {
             $contact['whatsapp_phone'] = formatPhoneNumberForWhatsApp($contact['phone'] ?? '');
+            $contact['wa_messages'] = $contact['whatsapp_phone'] !== ''
+                ? getWhatsAppClientMessages($pdo, $waTemplates, $contact['name'] ?? '', $contact['phone'] ?? '')
+                : [];
             if (!empty($contact['last_booking_date'])) {
                 $contact['last_booking_is_future'] = $contact['last_booking_date'] >= $today;
                 $contact['last_booking_date'] = date('d M Y', strtotime($contact['last_booking_date']));

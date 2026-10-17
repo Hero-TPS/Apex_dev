@@ -136,7 +136,7 @@ function formatPhoneNumberForWhatsApp(string $rawPhone): string
 
 /**
  * Build a wa.me WhatsApp URL for a given phone number and message.
- * Used by: modules/Bookings/view.php
+ * Used by: modules/Bookings/api/index.php, modules/Prebookings/index.php, modules/Prebookings/api/index.php
  * Returns: full URL string, or '#' if phone is invalid
  */
 function buildWhatsAppUrl(string $phone, string $message): string
@@ -149,203 +149,13 @@ function buildWhatsAppUrl(string $phone, string $message): string
 }
 
 /**
- * Builds a "👤 Picking up: ..." WhatsApp message line for the passenger, shown
- * only when passenger_name is filled AND differs (case-insensitive, trimmed)
- * from the client's own name — i.e. only when someone other than the booking
- * contact is actually being collected. Adds passenger_phone as a sub-line
- * when present. Returns '' when there's nothing to show.
- * Used by: createWhatsAppMessage(), createEveningConfirmationMessage(),
- *          createDriverBookingMessage()
- *
- * @param array $bookingDetails  May contain: passenger_name, passenger_phone, client_name
- */
-function buildPassengerInfoLine(array $bookingDetails): string
-{
-    $passengerName = trim($bookingDetails['passenger_name'] ?? '');
-    $clientName = trim($bookingDetails['client_name'] ?? '');
-
-    if ($passengerName === '' || strcasecmp($passengerName, $clientName) === 0) {
-        return '';
-    }
-
-    $line = "👤 Picking up: " . $passengerName . "\n";
-    $passengerPhone = trim($bookingDetails['passenger_phone'] ?? '');
-    if ($passengerPhone !== '') {
-        $line .= "📱 Passenger phone: " . $passengerPhone . "\n";
-    }
-
-    return $line;
-}
-
-/**
- * Build the WhatsApp evening confirmation message for tomorrow's booking.
- * Used by: modules/Bookings/api/index.php (tomorrows_bookings, mark_confirmed)
- *
- * @param array $bookingDetails  Must contain: client_name, trip_date, start_time,
- *                               pickup_location, destination.
- *                               Optional: driver_name, driver_phone, passenger_name, passenger_phone
- */
-function createEveningConfirmationMessage(array $bookingDetails): string
-{
-    $timezone = new DateTimeZone(TIME_ZONE);
-    $start = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time'], $timezone);
-    $forDate = $start->format('d/m/y');
-    $forTime = $start->format('H:i');
-
-    $driverLine = '';
-    if (!empty($bookingDetails['driver_name'])) {
-        $driverLine = "\n🚗 Your driver will be: " . $bookingDetails['driver_name'] . "\n";
-        if (!empty($bookingDetails['driver_phone'])) {
-            $driverLine .= "📱 Driver phone: " . $bookingDetails['driver_phone'] . "\n";
-        }
-    }
-
-    $passengerInfo = buildPassengerInfoLine($bookingDetails);
-
-    return "Good day " . $bookingDetails['client_name'] . "! 👋\n\n" .
-        "Just confirming your booking for tomorrow:\n\n" .
-        "📅 Date: " . $forDate . "\n" .
-        "🕐 Pickup Time: " . $forTime . "\n" .
-        "📍 From: " . $bookingDetails['pickup_location'] . "\n" .
-        "🎯 To: " . $bookingDetails['destination'] . "\n" .
-        $passengerInfo .
-        $driverLine .
-        "\nSee you tomorrow! 🚗";
-}
-
-/**
- * Build the WhatsApp booking confirmation message body.
- * Detects new vs. updated booking from the presence of updated_at.
- * Used by: modules/Bookings/view.php
- *
- * @param PDO   $pdo
- * @param array $bookingDetails  Must contain: trip_date, start_time, client_name,
- *                               pickup_location, destination, cost, and optionally
- *                               flight_number, description, updated_at, date_created,
- *                               driver_name, driver_phone, passenger_name, passenger_phone
- */
-function createWhatsAppMessage(PDO $pdo, array $bookingDetails): string
-{
-    $timezone = new DateTimeZone(TIME_ZONE);
-
-    $start = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time'], $timezone);
-    $forDate = $start->format('d/m/y');
-    $startTime = $start->format('H:i');
-
-    $flightInfo = !empty($bookingDetails['flight_number'])
-        ? "✈️ Flight Number: " . $bookingDetails['flight_number'] . "\n" : '';
-    $costInfo = $bookingDetails['cost'] > 0
-        ? "💰 Cost: R" . number_format($bookingDetails['cost'], 2) . "\n" : '';
-    $paymentReceivedInfo = !empty($bookingDetails['payment_received'])
-        ? "✅ Payment Received\n" : '';
-    $displayNotes = appendAirportPickupNotice($pdo, $bookingDetails['pickup_location'] ?? '', $bookingDetails['description'] ?? '');
-    $displayNotes = appendAfterHoursNotice($bookingDetails['after_hours_charge'] ?? null, $displayNotes);
-    $notesInfo = !empty($displayNotes)
-        ? "📝 Notes: " . $displayNotes . "\n" : '';
-
-    $passengerInfo = buildPassengerInfoLine($bookingDetails);
-
-    $driverInfo = '';
-    if (!empty($bookingDetails['driver_name'])) {
-        $driverInfo = "🚗 Your driver will be: " . $bookingDetails['driver_name'] . "\n";
-        if (!empty($bookingDetails['driver_phone'])) {
-            $driverInfo .= "📱 Driver phone: " . $bookingDetails['driver_phone'] . "\n";
-        }
-    }
-
-    $isUpdate = !empty($bookingDetails['updated_at']);
-    $title = $isUpdate ? "*BOOKING UPDATED AND CONFIRMED* ✅\n\n" : "*BOOKING CONFIRMED* ✅\n\n";
-
-    // Timestamp line (value from DB is already SAST — no conversion needed)
-    $timestampInfo = '';
-    if ($isUpdate) {
-        $updatedDate = new DateTime($bookingDetails['updated_at'], new DateTimeZone(TIME_ZONE));
-        $timestampInfo = "\n✏️ Updated: " . $updatedDate->format('d/m/y H:i') . "\n";
-    } elseif (!empty($bookingDetails['date_created'])) {
-        $createdDate = new DateTime($bookingDetails['date_created'], new DateTimeZone(TIME_ZONE));
-        $timestampInfo = "\n🕒 Created: " . $createdDate->format('d/m/y H:i') . "\n";
-    }
-
-    return $title .
-        "Good day " . $bookingDetails['client_name'] . ",\n\n" .
-        "📍 Pickup: " . $bookingDetails['pickup_location'] . "\n" .
-        "📅 Date: " . $forDate . " at " . $startTime . "\n" .
-        "🎯 Destination: " . $bookingDetails['destination'] . "\n" .
-        $passengerInfo .
-        $costInfo .
-        $paymentReceivedInfo .
-        $flightInfo .
-        $notesInfo .
-        $driverInfo .
-        $timestampInfo .
-        "\n🚗 Looking forward to being of service to you. 👍\n\n" .
-        "Regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
-}
-
-
-
-/**
- * Build a WhatsApp reminder message for a prebooking.
- * Sent to the client to remind them about their tentative booking and request confirmation of details.
- * Used by: modules/Prebookings/index.php
- *
- * @param array $prebookingDetails  Must contain: client_name, trip_date.
- *                                  Optional: start_time, original_pickup, original_destination,
- *                                            was_swapped, cost, description, passenger_name, passenger_phone
- */
-function createPrebookingWhatsAppMessage(array $prebookingDetails): string
-{
-    $timezone = new DateTimeZone(TIME_ZONE);
-    $date = new DateTime($prebookingDetails['trip_date'], $timezone);
-    $forDate = $date->format('d/m/y');
-
-    $timeLine = !empty($prebookingDetails['start_time'])
-        ? "⏰ Time: " . (new DateTime($prebookingDetails['trip_date'] . ' ' . $prebookingDetails['start_time'], $timezone))->format('H:i') . "\n"
-        : "⏰ Time: TBC\n";
-
-    $wasSwapped = !empty($prebookingDetails['was_swapped']);
-    $rawPickup = $prebookingDetails['original_pickup'] ?? '';
-    $rawDest = $prebookingDetails['original_destination'] ?? '';
-
-    $effPickup = $wasSwapped ? $rawDest : $rawPickup;
-    $effDest = $wasSwapped ? $rawPickup : $rawDest;
-
-    $pickupLine = $effPickup !== '' ? "📍 Pickup: " . $effPickup . "\n" : "📍 Pickup: TBC\n";
-    $destLine = $effDest !== '' ? "🎯 Destination: " . $effDest . "\n" : "🎯 Destination: TBC\n";
-
-    $cost = isset($prebookingDetails['cost']) ? (float) $prebookingDetails['cost'] : 0;
-    $costLine = $cost > 0
-        ? "💰 Cost: R" . number_format($cost, 2) . "\n"
-        : "💰 Cost: TBC\n";
-
-    $notesLine = !empty($prebookingDetails['description'])
-        ? "📝 Notes: " . $prebookingDetails['description'] . "\n"
-        : '';
-
-    $passengerInfo = buildPassengerInfoLine($prebookingDetails);
-
-    return "*BOOKING REMINDER* 📋\n\n" .
-        "Good day " . $prebookingDetails['client_name'] . ",\n\n" .
-        "We have a tentative booking on record for you:\n\n" .
-        "📅 Date: " . $forDate . "\n" .
-        $timeLine .
-        $pickupLine .
-        $destLine .
-        $passengerInfo .
-        $costLine .
-        $notesLine .
-        "\nPlease let us know when you have all the details so we can finalise your booking. 😊\n\n" .
-        "Regards,\n" . BUSINESS_OWNER . "\n" . BUSINESS_NAME;
-}
-
-/**
  * Build the Waze navigation URLs for a booking's pickup and destination.
  * The client's saved GPS pin always belongs to the client's home address, so it
  * is used for the pickup side when the trip is not swapped, and for the
  * destination side when it is swapped. A GPS pin is only used when the pickup
  * is not a custom ("other") address. Anything without a pin falls back to an
  * address search.
- * Used by: modules/Bookings/view.php, createDriverBookingMessage()
+ * Used by: modules/Bookings/view.php, modules/WhatsApp/helpers.php (buildBookingMessageVars)
  *
  * @param array $booking  Must contain: pickup_location, destination (already
  *                        swapped for display), was_swapped, and optionally
@@ -379,7 +189,7 @@ function buildWazeUrls(array $booking): array
 /**
  * Build the Flightradar24 tracking URL for a flight number
  * (spaces removed, lowercased — e.g. "BA 6201" becomes .../ba6201).
- * Used by: modules/Bookings/view.php, createDriverBookingMessage()
+ * Used by: modules/Bookings/view.php, modules/WhatsApp/helpers.php (buildBookingMessageVars)
  */
 function buildFlightradarUrl(string $flightNumber): string
 {
@@ -396,7 +206,7 @@ function buildFlightradarUrl(string $flightNumber): string
  *   - No booking fee + EFT:  Apex pays the driver the full cost, once the client has paid.
  *   - No booking fee + cash: nothing due.
  *   - No fee recorded:       nothing stated (matches the driver message).
- * Used by: createDriverBookingMessage(), modules/Bookings/view.php
+ * Used by: modules/WhatsApp/helpers.php (buildBookingMessageVars), modules/Bookings/view.php
  *
  * @param array $bookingDetails  Needs: cost, payment_method. Optional: booking_fee, no_booking_fee.
  * @return array{direction: string, amount: float, fee: ?float, no_booking_fee: bool, is_eft: bool}
@@ -437,79 +247,6 @@ function calculateDriverSettlement(array $bookingDetails): array
         'no_booking_fee' => $noBookingFee,
         'is_eft'         => $isEft,
     ];
-}
-
-/**
- * Build the WhatsApp message to send to an allocated driver about a booking.
- * Used by: modules/Bookings/view.php
- *
- * @param array $bookingDetails  Must contain: trip_date, start_time, client_name,
- *                               pickup_location, destination, cost, payment_method,
- *                               driver_name, and optionally booking_fee, flight_number,
- *                               passenger_name, passenger_phone, was_swapped,
- *                               pickup_is_custom, client_pickup_lat, client_pickup_lng
- *                               (the last four drive the Waze links)
- */
-function createDriverBookingMessage(array $bookingDetails): string
-{
-    $timezone = new DateTimeZone(TIME_ZONE);
-    $start = new DateTime($bookingDetails['trip_date'] . ' ' . $bookingDetails['start_time'], $timezone);
-    $forDate = $start->format('d/m/y');
-    $forTime = $start->format('H:i');
-
-    $driverName = $bookingDetails['driver_name'] ?? 'Driver';
-    $cost = (float) ($bookingDetails['cost'] ?? 0);
-    $settlement = calculateDriverSettlement($bookingDetails);
-    $isEft = $settlement['is_eft'];
-    $noBookingFee = $settlement['no_booking_fee'];
-    $bookingFee = $settlement['fee'];
-
-    $msg = "Good day " . $driverName . "! 🚗\n\n";
-    $msg .= "You have a booking allocated to you:\n\n";
-    $msg .= "📅 Date: " . $forDate . " at " . $forTime . "\n";
-    $msg .= "👤 Client: " . ($bookingDetails['client_name'] ?? '') . "\n";
-    if (!empty($bookingDetails['client_phone'])) {
-        $msg .= "📱 Client phone: " . $bookingDetails['client_phone'] . "\n";
-    }
-    $msg .= buildPassengerInfoLine($bookingDetails);
-    $wazeUrls = buildWazeUrls($bookingDetails);
-    $msg .= "📍 Pickup: " . ($bookingDetails['pickup_location'] ?? '') . "\n";
-    $msg .= "🧭 Waze: " . $wazeUrls['pickup'] . "\n";
-    $msg .= "🎯 Destination: " . ($bookingDetails['destination'] ?? '') . "\n";
-    $msg .= "🧭 Waze: " . $wazeUrls['destination'] . "\n";
-    if (!empty($bookingDetails['flight_number'])) {
-        $msg .= "✈️ Flight Number: " . $bookingDetails['flight_number'] . "\n";
-        $msg .= "📡 Track: " . buildFlightradarUrl($bookingDetails['flight_number']) . "\n";
-    }
-    $msg .= "💰 Trip Cost: R" . number_format($cost, 2) . "\n";
-
-    if ($noBookingFee) {
-        $msg .= "\n✅ No booking fee — full amount goes to you.\n";
-        if ($isEft) {
-            $msg .= "📲 This is an EFT booking with no booking fee. Apex Transit will pay you R" . number_format($settlement['amount'], 2) . " once payment is received from the client.\n";
-        } else {
-            $msg .= "💵 This is a cash booking with no booking fee. No payment due to Apex Transit\n";
-        }
-    } elseif ($bookingFee !== null && $bookingFee > 0) {
-        $msg .= "💼 Apex Booking Fee: R" . number_format($bookingFee, 2) . "\n";
-        if ($isEft) {
-            $msg .= "\n📲 This is an EFT booking. Apex Transit will pay you R" . number_format($settlement['amount'], 2) . " (after deducting the booking fee) once payment is received from the client.\n";
-        } else {
-            $msg .= "\n💵 This is a cash booking. Please pay Apex Transit the booking fee of R" . number_format($settlement['amount'], 2) . ".\n";
-        }
-    } elseif ($isEft) {
-        $msg .= "\n📲 This is an EFT booking.\n";
-    } else {
-        $msg .= "\n💵 This is a cash booking.\n";
-    }
-
-    if (!empty($bookingDetails['driver_notes'])) {
-        $msg .= "\n📝 Notes: " . $bookingDetails['driver_notes'] . "\n";
-    }
-
-    $msg .= "\nThank you! 🙏";
-    $msg .= "\nDrive safe! 🚗";
-    return $msg;
 }
 
 
@@ -610,7 +347,7 @@ function isAirportPickupLocation(string $location): bool
  * — it is never written into bookings.description. It's appended here, at
  * render time only, so repeated edits/renders never duplicate it in storage.
  *
- * Used by: createWhatsAppMessage(), modules/Bookings/view.php
+ * Used by: modules/WhatsApp/helpers.php (buildBookingMessageVars), modules/Bookings/view.php
  *
  * @param PDO    $pdo
  * @param string $pickup  Effective pickup location — caller must already
@@ -666,7 +403,7 @@ function isAfterHoursStartTime(PDO $pdo, string $startTime): bool
  * when the booking's stored after_hours_charge is set. Computed at render
  * time only, from the stored charge amount — never written into
  * bookings.description, same principle as appendAirportPickupNotice().
- * Used by: createWhatsAppMessage(), modules/Bookings/view.php
+ * Used by: modules/WhatsApp/helpers.php (buildBookingMessageVars), modules/Bookings/view.php
  *
  * @param float|string|null $afterHoursCharge  bookings.after_hours_charge value
  * @param string|null       $notes             Raw stored notes/description text
