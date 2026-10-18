@@ -12,7 +12,7 @@ $breadcrumb = buildBreadcrumb([['label' => 'Prebookings']]);
 include ROOT_DIR . '/includes/header.php';
 
 $stmt = $pdo->query("
-    SELECT p.*, c.name AS client_name, c.phone AS client_phone
+    SELECT p.*, c.name AS client_name, c.phone AS client_phone, c.language AS client_language
     FROM prebookings p
     JOIN contacts c ON p.contact_id = c.id
     WHERE p.converted_booking_id IS NULL
@@ -66,6 +66,7 @@ $prebookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     'description'          => $p['description'] ?? '',
                     'passenger_name'       => $p['passenger_name'] ?? '',
                     'passenger_phone'      => $p['passenger_phone'] ?? '',
+                    'language'             => $p['client_language'] ?? 'en',
                 ]);
                 $waUrl = $waPhone ? buildWhatsAppUrl($p['client_phone'], $waMsg) : '#';
             ?>

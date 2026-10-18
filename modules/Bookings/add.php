@@ -206,6 +206,13 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
         </div>
 
         <div class="form-group">
+            <label class="at-wa-check-label">
+                <input type="checkbox" id="language" name="language" value="af">
+                Afrikaans (WhatsApp messages for this booking are sent in Afrikaans; the client is also set to Afrikaans)
+            </label>
+        </div>
+
+        <div class="form-group">
             <label for="description">Additional Notes</label>
             <textarea id="description" name="description" placeholder="Any special instructions..."><?= $prefill_description ?></textarea>
             <small id="airportNoticeHint" class="at-help-text hidden">✈️ Airport pickup detected — this will be added to the notes automatically: "<?= htmlspecialchars($airport_pickup_notice) ?>"</small>
@@ -364,6 +371,7 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
                 contactIdInput.val(client.id);
                 contactNameInput.val(client.name);
                 $('#phone').val(client.phone || '');
+                $('#language').prop('checked', client.language === 'af');
 
                 const pickupSelect = $('#pickup');
                 pickupSelect.empty();
@@ -434,6 +442,7 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
             contactIdInput.val(client.id);
             contactNameInput.val(client.name);
             $('#phone').val(client.phone || '');
+            $('#language').prop('checked', client.language === 'af');
 
             const pickupSelect = $('#pickup');
             pickupSelect.empty();

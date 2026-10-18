@@ -263,6 +263,7 @@ function handleAddBooking()
         $driver_id = intval($_POST['driver_id'] ?? 0) ?: null;
         $no_booking_fee = isset($_POST['no_booking_fee']) ? 1 : 0;
         $driver_notes = trim($_POST['driver_notes'] ?? '') ?: null;
+        $language = normalizeWhatsAppLanguage($_POST['language'] ?? 'en');
 
         // After-hours surcharge — only applied if the popup was accepted
         // client-side AND the time is genuinely within the window (never
@@ -333,8 +334,8 @@ function handleAddBooking()
                 original_pickup, original_destination, was_swapped, cost, payment_method, payment_received,
                 flight_number, description, driver_id, booking_fee, no_booking_fee, driver_notes,
                 pickup_is_custom, distance_km, is_round_trip, after_hours_charge,
-                passenger_name, passenger_phone
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                passenger_name, passenger_phone, language
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -359,12 +360,14 @@ function handleAddBooking()
             $is_round_trip,
             $after_hours_charge,
             $passenger_name,
-            $passenger_phone
+            $passenger_phone,
+            $language
         ]);
 
         $booking_id = $pdo->lastInsertId();
 
         reactivateContactIfArchived($pdo, (int) $contact_id);
+        syncClientLanguageFromBooking($pdo, (int) $contact_id, $language);
 
         // CREATE GOOGLE CALENDAR EVENT
         $googleEventId = null;
@@ -533,6 +536,7 @@ function handleUpdateBooking()
             $driver_id = intval($_REQUEST['driver_id'] ?? 0) ?: null;
             $no_booking_fee = isset($_REQUEST['no_booking_fee']) ? 1 : 0;
             $driver_notes = trim($_REQUEST['driver_notes'] ?? '');
+            $language = normalizeWhatsAppLanguage($_REQUEST['language'] ?? 'en');
 
             // Capture flag before resolving 'other'
             $pickup_is_custom = ($pickup_location === 'other') ? 1 : 0;
@@ -621,7 +625,7 @@ function handleUpdateBooking()
                 cost = ?, flight_number = ?, description = ?, payment_method = ?, payment_received = ?,
                 driver_id = ?, booking_fee = ?, no_booking_fee = ?, driver_notes = ?,
                 pickup_is_custom = ?, distance_km = ?, is_round_trip = ?, after_hours_charge = ?,
-                passenger_name = ?, passenger_phone = ?,
+                passenger_name = ?, passenger_phone = ?, language = ?,
                 last_confirmed_at = NULL,
                 updated_at = NOW()
             WHERE id = ?";
@@ -650,10 +654,12 @@ function handleUpdateBooking()
                 $after_hours_charge,
                 $passenger_name,
                 $passenger_phone,
+                $language,
                 $booking_id
             ]);
 
             reactivateContactIfArchived($pdo, $contact_id);
+            syncClientLanguageFromBooking($pdo, $contact_id, $language);
 
             // Fetch updated booking (with driver info)
             $stmt = $pdo->prepare("
@@ -1021,7 +1027,7 @@ function handleTomorrowsBookings()
     try {
         $sql = "
             SELECT b.id, b.trip_date, b.start_time, b.original_pickup, b.original_destination,
-                   b.was_swapped, b.cost, b.last_confirmed_at, b.passenger_name, b.passenger_phone,
+                   b.was_swapped, b.cost, b.last_confirmed_at, b.passenger_name, b.passenger_phone, b.language,
                    c.name AS client_name, c.phone AS client_phone
             FROM bookings b
             JOIN contacts c ON b.contact_id = c.id

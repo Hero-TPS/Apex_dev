@@ -253,7 +253,7 @@ if (isset($_GET['id'])) {
             $waMessages[] = [
                 'key'   => $waTemplate['template_key'],
                 'label' => $waTemplate['label'],
-                'text'  => renderWhatsAppTemplate($waTemplate['body'], $waVars),
+                'text'  => renderWhatsAppTemplate(getWhatsAppTemplateBody($waTemplate, $booking['language'] ?? 'en'), $waVars),
             ];
         }
         echo renderWhatsAppMenu(

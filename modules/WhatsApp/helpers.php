@@ -39,6 +39,23 @@ function normalizeWhatsAppLanguage($language): string
 }
 
 /**
+ * Two-way language sync: ticking Afrikaans on a booking also makes the client Afrikaans.
+ * Only ticking updates the client; a booking saved in English never changes the client.
+ * Used by: modules/Bookings/api/index.php (add and update)
+ */
+function syncClientLanguageFromBooking(PDO $pdo, int $contactId, string $bookingLanguage): void
+{
+    if ($contactId <= 0 || normalizeWhatsAppLanguage($bookingLanguage) !== 'af') {
+        return;
+    }
+    $stmt = $pdo->prepare("UPDATE contacts SET language = 'af' WHERE id = ? AND language <> 'af'");
+    $stmt->execute([$contactId]);
+    if ($stmt->rowCount() > 0) {
+        logInfo('CLIENT', 'Client set to Afrikaans from a booking', ['client_id' => $contactId]);
+    }
+}
+
+/**
  * The text of a template for a language: the Afrikaans text when asked for Afrikaans and
  * one has been written, otherwise the English text.
  * Used by: renderWhatsAppTemplateByKey(), getWhatsAppClientMessages(), modules/Bookings/view.php

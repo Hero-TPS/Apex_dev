@@ -51,7 +51,7 @@ function handleList()
 
         if ($show === 'all') {
             $stmt = $pdo->query("
-                SELECT p.*, c.name AS client_name, c.phone AS client_phone
+                SELECT p.*, c.name AS client_name, c.phone AS client_phone, c.language AS client_language
                 FROM prebookings p
                 JOIN contacts c ON p.contact_id = c.id
                 WHERE p.converted_booking_id IS NULL
@@ -60,7 +60,7 @@ function handleList()
             ");
         } else {
             $stmt = $pdo->prepare("
-                SELECT p.*, c.name AS client_name, c.phone AS client_phone
+                SELECT p.*, c.name AS client_name, c.phone AS client_phone, c.language AS client_language
                 FROM prebookings p
                 JOIN contacts c ON p.contact_id = c.id
                 WHERE p.converted_booking_id IS NULL
@@ -109,6 +109,7 @@ function handleList()
                     'description'          => $row['description'] ?? '',
                     'passenger_name'       => $row['passenger_name'] ?? '',
                     'passenger_phone'      => $row['passenger_phone'] ?? '',
+                    'language'             => $row['client_language'] ?? 'en',
                 ])),
             ];
         }

@@ -217,6 +217,12 @@ if (isset($_GET['id'])) {
                 <input type="text" id="flightNumber" name="flight_number" value="<?php echo htmlspecialchars($booking['flight_number']); ?>">
             </div>
             <div class="form-group">
+                <label class="at-wa-check-label">
+                    <input type="checkbox" id="language" name="language" value="af" <?= ($booking['language'] ?? 'en') === 'af' ? 'checked' : '' ?>>
+                    Afrikaans (WhatsApp messages for this booking are sent in Afrikaans; ticking also sets the client to Afrikaans)
+                </label>
+            </div>
+            <div class="form-group">
                 <label for="description">Additional Notes</label>
                 <textarea id="description" name="description"><?php echo htmlspecialchars($booking['description']); ?></textarea>
                 <small id="airportNoticeHint" class="at-help-text hidden">✈️ Airport pickup detected — this will be added to the notes automatically: "<?= htmlspecialchars($airport_pickup_notice ?? '') ?>"</small>
@@ -260,6 +266,32 @@ if (isset($_GET['id'])) {
                 <small>Optional — assign a driver to this booking</small>
             </div>
 
+            <!-- Budget Earmark -->
+            <div class="form-group">
+                <label>Earmark Income For</label>
+                <div class="at-earmark-row">
+                    <label class="at-earmark-checkbox">
+                        <input type="checkbox" id="earmark_rent_check"
+                            <?= !empty($booking['earmarked_rent']) ? 'checked' : '' ?>>
+                        Rent
+                    </label>
+                    <input type="number" id="earmark_rent_amount" step="0.01" min="0"
+                        value="<?= htmlspecialchars($booking['earmarked_rent'] ?? '') ?>"
+                        style="<?= empty($booking['earmarked_rent']) ? 'display:none;' : '' ?>">
+                </div>
+                <div class="at-earmark-row">
+                    <label class="at-earmark-checkbox">
+                        <input type="checkbox" id="earmark_debt_check"
+                            <?= !empty($booking['earmarked_debt']) ? 'checked' : '' ?>>
+                        Debt
+                    </label>
+                    <input type="number" id="earmark_debt_amount" step="0.01" min="0"
+                        value="<?= htmlspecialchars($booking['earmarked_debt'] ?? '') ?>"
+                        style="<?= empty($booking['earmarked_debt']) ? 'display:none;' : '' ?>">
+                </div>
+                <small>A booking can partially or fully fund rent, debt, or both</small>
+            </div>
+
             <?php if ($booking_fee_pct > 0): ?>
             <div class="form-group<?= empty($booking['driver_id']) ? ' hidden' : '' ?>" id="bookingFeeGroup">
                 <label>Apex Booking Fee (<?= htmlspecialchars($booking_fee_pct) ?>%)</label>
@@ -299,6 +331,8 @@ if (isset($_GET['id'])) {
 
 <script>
 $(document).ready(function () {
+    var bookingCost = <?= (float) $booking['cost'] ?>;
+
     // After-hours surcharge check
     var afterHoursStart  = <?= json_encode(substr((string) getSystemVariable($pdo, 'after_hours_start'), 0, 5)) ?>;
     var afterHoursEnd    = <?= json_encode(substr((string) getSystemVariable($pdo, 'after_hours_end'), 0, 5)) ?>;
@@ -311,6 +345,40 @@ $(document).ready(function () {
         }
         return time >= afterHoursStart || time < afterHoursEnd;
     }
+
+    // Earmark auto-saves independently of the main form (dedicated lightweight endpoint)
+    function saveEarmark() {
+        $.post('<?= BASE_URL ?>/modules/Bookings/api/index.php', {
+            action: 'set_earmark',
+            booking_id: <?= (int) $booking['id'] ?>,
+            earmarked_rent: $('#earmark_rent_check').is(':checked') ? $('#earmark_rent_amount').val() : '',
+            earmarked_debt: $('#earmark_debt_check').is(':checked') ? $('#earmark_debt_amount').val() : ''
+        }, function (response) {
+            if (!response.success) {
+                alert('Could not save earmark: ' + response.message);
+            }
+        }, 'json');
+    }
+
+    $('#earmark_rent_check').on('change', function () {
+        var amountField = $('#earmark_rent_amount');
+        if ($(this).is(':checked')) {
+            amountField.val(bookingCost.toFixed(2)).show();
+        } else {
+            amountField.hide();
+        }
+        saveEarmark();
+    });
+    $('#earmark_debt_check').on('change', function () {
+        var amountField = $('#earmark_debt_amount');
+        if ($(this).is(':checked')) {
+            amountField.val(bookingCost.toFixed(2)).show();
+        } else {
+            amountField.hide();
+        }
+        saveEarmark();
+    });
+    $('#earmark_rent_amount, #earmark_debt_amount').on('change', saveEarmark);
 
     // ⚠️ Overlap check — soft warning only, never blocks saving; excludes this booking's own slot
     var overlapCheckTimer = null;
