@@ -108,6 +108,9 @@ if (isset($_GET['id'])) {
     <div class="booking-detail-grid">
         <div class="detail-item">
             <strong>Client:</strong> <?= htmlspecialchars($booking['client_name']) ?>
+            <?php if (($booking['client_language'] ?? 'en') === 'af'): ?>
+                <span class="at-wa-badge">🇿🇦 Afrikaans</span>
+            <?php endif; ?>
         </div>
         <div class="detail-item">
             <strong>Phone:</strong> <?= htmlspecialchars($booking['client_phone']) ?>
@@ -247,18 +250,9 @@ if (isset($_GET['id'])) {
         <?php endif; ?>
         <?php
         // WhatsApp dropdown: every message set up under WhatsApp Messages, filled in for this booking
-        $waVars = buildBookingMessageVars($pdo, $booking);
-        $waMessages = [];
-        foreach (getWhatsAppMenuTemplates($pdo) as $waTemplate) {
-            $waMessages[] = [
-                'key'   => $waTemplate['template_key'],
-                'label' => $waTemplate['label'],
-                'text'  => renderWhatsAppTemplate(getWhatsAppTemplateBody($waTemplate, $booking['language'] ?? 'en'), $waVars),
-            ];
-        }
         echo renderWhatsAppMenu(
             formatPhoneNumberForWhatsApp($booking['client_phone']),
-            $waMessages,
+            getWhatsAppBookingMessages($pdo, $booking),
             (int) $booking['id'],
             (int) $booking['contact_id']
         );
