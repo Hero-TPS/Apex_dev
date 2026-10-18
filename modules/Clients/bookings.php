@@ -38,6 +38,8 @@ try {
     $stmt = $pdo->prepare("
         SELECT 
             b.*,
+            d.name AS driver_name,
+            d.phone AS driver_phone,
             CASE 
                 WHEN b.status = 'completed' THEN '✓ Completed'
                 WHEN b.trip_date < CURDATE() THEN '⚠ Overdue'
@@ -45,6 +47,7 @@ try {
                 ELSE '📅 Upcoming'
             END as status_display
         FROM bookings b
+        LEFT JOIN drivers d ON b.driver_id = d.id
         WHERE b.contact_id = ?
         ORDER BY b.trip_date DESC, b.start_time DESC
     ");
@@ -161,8 +164,6 @@ try {
 <?php else: ?>
     <?php
     $clientWhatsAppPhone = formatPhoneNumberForWhatsApp($client['phone'] ?? '');
-    // Messages that only need the client (bank details, pickup message, ...) for the WhatsApp menu on each row
-    $clientWaMessages = getWhatsAppClientMessages($pdo, getWhatsAppClientMenuTemplates($pdo), $client['name'] ?? '', $client['phone'] ?? '', normalizeWhatsAppLanguage($client['language'] ?? 'en'));
     ?>
     <table class="bookings-table">
         <thead>
@@ -182,6 +183,16 @@ try {
                 <?php
                 $pickup = $booking['was_swapped'] ? $booking['original_destination'] : $booking['original_pickup'];
                 $destination = $booking['was_swapped'] ? $booking['original_pickup'] : $booking['original_destination'];
+
+                // Same WhatsApp menu as the booking page: confirmation, bank details, pickup message, ...
+                $waBooking = $booking + [
+                    'client_name'     => $client['name'] ?? '',
+                    'client_phone'    => $client['phone'] ?? '',
+                    'client_pickup_lat' => $client['pickup_lat'] ?? null,
+                    'client_pickup_lng' => $client['pickup_lng'] ?? null,
+                    'pickup_location' => $pickup,
+                    'destination'     => $destination,
+                ];
                 ?>
                 <tr>
                     <td data-label="Date"><?= date('d/m/Y', strtotime($booking['trip_date'])) ?></td>
@@ -196,7 +207,7 @@ try {
                             <a href="<?= BASE_URL ?>/modules/Bookings/view.php?id=<?= $booking['id'] ?>" class="action-btn view-details-btn">View</a>
                             <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= $booking['id'] ?>" class="action-btn edit-btn">Edit</a>
                             <?php if ($clientWhatsAppPhone): ?>
-                            <?= renderWhatsAppMenu($clientWhatsAppPhone, $clientWaMessages, (int) $booking['id'], (int) $client_id, 'action-btn whatsapp-btn', 'WhatsApp ▾') ?>
+                            <?= renderWhatsAppMenu($clientWhatsAppPhone, getWhatsAppBookingMessages($pdo, $waBooking), (int) $booking['id'], (int) $client_id, 'action-btn whatsapp-btn', 'WhatsApp ▾') ?>
                             <?php endif; ?>
                         </div>
                     </td>
