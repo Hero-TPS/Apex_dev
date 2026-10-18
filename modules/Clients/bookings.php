@@ -162,7 +162,7 @@ try {
     <?php
     $clientWhatsAppPhone = formatPhoneNumberForWhatsApp($client['phone'] ?? '');
     // Messages that only need the client (bank details, pickup message, ...) for the WhatsApp menu on each row
-    $clientWaMessages = getWhatsAppClientMessages($pdo, getWhatsAppClientMenuTemplates($pdo), $client['name'] ?? '', $client['phone'] ?? '');
+    $clientWaMessages = getWhatsAppClientMessages($pdo, getWhatsAppClientMenuTemplates($pdo), $client['name'] ?? '', $client['phone'] ?? '', normalizeWhatsAppLanguage($client['language'] ?? 'en'));
     ?>
     <table class="bookings-table">
         <thead>

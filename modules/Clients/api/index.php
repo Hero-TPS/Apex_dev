@@ -90,7 +90,7 @@ function handleGetClients()
         foreach ($contacts as &$contact) {
             $contact['whatsapp_phone'] = formatPhoneNumberForWhatsApp($contact['phone'] ?? '');
             $contact['wa_messages'] = $contact['whatsapp_phone'] !== ''
-                ? getWhatsAppClientMessages($pdo, $waTemplates, $contact['name'] ?? '', $contact['phone'] ?? '')
+                ? getWhatsAppClientMessages($pdo, $waTemplates, $contact['name'] ?? '', $contact['phone'] ?? '', normalizeWhatsAppLanguage($contact['language'] ?? 'en'))
                 : [];
             if (!empty($contact['last_booking_date'])) {
                 $contact['last_booking_is_future'] = $contact['last_booking_date'] >= $today;
@@ -290,6 +290,7 @@ function handleAddClient()
         $email = trim($_POST['email'] ?? '');
         $address = trim($_POST['address'] ?? '');
         $additional_info = trim($_POST['additionalInfo'] ?? '');
+        $language = normalizeWhatsAppLanguage($_POST['language'] ?? 'en');
         
         // Validate
         if (empty($name)) {
@@ -304,10 +305,10 @@ function handleAddClient()
 
         // Insert client
         $stmt = $pdo->prepare("
-            INSERT INTO contacts (name, phone, email, address, additional_info, date_added)
-            VALUES (?, ?, ?, ?, ?, NOW())
+            INSERT INTO contacts (name, phone, email, address, additional_info, language, date_added)
+            VALUES (?, ?, ?, ?, ?, ?, NOW())
         ");
-        $stmt->execute([$name, $phone, $email, $address, $additional_info]);
+        $stmt->execute([$name, $phone, $email, $address, $additional_info, $language]);
         
         $clientId = $pdo->lastInsertId();
         
@@ -348,6 +349,7 @@ function handleUpdateClient()
         $email = trim($_POST['email'] ?? '');
         $address = trim($_POST['address'] ?? '');
         $additional_info = trim($_POST['additionalInfo'] ?? '');
+        $language = normalizeWhatsAppLanguage($_POST['language'] ?? 'en');
         
         if ($id <= 0) {
             jsonResponse(['success' => false, 'message' => 'Invalid client ID'], 400);
@@ -366,10 +368,10 @@ function handleUpdateClient()
         // Update client
         $stmt = $pdo->prepare("
             UPDATE contacts 
-            SET name = ?, phone = ?, email = ?, address = ?, additional_info = ?
+            SET name = ?, phone = ?, email = ?, address = ?, additional_info = ?, language = ?
             WHERE id = ?
         ");
-        $updated = $stmt->execute([$name, $phone, $email, $address, $additional_info, $id]);
+        $updated = $stmt->execute([$name, $phone, $email, $address, $additional_info, $language, $id]);
         
         if ($updated) {
             logInfo('CLIENT', 'Client updated', [

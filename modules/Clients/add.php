@@ -35,6 +35,12 @@ include ROOT_DIR . '/includes/header.php';
         <label for="additionalInfo">Additional Information</label>
         <textarea id="additionalInfo" name="additionalInfo" placeholder="Any special notes, preferences, or instructions"></textarea>
     </div>
+    <div class="form-group">
+        <label class="at-wa-check-label">
+            <input type="checkbox" id="language" name="language" value="af">
+            Afrikaans client (WhatsApp messages are sent in Afrikaans)
+        </label>
+    </div>
     <button type="submit" class="btn" id="submitBtn">
         👤 Add Client
     </button>

@@ -69,8 +69,8 @@ ALTER TABLE invoices
 
 ### [whatsapp] Create `whatsapp_templates` and seed the built-in WhatsApp messages
 
-- [x] Done on dev
-- [x] Done on live
+- [ ] Done on dev
+- [ ] Done on live
 
 ```sql
 CREATE TABLE IF NOT EXISTS whatsapp_templates (
@@ -340,6 +340,22 @@ Groete,
 ```
 
 > Adds an optional Afrikaans text to every WhatsApp message (edit it under Dashboard → Services → WhatsApp Messages). A message with no Afrikaans text is sent in English. Seeds Afrikaans for the booking confirmation, airport pickup message, evening confirmation and prebooking reminder (draft translations, please review). `bank_details` and the driver message have no Afrikaans text (bank details are the same in both languages; the driver message stays English). Each UPDATE only fills a message whose Afrikaans text is still empty, so re-running never overwrites your edits. The Afrikaans airport-pickup and after-hours notices are System Variables (Maintenance), created with their defaults on first use. Contains emoji, so import with the utf8mb4 connection charset.
+
+---
+
+### [language] Add `language` to `contacts` and `bookings` (Afrikaans WhatsApp messages)
+
+- [ ] Done on dev
+- [ ] Done on live
+
+Run after the `[whatsapp-af]` entry above.
+
+```sql
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS language VARCHAR(2) NOT NULL DEFAULT 'en' AFTER additional_info;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS language VARCHAR(2) NOT NULL DEFAULT 'en';
+```
+
+> `'en'` (English, the default) or `'af'` (Afrikaans). `contacts.language` is the client's preset (tick box on Add / Edit Client) and drives the WhatsApp menu on the Clients pages. `bookings.language` is the language of one booking's messages (tick box on Add / Edit Booking, added in the next piece). Every existing client and booking becomes English, so nothing changes until you tick Afrikaans somewhere.
 
 ---
 

@@ -48,6 +48,12 @@ if ($client_id <= 0) {
         <label for="additionalInfo">Additional Information</label>
         <textarea id="additionalInfo" name="additionalInfo" placeholder="Any special notes, preferences, or instructions"></textarea>
     </div>
+    <div class="form-group">
+        <label class="at-wa-check-label">
+            <input type="checkbox" id="language" name="language" value="af">
+            Afrikaans client (WhatsApp messages are sent in Afrikaans)
+        </label>
+    </div>
 
     <div class="form-group">
         <label>Pickup GPS</label>
@@ -98,6 +104,7 @@ $(document).ready(function() {
                 $('#email').val(client.email || '');
                 $('#address').val(client.address || '');
                 $('#additionalInfo').val(client.additional_info || '');
+                $('#language').prop('checked', client.language === 'af');
                 if (client.pickup_lat && client.pickup_lng) {
                     $('#gps-status').html('<span class="success-message">✅ GPS Marked</span>');
                 } else {
