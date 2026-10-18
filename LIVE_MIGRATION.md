@@ -241,8 +241,8 @@ Drive safe! 🚗', 1, 120, 1);
 
 ### [whatsapp-af] Add Afrikaans text to `whatsapp_templates` and seed the Afrikaans messages
 
-- [ ] Done on dev
-- [ ] Done on live
+- [x] Done on dev
+- [x] Done on live
 
 Run after the `[whatsapp]` entry above.
 
