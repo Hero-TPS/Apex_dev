@@ -5,7 +5,43 @@ Run in order. Check off each one after executing.
 
 ---
 
+### [whatsapp] Add the combined bookings message (`booking_group`)
 
+Needed for: the "Send combined message" button on a client's bookings page. Safe to run more than once.
+
+- [x] Done on dev
+- [x] Done on live
+
+```sql
+INSERT IGNORE INTO whatsapp_templates (template_key, label, placement, body, body_af, active, sort_order, is_builtin) VALUES
+('booking_group', 'Combined bookings confirmation', 'booking_group', '*BOOKINGS CONFIRMED* ✅
+
+Good day {client_name},
+
+{trips}
+
+💰 Cost: {cost_each} each
+
+🚗 Looking forward to being of service to you. 👍
+
+Regards,
+{business_owner}
+{business_name}', '*BESPREKINGS BEVESTIG* ✅
+
+Goeie dag {client_name},
+
+{trips}
+
+💰 Koste: {cost_each} elk
+
+🚗 Ons sien daarna uit om u van diens te wees. 👍
+
+Groete,
+{business_owner}
+{business_name}', 1, 100, 1);
+```
+
+---
 
 **Notes:**
 - Each entry requires two checkboxes: **Done on dev** and **Done on live**
