@@ -159,7 +159,8 @@ function getWhatsAppGroupVariables(): array
     return getWhatsAppClientVariables() + [
         'trips'         => 'The trips, grouped by route with the dates and times under each (layout is fixed)',
         'booking_count' => 'Number of bookings in the message',
-        'cost_each'     => 'Cost per trip with R, e.g. R350.00. Empty when the trips do not all cost the same, so the line is left out',
+        'cost_each'     => 'Cost per trip with R, e.g. R350.00. Only filled when every trip costs the same (otherwise the line is left out)',
+        'cost_total'    => 'Total of all the trips with R, e.g. R1,100.00. Only filled when the trips do not all cost the same (the prices are then shown on the date lines)',
     ];
 }
 
@@ -642,10 +643,13 @@ function buildPrebookingMessageVars(array $d): array
  *
  * @param array[] $bookings  Rows with trip_date, start_time and pickup_location / destination
  *                           already resolved for was_swapped
+ * When the trips do not all cost the same, each date line ends with its own price (a trip with
+ * no cost shows none). When they all cost the same, no prices are shown here ({cost_each} covers it).
  * @param string  $language  'en' or 'af' (only the word between date and time changes)
  */
 function buildWhatsAppTripsText(array $bookings, string $language = 'en'): string
 {
+    $showCosts = !hasSameWhatsAppTripCost($bookings);
     $tz = new DateTimeZone(TIME_ZONE);
     $atWord = normalizeWhatsAppLanguage($language) === 'af' ? 'om' : 'at';
 
@@ -670,6 +674,9 @@ function buildWhatsAppTripsText(array $bookings, string $language = 'en'): strin
         if (!empty($b['start_time'])) {
             $line .= ' ' . $atWord . ' ' . $start->format('H:i');
         }
+        if ($showCosts && (float) ($b['cost'] ?? 0) > 0) {
+            $line .= ' – R' . number_format((float) $b['cost'], 2);
+        }
         $routes[$routeKey]['lines'][] = $line;
     }
 
@@ -683,6 +690,16 @@ function buildWhatsAppTripsText(array $bookings, string $language = 'en'): strin
 }
 
 /**
+ * True when every booking costs the same (to the cent).
+ * Used by: buildWhatsAppTripsText(), buildGroupMessageVars()
+ */
+function hasSameWhatsAppTripCost(array $bookings): bool
+{
+    $costs = array_unique(array_map(fn($b) => (int) round(((float) ($b['cost'] ?? 0)) * 100), $bookings));
+    return count($costs) <= 1;
+}
+
+/**
  * Values for the combined bookings message placeholders.
  * Used by: getWhatsAppGroupMessage()
  *
@@ -691,15 +708,19 @@ function buildWhatsAppTripsText(array $bookings, string $language = 'en'): strin
  */
 function buildGroupMessageVars(PDO $pdo, string $clientName, string $clientPhone, array $bookings, string $language = 'en'): array
 {
-    // One cost per trip, only when every trip costs the same (and something). Otherwise it is
-    // left empty and the template line is dropped, rather than guessing which cost to show.
-    $costs = array_unique(array_map(fn($b) => (int) round(((float) ($b['cost'] ?? 0)) * 100), $bookings));
-    $costEach = (count($costs) === 1 && $costs[0] > 0) ? 'R' . number_format($costs[0] / 100, 2) : '';
+    // Same cost on every trip: one "each" cost. Different costs: the prices go on the date lines
+    // ({trips}) and the template shows the total instead. The unused one is left empty so its
+    // template line is dropped.
+    $totalCents = array_sum(array_map(fn($b) => (int) round(((float) ($b['cost'] ?? 0)) * 100), $bookings));
+    $same = hasSameWhatsAppTripCost($bookings);
+    $costEach = ($same && $totalCents > 0) ? 'R' . number_format($totalCents / count($bookings) / 100, 2) : '';
+    $costTotal = (!$same && $totalCents > 0) ? 'R' . number_format($totalCents / 100, 2) : '';
 
     return buildClientMessageVars($pdo, $clientName, $clientPhone) + [
         'trips'         => buildWhatsAppTripsText($bookings, $language),
         'booking_count' => (string) count($bookings),
         'cost_each'     => $costEach,
+        'cost_total'    => $costTotal,
     ];
 }
 
