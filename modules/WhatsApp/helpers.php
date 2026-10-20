@@ -643,7 +643,8 @@ function buildPrebookingMessageVars(array $d): array
  *
  * @param array[] $bookings  Rows with trip_date, start_time and pickup_location / destination
  *                           already resolved for was_swapped
- * When the trips do not all cost the same, each date line ends with its own price (a trip with
+ * A date line shows the flight number when the booking has one. When the trips do not all cost
+ * the same, each date line ends with its own price (a trip with
  * no cost shows none). When they all cost the same, no prices are shown here ({cost_each} covers it).
  * @param string  $language  'en' or 'af' (only the word between date and time changes)
  */
@@ -673,6 +674,10 @@ function buildWhatsAppTripsText(array $bookings, string $language = 'en'): strin
         $line = '📅 ' . $start->format('d/m/y');
         if (!empty($b['start_time'])) {
             $line .= ' ' . $atWord . ' ' . $start->format('H:i');
+        }
+        $flight = trim((string) ($b['flight_number'] ?? ''));
+        if ($flight !== '') {
+            $line .= ' ✈️ ' . $flight;
         }
         if ($showCosts && (float) ($b['cost'] ?? 0) > 0) {
             $line .= ' – R' . number_format((float) $b['cost'], 2);
