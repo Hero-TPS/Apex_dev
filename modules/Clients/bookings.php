@@ -165,9 +165,18 @@ try {
     <?php
     $clientWhatsAppPhone = formatPhoneNumberForWhatsApp($client['phone'] ?? '');
     ?>
+    <div class="at-group-wa-bar">
+        <button type="button" id="groupWaBtn" class="page-action-btn whatsapp" disabled
+            <?= $clientWhatsAppPhone === '' ? 'title="No valid WhatsApp number on file"' : '' ?>>
+            💬 Send combined message (<span id="groupWaCount">0</span>)
+        </button>
+        <span class="client-subline">Tick two or more bookings to send them as one WhatsApp message.</span>
+    </div>
+    <div id="groupWaNotice"></div>
     <table class="bookings-table">
         <thead>
             <tr>
+                <th><input type="checkbox" id="groupWaAll" class="at-group-wa-check" aria-label="Tick all bookings"<?= $clientWhatsAppPhone === '' ? ' disabled' : '' ?>></th>
                 <th>Date</th>
                 <th>Time</th>
                 <th>Pickup</th>
@@ -195,6 +204,7 @@ try {
                 ];
                 ?>
                 <tr>
+                    <td data-label="Select"><input type="checkbox" class="at-group-wa-check at-group-wa-row" value="<?= (int) $booking['id'] ?>" aria-label="Tick booking of <?= e(date('d/m/Y', strtotime($booking['trip_date']))) ?>"<?= $clientWhatsAppPhone === '' ? ' disabled' : '' ?>></td>
                     <td data-label="Date"><?= date('d/m/Y', strtotime($booking['trip_date'])) ?></td>
                     <td data-label="Time"><?= date('H:i', strtotime($booking['start_time'])) ?></td>
                     <td data-label="Pickup"><?= htmlspecialchars($pickup) ?></td>
@@ -229,6 +239,59 @@ try {
 <script>
     $(document).ready(function () {
         var clientId = <?= (int) $client_id ?>;
+
+        // Combined WhatsApp message: tick two or more bookings, then send them as one message
+        var groupBtn = $('#groupWaBtn');
+        var groupRows = $('.at-group-wa-row');
+
+        function updateGroupButton() {
+            var ticked = groupRows.filter(':checked').length;
+            $('#groupWaCount').text(ticked);
+            groupBtn.prop('disabled', ticked < 2 || groupRows.first().prop('disabled'));
+            $('#groupWaAll').prop('checked', ticked > 0 && ticked === groupRows.length);
+        }
+
+        $('#groupWaAll').on('change', function () {
+            groupRows.prop('checked', this.checked);
+            updateGroupButton();
+        });
+        groupRows.on('change', updateGroupButton);
+
+        groupBtn.on('click', function () {
+            var ids = groupRows.filter(':checked').map(function () { return this.value; }).get();
+            if (ids.length < 2) {
+                return;
+            }
+            // Open the tab straight from the click so the browser does not block it; it is pointed at WhatsApp once the message is ready.
+            var waTab = window.open('', '_blank');
+            groupBtn.prop('disabled', true);
+            $('#groupWaNotice').empty();
+
+            $.ajax({
+                type: 'POST',
+                url: '<?= BASE_URL ?>/modules/Clients/api/index.php',
+                data: { action: 'group_message', contact_id: clientId, booking_ids: ids },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.success && res.url) {
+                        if (waTab) {
+                            waTab.location.href = res.url;
+                        } else {
+                            window.location.href = res.url;
+                        }
+                    } else {
+                        if (waTab) { waTab.close(); }
+                        $('#groupWaNotice').html($('<div>').addClass('error-message').text(res.message || 'Could not build the message.'));
+                    }
+                },
+                error: function (xhr) {
+                    if (waTab) { waTab.close(); }
+                    var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Could not build the message. Please try again.';
+                    $('#groupWaNotice').html($('<div>').addClass('error-message').text(msg));
+                },
+                complete: updateGroupButton
+            });
+        });
 
         // Message history section toggle
         $('.menu-toggle[data-target="client-msg-history-section"]').on('click', function () {
