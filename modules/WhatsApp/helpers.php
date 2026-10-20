@@ -18,6 +18,7 @@ const WHATSAPP_PLACEMENTS = [
     'evening'      => "Tomorrow's Confirmations (dashboard)",
     'prebooking'   => 'Prebooking reminder',
     'driver'       => 'Message to driver',
+    'booking_group' => 'Combined bookings message (client bookings page)',
 ];
 
 /**
@@ -148,6 +149,21 @@ function getWhatsAppPrebookingVariables(): array
 }
 
 /**
+ * Placeholders available for the combined bookings message (several bookings of one client).
+ * Used by: getWhatsAppVariables()
+ *
+ * @return array<string,string> name => description
+ */
+function getWhatsAppGroupVariables(): array
+{
+    return getWhatsAppClientVariables() + [
+        'trips'         => 'The trips, grouped by route with the dates and times under each (layout is fixed)',
+        'booking_count' => 'Number of bookings in the message',
+        'cost_each'     => 'Cost per trip with R, e.g. R350.00. Empty when the trips do not all cost the same, so the line is left out',
+    ];
+}
+
+/**
  * Allowed placeholders for a template placement.
  * Used by: validateWhatsAppTemplateBody(), modules/WhatsApp/partials/template_form.php
  *
@@ -155,9 +171,13 @@ function getWhatsAppPrebookingVariables(): array
  */
 function getWhatsAppVariables(string $placement): array
 {
-    return $placement === 'prebooking'
-        ? getWhatsAppPrebookingVariables()
-        : getWhatsAppBookingVariables();
+    if ($placement === 'prebooking') {
+        return getWhatsAppPrebookingVariables();
+    }
+    if ($placement === 'booking_group') {
+        return getWhatsAppGroupVariables();
+    }
+    return getWhatsAppBookingVariables();
 }
 
 /**
@@ -610,6 +630,96 @@ function buildPrebookingMessageVars(array $d): array
         'business_owner'  => BUSINESS_OWNER,
         'business_name'   => BUSINESS_NAME,
     ];
+}
+
+// --- Combined message (several bookings of one client) ---
+
+/**
+ * The {trips} text: bookings grouped by route (pickup -> destination), the route printed once
+ * with one line per date and time under it. A return trip has its own route, so it is its own
+ * block. Blocks are in the order of their earliest booking; dates are in time order.
+ * Used by: getWhatsAppGroupMessage()
+ *
+ * @param array[] $bookings  Rows with trip_date, start_time and pickup_location / destination
+ *                           already resolved for was_swapped
+ * @param string  $language  'en' or 'af' (only the word between date and time changes)
+ */
+function buildWhatsAppTripsText(array $bookings, string $language = 'en'): string
+{
+    $tz = new DateTimeZone(TIME_ZONE);
+    $atWord = normalizeWhatsAppLanguage($language) === 'af' ? 'om' : 'at';
+
+    usort($bookings, fn($a, $b) => [(string) ($a['trip_date'] ?? ''), (string) ($a['start_time'] ?? '')]
+        <=> [(string) ($b['trip_date'] ?? ''), (string) ($b['start_time'] ?? '')]);
+
+    $routes = [];
+    foreach ($bookings as $b) {
+        $pickup = trim((string) ($b['pickup_location'] ?? ''));
+        $destination = trim((string) ($b['destination'] ?? ''));
+        $routeKey = mb_strtolower($pickup) . '|' . mb_strtolower($destination);
+
+        if (!isset($routes[$routeKey])) {
+            $routes[$routeKey] = ['title' => $pickup . ' -> ' . $destination, 'lines' => []];
+        }
+
+        if (empty($b['trip_date'])) {
+            continue;
+        }
+        $start = new DateTime($b['trip_date'] . ' ' . (!empty($b['start_time']) ? $b['start_time'] : '00:00:00'), $tz);
+        $line = '📅 ' . $start->format('d/m/y');
+        if (!empty($b['start_time'])) {
+            $line .= ' ' . $atWord . ' ' . $start->format('H:i');
+        }
+        $routes[$routeKey]['lines'][] = $line;
+    }
+
+    $blocks = [];
+    foreach ($routes as $route) {
+        if ($route['lines']) {
+            $blocks[] = '📍 ' . $route['title'] . "\n" . implode("\n", $route['lines']);
+        }
+    }
+    return implode("\n\n", $blocks);
+}
+
+/**
+ * Values for the combined bookings message placeholders.
+ * Used by: getWhatsAppGroupMessage()
+ *
+ * @param array[] $bookings  Same rows as buildWhatsAppTripsText()
+ * @return array<string,string>
+ */
+function buildGroupMessageVars(PDO $pdo, string $clientName, string $clientPhone, array $bookings, string $language = 'en'): array
+{
+    // One cost per trip, only when every trip costs the same (and something). Otherwise it is
+    // left empty and the template line is dropped, rather than guessing which cost to show.
+    $costs = array_unique(array_map(fn($b) => (int) round(((float) ($b['cost'] ?? 0)) * 100), $bookings));
+    $costEach = (count($costs) === 1 && $costs[0] > 0) ? 'R' . number_format($costs[0] / 100, 2) : '';
+
+    return buildClientMessageVars($pdo, $clientName, $clientPhone) + [
+        'trips'         => buildWhatsAppTripsText($bookings, $language),
+        'booking_count' => (string) count($bookings),
+        'cost_each'     => $costEach,
+    ];
+}
+
+/**
+ * The combined message for several bookings of one client, in the client's language.
+ * Returns '' when there are no bookings or the 'booking_group' template is missing (logged).
+ * Used by: modules/Clients/bookings.php, modules/Clients/api (Piece 2)
+ *
+ * @param array   $client    contacts row (name, phone, language)
+ * @param array[] $bookings  Rows with trip_date, start_time, cost and pickup_location / destination
+ *                           already resolved for was_swapped
+ */
+function getWhatsAppGroupMessage(PDO $pdo, array $client, array $bookings): string
+{
+    if (!$bookings) {
+        return '';
+    }
+    $language = normalizeWhatsAppLanguage($client['language'] ?? 'en');
+    $vars = buildGroupMessageVars($pdo, (string) ($client['name'] ?? ''), (string) ($client['phone'] ?? ''), $bookings, $language);
+    return renderWhatsAppTemplateByKey($pdo, 'booking_group', $vars, $language);
 }
 
 // --- Message builders (templates: confirmation, evening_confirmation, prebooking_reminder, driver_notification) ---
