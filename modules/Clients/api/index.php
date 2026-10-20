@@ -43,6 +43,9 @@ try {
         case 'toggle_archive':
             handleToggleArchive();
             break;
+        case 'group_message':
+            handleGroupMessage();
+            break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
     }
@@ -647,4 +650,94 @@ function handleUpdateWaStatus()
         ]);
         jsonResponse(['success' => false, 'message' => 'Failed to update WA status.'], 500);
     }
+}
+
+/**
+ * Builds the combined WhatsApp message for several bookings of one client (ticked on the
+ * client's bookings page), logs it once per booking and returns the wa.me link to open.
+ * POST: contact_id, booking_ids[] (2 or more, all belonging to that client).
+ */
+function handleGroupMessage()
+{
+    global $pdo;
+
+    $contactId = intval($_POST['contact_id'] ?? 0);
+    $bookingIds = array_values(array_unique(array_filter(
+        array_map('intval', (array) ($_POST['booking_ids'] ?? [])),
+        fn($id) => $id > 0
+    )));
+
+    if ($contactId <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid client ID.'], 400);
+    }
+    if (count($bookingIds) < 2) {
+        jsonResponse(['success' => false, 'message' => 'Tick at least two bookings.'], 400);
+    }
+    if (count($bookingIds) > 50) {
+        jsonResponse(['success' => false, 'message' => 'Too many bookings ticked (max 50).'], 400);
+    }
+
+    $stmt = $pdo->prepare("SELECT * FROM contacts WHERE id = ?");
+    $stmt->execute([$contactId]);
+    $client = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$client) {
+        jsonResponse(['success' => false, 'message' => 'Client not found.'], 404);
+    }
+
+    $waPhone = formatPhoneNumberForWhatsApp($client['phone'] ?? '');
+    if ($waPhone === '') {
+        jsonResponse(['success' => false, 'message' => 'This client has no valid WhatsApp number.'], 400);
+    }
+
+    if (getWhatsAppTemplate($pdo, 'booking_group') === null) {
+        jsonResponse(['success' => false, 'message' => 'The combined message is not set up yet. Run the booking_group entry in LIVE_MIGRATION.md on this database.'], 400);
+    }
+
+    $placeholders = implode(',', array_fill(0, count($bookingIds), '?'));
+    $stmt = $pdo->prepare("SELECT * FROM bookings WHERE contact_id = ? AND id IN ($placeholders)");
+    $stmt->execute(array_merge([$contactId], $bookingIds));
+    $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (count($bookings) !== count($bookingIds)) {
+        jsonResponse(['success' => false, 'message' => 'Some ticked bookings could not be found for this client. Reload the page and try again.'], 404);
+    }
+
+    // Same pickup / destination resolution as the bookings page
+    foreach ($bookings as &$b) {
+        $b['pickup_location'] = $b['was_swapped'] ? $b['original_destination'] : $b['original_pickup'];
+        $b['destination'] = $b['was_swapped'] ? $b['original_pickup'] : $b['original_destination'];
+    }
+    unset($b);
+
+    $text = getWhatsAppGroupMessage($pdo, $client, $bookings);
+    if ($text === '') {
+        jsonResponse(['success' => false, 'message' => 'Could not build the message.'], 500);
+    }
+
+    // One log entry per ticked booking, same text, so each booking's history shows it.
+    try {
+        $logStmt = $pdo->prepare("
+            INSERT INTO whatsapp_log (booking_id, contact_id, message_type, message_content, sent_by)
+            VALUES (?, ?, 'booking_group', ?, 'user')
+        ");
+        foreach ($bookingIds as $bookingId) {
+            $logStmt->execute([$bookingId, $contactId, $text]);
+        }
+    } catch (PDOException $e) {
+        logError('CLIENT_API', 'Failed to log combined WhatsApp message', [
+            'error' => $e->getMessage(),
+            'contact_id' => $contactId
+        ]);
+    }
+
+    logInfo('CLIENT_API', 'Combined WhatsApp message built', [
+        'contact_id' => $contactId,
+        'booking_ids' => $bookingIds
+    ]);
+
+    jsonResponse([
+        'success' => true,
+        'text' => $text,
+        'url' => 'https://wa.me/' . $waPhone . '?text=' . rawurlencode($text),
+    ]);
 }
