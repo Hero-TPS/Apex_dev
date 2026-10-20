@@ -97,7 +97,7 @@ include ROOT_DIR . '/includes/header.php';
         </div>
     </div>
 
-    <!-- Calendar -->
+    <!-- Calendar 
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="calendar-section">🗓️ Calendar</h3>
         <div id="calendar-section" class="menu-content">
@@ -108,7 +108,7 @@ include ROOT_DIR . '/includes/header.php';
                 <span class="dashboard-text">Open Calendar</span>
             </a>
         </div>
-    </div>
+    </div> -->
 
 </div>
 
