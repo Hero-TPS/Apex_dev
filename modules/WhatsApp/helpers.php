@@ -636,6 +636,50 @@ function buildPrebookingMessageVars(array $d): array
 // --- Combined message (several bookings of one client) ---
 
 /**
+ * Hours either side of a booking's creation in which the client's other bookings count as made in
+ * the same booking session (Book Again: repeat / return trips).
+ */
+const WHATSAPP_GROUP_WINDOW_HOURS = 5;
+
+/**
+ * The client's bookings created within WHATSAPP_GROUP_WINDOW_HOURS of the given booking (itself
+ * included), in trip order, with pickup_location / destination resolved for was_swapped. These are
+ * the bookings offered for a combined message from the booking page. Returns [] when the booking
+ * has no creation time.
+ * Used by: modules/Bookings/view.php
+ *
+ * @param array $booking  Booking row with id, contact_id and date_created
+ * @return array[]
+ */
+function getWhatsAppRecentClientBookings(PDO $pdo, array $booking, int $hours = WHATSAPP_GROUP_WINDOW_HOURS): array
+{
+    if (empty($booking['date_created']) || empty($booking['contact_id'])) {
+        return [];
+    }
+
+    // The window is worked out from the booking's own creation time, so the database and PHP
+    // time zones never have to agree.
+    $created = new DateTime($booking['date_created'], new DateTimeZone('UTC'));
+    $from = (clone $created)->modify('-' . $hours . ' hours')->format('Y-m-d H:i:s');
+    $to = (clone $created)->modify('+' . $hours . ' hours')->format('Y-m-d H:i:s');
+
+    $stmt = $pdo->prepare("
+        SELECT * FROM bookings
+        WHERE contact_id = ? AND date_created BETWEEN ? AND ?
+        ORDER BY trip_date ASC, start_time ASC
+    ");
+    $stmt->execute([(int) $booking['contact_id'], $from, $to]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($rows as &$row) {
+        $row['pickup_location'] = $row['was_swapped'] ? $row['original_destination'] : $row['original_pickup'];
+        $row['destination'] = $row['was_swapped'] ? $row['original_pickup'] : $row['original_destination'];
+    }
+    unset($row);
+    return $rows;
+}
+
+/**
  * The {trips} text: bookings grouped by route (pickup -> destination), the route printed once
  * with one line per date and time under it. A return trip has its own route, so it is its own
  * block. Blocks are in the order of their earliest booking; dates are in time order.
