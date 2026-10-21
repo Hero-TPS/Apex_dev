@@ -238,3 +238,21 @@
     font-size: 1em;
     line-height: 1.5;
 }
+
+/* ========================
+   Combined WhatsApp message (client bookings page)
+   ======================== */
+
+.at-group-wa-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.at-group-wa-check {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}

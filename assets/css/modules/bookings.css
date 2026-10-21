@@ -287,3 +287,23 @@
     font-weight: normal;
     opacity: 0.9;
 }
+
+/* ========================
+   Combined WhatsApp message modal (booking page)
+   ======================== */
+
+.at-group-wa-list {
+    text-align: left;
+    margin: 12px 0;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.at-group-wa-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}

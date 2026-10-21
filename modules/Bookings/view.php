@@ -20,6 +20,7 @@ include ROOT_DIR . '/includes/header.php';
 
 $booking = null;
 $error_message = '';
+$groupCandidates = [];
 
 if (isset($_GET['id'])) {
     $bookingId = intval($_GET['id']);
@@ -53,6 +54,9 @@ if (isset($_GET['id'])) {
 
                 // Same "against all bookings" overlap rule as add/edit/index/reports
                 $bookingOverlaps = getBookingOverlapsForDates($pdo, [$booking['trip_date']])[$booking['id']] ?? [];
+
+                // Other bookings made for this client in the same session, for the combined WhatsApp message
+                $groupCandidates = getWhatsAppRecentClientBookings($pdo, $booking);
             } else {
                 $error_message = "Booking not found.";
             }
@@ -108,6 +112,9 @@ if (isset($_GET['id'])) {
     <div class="booking-detail-grid">
         <div class="detail-item">
             <strong>Client:</strong> <?= htmlspecialchars($booking['client_name']) ?>
+            <?php if (($booking['client_language'] ?? 'en') === 'af'): ?>
+                <span class="at-wa-badge">🇿🇦 Afrikaans</span>
+            <?php endif; ?>
         </div>
         <div class="detail-item">
             <strong>Phone:</strong> <?= htmlspecialchars($booking['client_phone']) ?>
@@ -247,22 +254,18 @@ if (isset($_GET['id'])) {
         <?php endif; ?>
         <?php
         // WhatsApp dropdown: every message set up under WhatsApp Messages, filled in for this booking
-        $waVars = buildBookingMessageVars($pdo, $booking);
-        $waMessages = [];
-        foreach (getWhatsAppMenuTemplates($pdo) as $waTemplate) {
-            $waMessages[] = [
-                'key'   => $waTemplate['template_key'],
-                'label' => $waTemplate['label'],
-                'text'  => renderWhatsAppTemplate(getWhatsAppTemplateBody($waTemplate, $booking['language'] ?? 'en'), $waVars),
-            ];
-        }
         echo renderWhatsAppMenu(
             formatPhoneNumberForWhatsApp($booking['client_phone']),
-            $waMessages,
+            getWhatsAppBookingMessages($pdo, $booking),
             (int) $booking['id'],
             (int) $booking['contact_id']
         );
+        // Combined message: needs at least two bookings made around the same time and a WhatsApp number
+        $showGroupButton = count($groupCandidates) >= 2 && formatPhoneNumberForWhatsApp($booking['client_phone']) !== '';
         ?>
+        <?php if ($showGroupButton): ?>
+            <button type="button" id="groupWaBtn" class="page-action-btn whatsapp">💬 Combined message (<?= count($groupCandidates) ?>)</button>
+        <?php endif; ?>
         <a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=<?= (int) $booking['id'] ?>" class="page-action-btn edit">✏️
             Edit Booking</a>
     </div>
@@ -345,6 +348,34 @@ if (isset($_GET['id'])) {
             </div>
         </div>
     </div>
+
+    <?php if ($showGroupButton): ?>
+    <!-- Combined WhatsApp message modal -->
+    <div id="groupWaModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Combined WhatsApp message</h3>
+            <p>Bookings made for <?= e($booking['client_name']) ?> around the same time. Untick any that should not be in the message.</p>
+            <div class="at-group-wa-list">
+                <?php foreach ($groupCandidates as $candidate): ?>
+                    <?php $isThis = (int) $candidate['id'] === (int) $booking['id']; ?>
+                    <label class="at-group-wa-item">
+                        <input type="checkbox" class="at-group-wa-check at-group-wa-row" value="<?= (int) $candidate['id'] ?>" checked<?= $isThis ? ' disabled' : '' ?>>
+                        <span>
+                            <?= e(date('d/m/y', strtotime($candidate['trip_date']))) ?> <?= e(date('H:i', strtotime($candidate['start_time']))) ?>
+                            – <?= e($candidate['pickup_location'] . ' → ' . $candidate['destination']) ?>
+                            <?= $isThis ? '<em>(this booking)</em>' : '' ?>
+                        </span>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+            <div id="groupWaNotice"></div>
+            <div class="modal-buttons">
+                <button type="button" id="groupWaSendBtn" class="modal-btn confirm-btn">💬 Send combined message</button>
+                <button type="button" id="cancelGroupWaBtn" class="modal-btn cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- Delete Confirmation Modal -->
     <div id="deleteConfirmationModal" class="modal-overlay">
@@ -648,6 +679,71 @@ if (isset($_GET['id'])) {
                 if (e.key === 'Escape') {
                     bookAgainModal.hide();
                 }
+            });
+
+            // Combined WhatsApp message modal: the bookings made around the same time are pre-ticked
+            var groupModal = $('#groupWaModal');
+            var groupSendBtn = $('#groupWaSendBtn');
+            var groupRows = groupModal.find('.at-group-wa-row');
+
+            function updateGroupSendButton() {
+                groupSendBtn.prop('disabled', groupRows.filter(':checked').length < 2);
+            }
+
+            $('#groupWaBtn').on('click', function () {
+                updateGroupSendButton();
+                groupModal.css('display', 'flex');
+            });
+            $('#cancelGroupWaBtn').on('click', function () {
+                groupModal.hide();
+            });
+            groupModal.on('click', function (e) {
+                if (e.target === this) {
+                    groupModal.hide();
+                }
+            });
+            $(document).on('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    groupModal.hide();
+                }
+            });
+            groupRows.on('change', updateGroupSendButton);
+
+            groupSendBtn.on('click', function () {
+                var ids = groupRows.filter(':checked').map(function () { return this.value; }).get();
+                if (ids.length < 2) {
+                    return;
+                }
+                // Open the tab straight from the click so the browser does not block it; it is pointed at WhatsApp once the message is ready.
+                var waTab = window.open('', '_blank');
+                groupSendBtn.prop('disabled', true);
+                $('#groupWaNotice').empty();
+
+                $.ajax({
+                    type: 'POST',
+                    url: '<?= BASE_URL ?>/modules/Clients/api/index.php',
+                    data: { action: 'group_message', contact_id: <?= (int) $booking['contact_id'] ?>, booking_ids: ids },
+                    dataType: 'json',
+                    success: function (res) {
+                        if (res.success && res.url) {
+                            if (waTab) {
+                                waTab.location.href = res.url;
+                            } else {
+                                window.location.href = res.url;
+                            }
+                            groupModal.hide();
+                        } else {
+                            if (waTab) { waTab.close(); }
+                            $('#groupWaNotice').html($('<div>').addClass('error-message').text(res.message || 'Could not build the message.'));
+                        }
+                    },
+                    error: function (xhr) {
+                        if (waTab) { waTab.close(); }
+                        var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Could not build the message. Please try again.';
+                        $('#groupWaNotice').html($('<div>').addClass('error-message').text(msg));
+                    },
+                    complete: updateGroupSendButton
+                });
             });
 
             // More Actions section toggle
