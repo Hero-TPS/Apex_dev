@@ -1,4 +1,6 @@
 <?php
+// services/logs.php
+
 $page_title = 'System Logs';
 $page_subtitle = 'Activity & Error Logs';
 $show_breadcrumb = true;
@@ -7,8 +9,8 @@ require_once __DIR__ . '/../config.php';
 require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 $breadcrumb = buildBreadcrumb([
-    ['label' => 'Maintenance', 'url' => BASE_URL . '/maintenance/'],
-    ['label' => 'Logs'],
+    ['label' => 'Services'],
+    ['label' => 'System Logs'],
 ]);
 include ROOT_DIR . '/includes/header.php';
 
@@ -157,7 +159,7 @@ $(document).ready(function() {
         const category = $('#categoryFilter').val();
         const limit = $('#limitFilter').val();
         
-        window.location.href = '<?= BASE_URL ?>/maintenance/logs.php' +
+        window.location.href = '<?= BASE_URL ?>/services/logs.php' +
             '?level=' + level +
             '&category=' + encodeURIComponent(category) +
             '&limit=' + limit;
@@ -215,7 +217,7 @@ $(document).ready(function() {
         btn.prop('disabled', true).text('Clearing...');
 
         $.ajax({
-            url: '<?= BASE_URL ?>/maintenance/api/logs.php?action=clear_all',
+            url: '<?= BASE_URL ?>/services/api/logs.php?action=clear_all',
             type: 'POST',
             dataType: 'json',
             success: function(response) {

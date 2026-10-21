@@ -6,7 +6,7 @@
  * Receives client-side (browser JS) debug/error reports from the Trip
  * Distance Calculator's Places Autocomplete wiring and writes them into
  * the existing system_logs table via includes/logger.php, so they can be
- * reviewed at /maintenance/logs.php instead of a browser console.
+ * reviewed at /services/logs.php instead of a browser console.
  *
  * Expected POST JSON body: { "level": "ERROR", "message": "...", "context": {...} }
  */

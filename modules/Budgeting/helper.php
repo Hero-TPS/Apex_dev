@@ -249,7 +249,7 @@ function getAiFactualBriefing(PDO $pdo, array $forecast, array $pace, bool $forc
     $factsBlock = renderFactsBlock($forecast, $pace);
     $template = getSystemVariable($pdo, 'ai_prompt_template');
     // Hash covers both the data AND the prompt wording — editing the template
-    // in Maintenance must invalidate old cache the same way changed numbers do.
+    // in Services → System Variables must invalidate old cache the same way changed numbers do.
     $hash = md5($factsBlock . '|' . $template);
 
     $stmt = $pdo->prepare(

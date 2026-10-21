@@ -90,14 +90,17 @@ include ROOT_DIR . '/includes/header.php';
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="services-section">⚙️ Services</h3>
         <div id="services-section" class="menu-content">
-            <a href="<?= BASE_URL ?>/maintenance/" class="dashboard-button db-maintenance">Manage Lists</a>
-            <a href="<?= BASE_URL ?>/maintenance/logs.php" class="dashboard-button db-maintenance">System Logs</a>
+            <a href="<?= BASE_URL ?>/services/lists.php" class="dashboard-button db-maintenance">Dropdown Lists</a>
+            <a href="<?= BASE_URL ?>/services/variables.php" class="dashboard-button db-maintenance">System Variables</a>
+            <a href="<?= BASE_URL ?>/services/cleanup.php" class="dashboard-button db-maintenance">Cleanup Tools</a>
+            <a href="<?= BASE_URL ?>/services/drivers.php" class="dashboard-button db-maintenance">Drivers</a>
+            <a href="<?= BASE_URL ?>/services/logs.php" class="dashboard-button db-maintenance">System Logs</a>
             <a href="<?= BASE_URL ?>/modules/WhatsApp/" class="dashboard-button db-maintenance">WhatsApp Messages</a>
             <a href="<?= BASE_URL ?>/modules/DistanceCalculator/" class="dashboard-button db-distcalc">Trip Distance Calculator</a>
         </div>
     </div>
 
-    <!-- Calendar -->
+    <!-- Calendar 
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="calendar-section">🗓️ Calendar</h3>
         <div id="calendar-section" class="menu-content">
@@ -108,7 +111,7 @@ include ROOT_DIR . '/includes/header.php';
                 <span class="dashboard-text">Open Calendar</span>
             </a>
         </div>
-    </div>
+    </div> -->
 
 </div>
 
