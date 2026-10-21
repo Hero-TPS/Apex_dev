@@ -28,7 +28,7 @@ function fetchData(PDO $pdo, string $tableName, string $orderBy): array
 
 /**
  * Fetch a single column from a table as a flat array.
- * Used by: maintenance/index.php, modules/Bookings/add.php, modules/Bookings/edit.php
+ * Used by: services/lists.php, modules/Bookings/add.php, modules/Bookings/edit.php
  * ⚠️ Only call with hardcoded, trusted table/column names!
  */
 function fetchColumn(PDO $pdo, string $tableName, string $columnName, string $orderBy): array
@@ -254,7 +254,7 @@ function calculateDriverSettlement(array $bookingDetails): array
 
 /**
  * All configurable system variables, with labels, types, and defaults.
- * Managed via maintenance/index.php and stored in the system_variables table.
+ * Managed via services/variables.php and stored in the system_variables table.
  */
 
 const SYSTEM_VARIABLES = [
@@ -355,7 +355,7 @@ function isAirportPickupLocation(string $location): bool
  * Returns booking notes with the Cape Town Airport pickup reminder
  * appended on its own line, when the effective pickup location matches
  * isAirportPickupLocation(). The reminder text itself lives in the
- * airport_pickup_notice system variable (editable via maintenance/index.php)
+ * airport_pickup_notice system variable (editable via services/variables.php)
  * — it is never written into bookings.description. It's appended here, at
  * render time only, so repeated edits/renders never duplicate it in storage.
  *

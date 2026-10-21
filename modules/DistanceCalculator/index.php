@@ -4,7 +4,7 @@
  * Trip Distance Calculator — multi-stop route planning
  * @version 1.5.0 — Removed temporary debug-level logging (autocomplete
  *          confirmed working); kept genuine error reporting via
- *          window.logJsError() / maintenance/api/log_js_error.php
+ *          window.logJsError() / services/api/log_js_error.php
  */
 
 $page_title = 'Trip Distance Calculator';
@@ -256,7 +256,7 @@ $(document).ready(function () {
 //
 // Genuine failure conditions below report via the shared window.logJsError()
 // (see assets/js/error-logging.js), which writes into the existing
-// system_logs table (viewable at /maintenance/logs.php) under the
+// system_logs table (viewable at /services/logs.php) under the
 // DISTCALC_JS category — useful since this is tested on a mobile browser
 // with no console access.
 window.distCalcMapsReady = false;

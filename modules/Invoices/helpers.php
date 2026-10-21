@@ -22,7 +22,7 @@ function getInvoiceBusinessDetails(): array
 }
 
 /**
- * Invoice-related system variables (editable under Maintenance).
+ * Invoice-related system variables (editable under Services → System Variables).
  * Used by: partials/invoice_document.php, api/index.php
  *
  * @return array{payment_details:string,payment_terms:string,footer_note:string}

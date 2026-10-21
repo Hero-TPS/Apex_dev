@@ -84,7 +84,7 @@ function getWhatsAppClientVariables(): array
         'client_phone'    => 'Client phone number as saved',
         'business_owner'  => 'Business owner name (config)',
         'business_name'   => 'Business name (config)',
-        'payment_details' => 'Bank / EFT details (Maintenance → Invoice Payment Details)',
+        'payment_details' => 'Bank / EFT details (Services → System Variables → Invoice Payment Details)',
     ];
 }
 

@@ -4,8 +4,8 @@
  * Site-wide client-side error reporting. Generalizes the pattern piloted
  * in modules/DistanceCalculator/log-error.php + its inline JS to every
  * page. Reports uncaught errors, unhandled promise rejections, and failed
- * jQuery AJAX calls to maintenance/api/log_js_error.php, which writes them
- * into the existing system_logs table (viewable at /maintenance/logs.php).
+ * jQuery AJAX calls to services/api/log_js_error.php, which writes them
+ * into the existing system_logs table (viewable at /services/logs.php).
  *
  * This exists because development happens on Android with no browser
  * console access — silent JS failures are otherwise invisible.
@@ -13,7 +13,7 @@
  * Requires window.APP_BASE_URL to be set (see includes/header.php).
  */
 (function () {
-    var LOG_ENDPOINT = (window.APP_BASE_URL || '') + '/maintenance/api/log_js_error.php';
+    var LOG_ENDPOINT = (window.APP_BASE_URL || '') + '/services/api/log_js_error.php';
 
     function logJsError(level, message, context) {
         context = context || {};

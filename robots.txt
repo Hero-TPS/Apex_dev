@@ -1,7 +1,7 @@
 User-agent: *
 Disallow: /dashboard/
 Disallow: /modules/
-Disallow: /maintenance/
+Disallow: /services/
 Disallow: /includes/
 Disallow: /assets/
 Disallow: /login.php
