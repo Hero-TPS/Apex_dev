@@ -6,13 +6,14 @@
 - New SQL migration entries always show the full, updated `LIVE_MIGRATION.md` file (not just the new entry) so it stays trackable across separate chats. New entries' checkboxes stay unchecked — never auto-mark "Done on dev"/"Done on live", that's his call.
 - CSS changes are delivered as complete files via Artifacts (base `styles.css` and any touched module file in full) — never plain chat text, `.txt`, or a partial snippet. Now that most CSS work lands in the smaller per-module files, base `styles.css` sees little traffic, so there's no more size reason to snippet it.
 - Don't assume the next priority — confirm before building past what was asked.
-- Add a comment at the top (if not already added) to every file with path from root. Most files have it. ex: modules/Bookings/api/index.php. Do it only for files that are updated during chats. No need to rescan all files in the repo.
-
 - Discuss before building code. ask first. or when you are explicitly told to build code.
 
 ## Local Copy & Git
 - The local copy of the repo is only a backup copy — the site is not run from a local server. Don't remind him to add gitignored files such as `config.php`, etc.
 - He pushes from local using SSH keys. Always give SSH-style remotes/clone URLs (`git@github.com:Hero-TPS/Apex_dev.git`), never HTTPS links.
+- He only use local copy to unzip multiple files. and then pull, commit and push files to repo with git. He will ask for zip files and git commands. This is normally used with multiple files or a major change in structure.
+- For smaller changes (like bug fixes), he will use copy (from artifacts) and paste (and commit) directly on repo, not using local copy.
+- THIS IS IMPORTANT! Never do or even offer doing git push and pull unless explicitly told to do so. He is on free Claude account.
 
 ## Conventions
 - PHP/MySQL. Timezone always `Africa/Johannesburg` — use the `TIME_ZONE` constant.
@@ -30,4 +31,5 @@
 - **Per-module API dispatchers legitimately share function names.** `handleAdd`/`handleUpdate`/`handleDelete`/etc. appearing in multiple modules' `api/index.php` files is the normal pattern, not duplication — each operates on a different table. Don't try to merge these.
 - **Avoid dev-scratchpad markers in committed code** — `// ✅ FIX`, `// ✅ NEW`, `PASTE LOCATION`, etc. accumulate as noise with no lasting value (git history already covers "what changed and why"). If code is genuinely temporary/debug (like a page's extra debug logging), say so in plain language with a removal condition, the way `DistanceCalculator/index.php`'s debug logging comment does — not a checkmark.
 ## File Naming During Active Iteration
-While a file is still being iterated on in a chat, version it as `{Module}_{filename}_v{N}.php` so old and new versions aren't confused. Version bumps per file, not globally. Drop the suffix once committed.
+- While a file is still being iterated on in a chat, version it as `{Module}_{filename}_v{N}.php` so old and new versions aren't confused. Version bumps per file, not globally. Drop the suffix once committed.
+- Add a comment at the top (if not already added) to every file with path from root. Most files have it. ex: modules/Bookings/api/index.php. Do it only for files that are updated during chats. No need to rescan all files in the repo.
