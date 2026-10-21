@@ -3,7 +3,7 @@
 ## Display & Workflow
 - **"show"** = display full file content, never a summary or table.
 - PHP files are always delivered as complete, drop-in files via Artifacts — not diffs or patches, and not pasted as plain chat text. SQL is the exception: always as a migration entry appended to `LIVE_MIGRATION.md`, never inline-only in chat or embedded in PHP.
-- New SQL migration entries always show the full, updated `LIVE_MIGRATION.md` file (not just the new entry) so it stays trackable across separate chats. New entries' checkboxes stay unchecked — never auto-mark "Done on dev"/"Done on live", that's his call.
+- New SQL migration entries always show the full, updated `LIVE_MIGRATION.md` file (not just the new entry) so it stays trackable across separate chats. 
 - CSS changes are delivered as complete files via Artifacts (base `styles.css` and any touched module file in full) — never plain chat text, `.txt`, or a partial snippet. Now that most CSS work lands in the smaller per-module files, base `styles.css` sees little traffic, so there's no more size reason to snippet it.
 - Don't assume the next priority — confirm before building past what was asked.
 - Discuss before building code. ask first. or when you are explicitly told to build code.
