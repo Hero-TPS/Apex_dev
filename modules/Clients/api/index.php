@@ -694,7 +694,13 @@ function handleGroupMessage()
     }
 
     $placeholders = implode(',', array_fill(0, count($bookingIds), '?'));
-    $stmt = $pdo->prepare("SELECT * FROM bookings WHERE contact_id = ? AND id IN ($placeholders)");
+    // Driver name / phone are joined in for the {driver_name} / {driver_phone} placeholders
+    $stmt = $pdo->prepare("
+        SELECT b.*, d.name AS driver_name, d.phone AS driver_phone
+        FROM bookings b
+        LEFT JOIN drivers d ON b.driver_id = d.id
+        WHERE b.contact_id = ? AND b.id IN ($placeholders)
+    ");
     $stmt->execute(array_merge([$contactId], $bookingIds));
     $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
