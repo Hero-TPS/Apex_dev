@@ -269,12 +269,17 @@ try {
             throw new Exception('Invalid driver data.');
         }
 
-        $stmt = $pdo->prepare("UPDATE drivers SET name = ?, phone = ?, active = ? WHERE id = ?");
-        $stmt->execute([$name, $phone, $active, $id]);
-
-        if ($stmt->rowCount() === 0) {
+        // Check existence with a SELECT rather than rowCount() on the UPDATE:
+        // MySQL reports 0 affected rows when the values are unchanged, which
+        // would wrongly look like a missing driver.
+        $existsStmt = $pdo->prepare("SELECT 1 FROM drivers WHERE id = ?");
+        $existsStmt->execute([$id]);
+        if (!$existsStmt->fetchColumn()) {
             throw new Exception('Driver not found.');
         }
+
+        $stmt = $pdo->prepare("UPDATE drivers SET name = ?, phone = ?, active = ? WHERE id = ?");
+        $stmt->execute([$name, $phone, $active, $id]);
 
         $response['success'] = true;
         $response['message'] = "✅ Driver updated.";
