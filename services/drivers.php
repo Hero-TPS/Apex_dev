@@ -36,12 +36,12 @@ $allDrivers = $driversStmt->fetchAll(PDO::FETCH_ASSOC);
         <tbody id="driversTableBody">
             <?php foreach ($allDrivers as $driver): ?>
             <tr id="driver-row-<?= (int) $driver['id'] ?>">
-                <td class="driver-td"><?= htmlspecialchars($driver['name']) ?></td>
-                <td class="driver-td"><?= htmlspecialchars($driver['phone']) ?></td>
-                <td class="driver-td-center">
+                <td class="driver-td" data-label="Name"><?= htmlspecialchars($driver['name']) ?></td>
+                <td class="driver-td" data-label="Phone"><?= htmlspecialchars($driver['phone']) ?></td>
+                <td class="driver-td-center" data-label="Active">
                     <?= $driver['active'] ? '✅' : '❌' ?>
                 </td>
-                <td class="driver-td-center">
+                <td class="driver-td-center" data-label="Actions">
                     <button class="page-action-btn edit edit-driver-btn driver-action-btn"
                         data-id="<?= (int) $driver['id'] ?>"
                         data-name="<?= htmlspecialchars($driver['name'], ENT_QUOTES) ?>"
@@ -151,7 +151,7 @@ $allDrivers = $driversStmt->fetchAll(PDO::FETCH_ASSOC);
             $('#editDriverPhone').val(btn.data('phone'));
             $('#editDriverActive').prop('checked', btn.data('active') == 1);
             $('#editDriverResult').html('');
-            $('#editDriverModal').show();
+            $('#editDriverModal').css('display', 'flex');
         });
 
         $('#cancelEditDriverBtn').on('click', function () {
