@@ -13,6 +13,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    # Safety guard: "Run workflow" in the Actions tab lets you pick any branch.
+    # Only main may deploy to live, so a manual run from feature/itinerary
+    # (or any other branch) is skipped instead of pushing unfinished code
+    # to Apex_live.
+    if: github.ref == 'refs/heads/main'
+
     steps:
       - name: Checkout Apex_dev repo
         uses: actions/checkout@v4

@@ -30,6 +30,17 @@ jobs:
     if: github.ref == 'refs/heads/feature/itinerary'
 
     steps:
+      # Safety guard: if the target-folder secret is empty or missing, the
+      # path below would collapse to "/" (the FTP account root). Stop instead.
+      - name: Refuse to deploy if target folder secret is empty
+        env:
+          TARGET_DIR: ${{ secrets.FTP_ITINERARY_SERVER_DIR }}
+        run: |
+          if [ -z "$TARGET_DIR" ]; then
+            echo "::error::FTP_ITINERARY_SERVER_DIR is empty or missing - refusing to deploy to the FTP root."
+            exit 1
+          fi
+
       - name: Checkout feature/itinerary
         uses: actions/checkout@v4
 
