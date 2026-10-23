@@ -1,0 +1,48 @@
+# .github/workflows/deploy-to-itinerary.yml
+name: Deploy to Itinerary Branch Server
+
+# Deploys ONLY the feature/itinerary branch, to the branch server's own folder.
+# Never touches main's dev deployment (deploy-to-dev.yml) or live (deploy-to-live.yml).
+
+on:
+  push:
+    branches:
+      - feature/itinerary
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Deploy note (e.g. what changed)'
+        required: false
+        default: 'Manual deploy to itinerary server'
+
+# One deploy at a time; a second push waits instead of overlapping an FTP upload.
+concurrency:
+  group: deploy-itinerary
+  cancel-in-progress: false
+
+jobs:
+  ftp-deploy:
+    runs-on: ubuntu-latest
+
+    # Safety guard: "Run workflow" in the Actions tab lets you pick any branch.
+    # Without this, running it against main would upload main's files to the
+    # itinerary server. Only feature/itinerary may deploy here.
+    if: github.ref == 'refs/heads/feature/itinerary'
+
+    steps:
+      - name: Checkout feature/itinerary
+        uses: actions/checkout@v4
+
+      - name: FTP Deploy to Itinerary Server
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: ${{ secrets.FTP_ITINERARY_SERVER_DIR }}/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .github/**
+            *.md
+            config.php
