@@ -684,9 +684,19 @@ function handleGroupMessage()
         jsonResponse(['success' => false, 'message' => 'Client not found.'], 404);
     }
 
-    $waPhone = formatPhoneNumberForWhatsApp($client['phone'] ?? '');
+    // No validity check on the number: any number saved on the client is used. The standard
+    // formatter is tried first; when it does not accept the number (e.g. an international number
+    // saved without "+"), the digits as saved are used, without a leading 00 international prefix.
+    $rawPhone = trim((string) ($client['phone'] ?? ''));
+    if ($rawPhone === '') {
+        jsonResponse(['success' => false, 'message' => 'This client has no phone number.'], 400);
+    }
+    $waPhone = formatPhoneNumberForWhatsApp($rawPhone);
     if ($waPhone === '') {
-        jsonResponse(['success' => false, 'message' => 'This client has no valid WhatsApp number.'], 400);
+        $waPhone = preg_replace('/^00/', '', preg_replace('/\D/', '', $rawPhone));
+    }
+    if ($waPhone === '') {
+        jsonResponse(['success' => false, 'message' => 'This client has no phone number.'], 400);
     }
 
     if (getWhatsAppTemplate($pdo, 'booking_group') === null) {
