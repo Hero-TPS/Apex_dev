@@ -260,8 +260,8 @@ if (isset($_GET['id'])) {
             (int) $booking['id'],
             (int) $booking['contact_id']
         );
-        // Combined message: needs at least two bookings made around the same time and a WhatsApp number
-        $showGroupButton = count($groupCandidates) >= 2 && formatPhoneNumberForWhatsApp($booking['client_phone']) !== '';
+        // Combined message: needs at least two bookings made around the same time and a phone number on file
+        $showGroupButton = count($groupCandidates) >= 2 && trim((string) ($booking['client_phone'] ?? '')) !== '';
         ?>
         <?php if ($showGroupButton): ?>
             <button type="button" id="groupWaBtn" class="page-action-btn whatsapp">💬 Combined message (<?= count($groupCandidates) ?>)</button>
