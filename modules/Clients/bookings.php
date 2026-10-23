@@ -164,10 +164,12 @@ try {
 <?php else: ?>
     <?php
     $clientWhatsAppPhone = formatPhoneNumberForWhatsApp($client['phone'] ?? '');
+    // The combined message only needs a phone number on file, not a number that passes the formatter
+    $clientHasPhone = trim((string) ($client['phone'] ?? '')) !== '';
     ?>
     <div class="at-group-wa-bar">
         <button type="button" id="groupWaBtn" class="page-action-btn whatsapp" disabled
-            <?= $clientWhatsAppPhone === '' ? 'title="No valid WhatsApp number on file"' : '' ?>>
+            <?= !$clientHasPhone ? 'title="No phone number on file"' : '' ?>>
             💬 Send combined message (<span id="groupWaCount">0</span>)
         </button>
         <span class="client-subline">Tick two or more bookings to send them as one WhatsApp message.</span>
@@ -176,7 +178,7 @@ try {
     <table class="bookings-table">
         <thead>
             <tr>
-                <th><input type="checkbox" id="groupWaAll" class="at-group-wa-check" aria-label="Tick all bookings"<?= $clientWhatsAppPhone === '' ? ' disabled' : '' ?>></th>
+                <th><input type="checkbox" id="groupWaAll" class="at-group-wa-check" aria-label="Tick all bookings"<?= !$clientHasPhone ? ' disabled' : '' ?>></th>
                 <th>Date</th>
                 <th>Time</th>
                 <th>Pickup</th>
@@ -204,7 +206,7 @@ try {
                 ];
                 ?>
                 <tr>
-                    <td data-label="Select"><input type="checkbox" class="at-group-wa-check at-group-wa-row" value="<?= (int) $booking['id'] ?>" aria-label="Tick booking of <?= e(date('d/m/Y', strtotime($booking['trip_date']))) ?>"<?= $clientWhatsAppPhone === '' ? ' disabled' : '' ?>></td>
+                    <td data-label="Select"><input type="checkbox" class="at-group-wa-check at-group-wa-row" value="<?= (int) $booking['id'] ?>" aria-label="Tick booking of <?= e(date('d/m/Y', strtotime($booking['trip_date']))) ?>"<?= !$clientHasPhone ? ' disabled' : '' ?>></td>
                     <td data-label="Date"><?= date('d/m/Y', strtotime($booking['trip_date'])) ?></td>
                     <td data-label="Time"><?= date('H:i', strtotime($booking['start_time'])) ?></td>
                     <td data-label="Pickup"><?= htmlspecialchars($pickup) ?></td>
