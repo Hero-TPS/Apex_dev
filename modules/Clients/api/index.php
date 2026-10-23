@@ -300,10 +300,17 @@ function handleAddClient()
             jsonResponse(['success' => false, 'message' => 'Client name is required'], 400);
         }
 
-        // Normalise phone before storing
+        // Normalise phone before storing. A number typed with a leading + is international: it
+        // keeps its + (digits only after it), so later WhatsApp links treat it as international
+        // instead of as a South African number.
         if ($phone !== '') {
+            $isInternational = $phone[0] === '+';
             $normalised = formatPhoneNumberForWhatsApp($phone);
-            $phone = $normalised !== '' ? $normalised : preg_replace('/\D/', '', $phone);
+            if ($isInternational && $normalised !== '') {
+                $phone = '+' . $normalised;
+            } else {
+                $phone = $normalised !== '' ? $normalised : preg_replace('/\D/', '', $phone);
+            }
         }
 
         // Insert client
@@ -362,10 +369,17 @@ function handleUpdateClient()
             jsonResponse(['success' => false, 'message' => 'Name is required'], 400);
         }
 
-        // Normalise phone before storing
+        // Normalise phone before storing. A number typed with a leading + is international: it
+        // keeps its + (digits only after it), so later WhatsApp links treat it as international
+        // instead of as a South African number.
         if ($phone !== '') {
+            $isInternational = $phone[0] === '+';
             $normalised = formatPhoneNumberForWhatsApp($phone);
-            $phone = $normalised !== '' ? $normalised : preg_replace('/\D/', '', $phone);
+            if ($isInternational && $normalised !== '') {
+                $phone = '+' . $normalised;
+            } else {
+                $phone = $normalised !== '' ? $normalised : preg_replace('/\D/', '', $phone);
+            }
         }
 
         // Update client
