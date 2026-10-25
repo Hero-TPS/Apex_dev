@@ -57,7 +57,7 @@ include ROOT_DIR . '/includes/header.php';
 <h2>🧾 Create Invoice</h2>
 
 <?php if ($loadError): ?>
-    <div class="error-message">Could not load bookings. If this is the first time, run the invoices entry in LIVE_MIGRATION.md on this database.</div>
+    <div class="error-message">Could not load bookings. If this is the first time, run the pending updates under Services → Database Updates.</div>
 <?php else: ?>
 
     <div class="at-inv-client-form">

@@ -4,6 +4,8 @@
    Covers: System Logs page (filters, table, level badges,
    context preview). Moved here from an inline <style> block
    that used to live in maintenance/logs.php itself.
+   Also covers: Database Updates page (services/updates.php) and the
+   pending-updates banner on the dashboard.
 
    Note: .filter-group here is renamed to .log-filter-group —
    Clients/index.php already uses a differently-laid-out
@@ -119,4 +121,95 @@
     position: fixed;
     top: -9999px;
     left: -9999px;
+}
+
+
+/* ========================
+   Database Updates (services/updates.php + dashboard banner)
+======================== */
+
+.at-update-env {
+    color: #555;
+    margin: 0 0 15px;
+}
+
+.at-update-empty {
+    margin: 0 0 15px;
+}
+
+.at-update-item {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 12px 15px;
+    margin-bottom: 12px;
+    background: #fafafa;
+}
+
+.at-update-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.at-update-name {
+    font-family: monospace;
+    font-size: 14px;
+    word-break: break-all;
+}
+
+.at-update-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.at-update-item details {
+    margin-top: 8px;
+}
+
+.at-update-sql {
+    background: #2d3436;
+    color: #f1f2f6;
+    padding: 12px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 13px;
+    margin: 8px 0 0;
+    white-space: pre-wrap;
+}
+
+.at-update-section {
+    margin-top: 20px;
+}
+
+.at-update-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+.at-update-table th,
+.at-update-table td {
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid #eee;
+    word-break: break-all;
+}
+
+.at-update-banner {
+    background: #fff3cd;
+    border: 1px solid #ffe08a;
+    color: #7a5b00;
+    padding: 12px 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.at-update-banner a {
+    color: inherit;
+    font-weight: bold;
 }

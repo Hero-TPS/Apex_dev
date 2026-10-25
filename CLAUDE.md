@@ -2,8 +2,9 @@
 
 ## Display & Workflow
 - **"show"** = display full file content, never a summary or table.
-- PHP files are always delivered as complete, drop-in files via Artifacts — not diffs or patches, and not pasted as plain chat text. SQL is the exception: always as a migration entry appended to `LIVE_MIGRATION.md`, never inline-only in chat or embedded in PHP.
-- New SQL migration entries always show the full, updated `LIVE_MIGRATION.md` file (not just the new entry) so it stays trackable across separate chats. He will edit and delete entries once it is done.
+- PHP files are always delivered as complete, drop-in files via Artifacts — not diffs or patches, and not pasted as plain chat text. SQL is the exception: always as a new file in `migrations/` named `YYYYMMDD_HHMM_description.sql`, never inline-only in chat or embedded in PHP.
+- A new migration is delivered as its own file in `migrations/` (shown in full, with its exact path). He runs it himself from Services → Database Updates — never mark anything applied for him. `schema_migrations` in each database is the record of what has run; there is no checklist file.
+- Migration rules: never edit a migration that has run anywhere (add a new file); write it safe to run twice (`IF NOT EXISTS`, `INSERT IGNORE`); plain DDL/DML only (no triggers, stored procedures or `DELIMITER`); data fixes must not depend on one database's data. On `feature/*` branches keep changes additive (new tables/columns) and flag — before writing it — anything that renames, drops or redefines an existing column.
 - CSS changes are delivered as complete files via Artifacts (base `styles.css` and any touched module file in full) — never plain chat text, `.txt`, or a partial snippet. Now that most CSS work lands in the smaller per-module files, base `styles.css` sees little traffic, so there's no more size reason to snippet it.
 - Don't assume the next priority — confirm before building past what was asked.
 - Discuss before building code. ask first. or when you are explicitly told to build code.
@@ -25,6 +26,7 @@
 - Keep `config.php` and `config.example.php` structurally in sync when adding new constants.
 - Fixed/rarely-changing values go in `system_variables` (`SYSTEM_VARIABLES` in `includes/helpers.php`), editable via Services → System Variables — not new tables.
 - Booking cancellations are hard-deleted — no `cancelled` status to filter on.
+- Database structure is never changed by hand in phpMyAdmin — only through a file in `migrations/`, so dev, live and the itinerary database stay reproducible. Pages that depend on a newer table/column point to Services → Database Updates in their error message.
 
 ## Things That Bit Us During Cleanup
 - **Section headers/comments drift from reality.** Code repeatedly got appended under an existing header instead of a new one (e.g. Bookings/Clients/Uber CSS ended up filed under unrelated headers like "System Logs Styles"). Don't trust a header comment or a file's name as proof of what's actually in it — grep for real usage (`grep -rl "classname" modules/ includes/`) before assuming ownership or deciding something's dead.

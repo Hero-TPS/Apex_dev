@@ -3,12 +3,21 @@
 require_once __DIR__ . '/../config.php';
 require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
+require_once ROOT_DIR . '/includes/migrations.php';
 $page_title = 'Dashboard';
+$pendingUpdates = countPendingMigrations($pdo);
 include ROOT_DIR . '/includes/header.php';
 ?>
 
 <div class="dashboard-container">
     <h2 class="dashboard-title">Main Menu</h2>
+
+    <?php if ($pendingUpdates > 0): ?>
+        <div class="at-update-banner">
+            ⚠️ <?= $pendingUpdates ?> pending database update<?= $pendingUpdates !== 1 ? 's' : '' ?> —
+            <a href="<?= BASE_URL ?>/services/updates.php">Run them</a>
+        </div>
+    <?php endif; ?>
 
     <!-- Tomorrow's Confirmations -->
     <div class="menu-section">
@@ -95,6 +104,7 @@ include ROOT_DIR . '/includes/header.php';
             <a href="<?= BASE_URL ?>/services/cleanup.php" class="dashboard-button db-maintenance">Cleanup Tools</a>
             <a href="<?= BASE_URL ?>/services/drivers.php" class="dashboard-button db-maintenance">Drivers</a>
             <a href="<?= BASE_URL ?>/services/logs.php" class="dashboard-button db-maintenance">System Logs</a>
+            <a href="<?= BASE_URL ?>/services/updates.php" class="dashboard-button db-maintenance">Database Updates<?= $pendingUpdates > 0 ? ' (' . $pendingUpdates . ')' : '' ?></a>
             <a href="<?= BASE_URL ?>/modules/WhatsApp/" class="dashboard-button db-maintenance">WhatsApp Messages</a>
             <a href="<?= BASE_URL ?>/modules/DistanceCalculator/" class="dashboard-button db-distcalc">Trip Distance Calculator</a>
         </div>
@@ -291,7 +301,7 @@ include ROOT_DIR . '/includes/header.php';
                         .addClass('confirmed');
                 } else {
                     $('#conf-row-' + bookingId).find('.confirm-send-btn')
-                        .after('<span class="inline-error">⚠️ Could not save. Run the DB migration.</span>');
+                        .after('<span class="inline-error">⚠️ Could not save. Check Services → Database Updates for pending updates.</span>');
                 }
             },
             error: function () {

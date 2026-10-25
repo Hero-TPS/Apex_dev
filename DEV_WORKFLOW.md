@@ -77,6 +77,19 @@ git push
 Pushing `main` deploys to dev. Pushing `feature/itinerary` deploys to the
 itinerary server. Check the Actions tab shows only the workflow you expected.
 
+## 5. Database changes
+
+A database change arrives as a file in `migrations/` (named `YYYYMMDD_HHMM_description.sql`),
+in the same zip as the code that needs it. Never edit one after it has run anywhere.
+
+1. Push → open **Services → Database Updates** on dev (the dashboard also shows a banner when
+   something is pending) → check the SQL → **Run** → test the feature.
+2. When you deploy to live, open the same page on live. Take a phpMyAdmin export first, then **Run**.
+3. If a change was already made by hand on a database, use **Mark as applied** instead of Run.
+
+Don't change structure by hand in phpMyAdmin any more — a change without a file never reaches
+the other databases.
+
 ## Keeping `feature/itinerary` in sync with `main`
 
 Do this whenever `main` has moved on. Commit or stash anything uncommitted first.
@@ -93,15 +106,27 @@ git merge origin/main
 - If git reports conflicts, fix them, then `git add <file> && git commit`.
 - Then `git push` — this deploys the merged result to the itinerary server.
 
-**Database:** the itinerary server's database does not pick up `main`'s
-migrations by itself. After a merge, check whether `main` changed the database
-(entries run on dev since the last sync) and run the same SQL on the itinerary
-database. Itinerary tables created on the branch exist only on that database
-until the branch is merged into `main`.
+**Database:** each server's database keeps its own record of the migrations it has run
+(`schema_migrations`). After merging `main` into the branch and pushing, open **Services →
+Database Updates** on the itinerary server and run whatever is pending — there is no need to
+work out what `main` changed. Migrations created on the branch stay in `migrations/` on the
+branch; dev and live only see them once the branch is merged into `main`.
 
-**If `LIVE_MIGRATION.md` conflicts:** keep both sides' entries and delete only the
-conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`). Put `main`'s entries first
-and the itinerary entries after. Leave each side's checkbox state as it was.
+**Before merging `feature/itinerary` into `main`:** check the branch's migrations don't clash
+with `main`'s. File names are timestamped, so the files themselves never conflict — the risk is
+two files changing the same table or column.
+
+```bash
+cd ~/Projects/Apex-Transit/Apex_dev && git fetch origin
+git diff origin/main...feature/itinerary --name-only -- migrations/   # added on the branch
+git diff feature/itinerary...origin/main --name-only -- migrations/   # added on main since branching
+grep -il "<table name>" migrations/*.sql                              # who touches a given table
+```
+
+If both sides touch the same column, settle it before merging (a change to an existing column
+goes through `main` first, then `main` is merged into the branch). After the merge, run the
+pending updates on dev, then compare a structure-only export of dev with the itinerary
+database — a difference means someone changed a database by hand without a migration file.
 
 **Editing the deploy workflows:** edit them on `main` only, then sync the branch
 with the steps above, so the copies never diverge.
