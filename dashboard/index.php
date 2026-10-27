@@ -57,6 +57,15 @@ include ROOT_DIR . '/includes/header.php';
         </div>
     </div>
 
+    <!-- Itineraries -->
+    <div class="menu-section">
+        <h3 class="menu-toggle" data-target="itineraries-section">🗺️ Itineraries</h3>
+        <div id="itineraries-section" class="menu-content">
+            <a href="<?= BASE_URL ?>/modules/Itineraries/add.php" class="dashboard-button db-booking">Add Itinerary</a>
+            <a href="<?= BASE_URL ?>/modules/Itineraries/" class="dashboard-button db-view">View Itineraries</a>
+        </div>
+    </div>
+
     <!-- Clients -->
     <div class="menu-section">
         <h3 class="menu-toggle" data-target="clients-section">👥 Clients</h3>

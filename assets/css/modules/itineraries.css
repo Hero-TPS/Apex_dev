@@ -1,131 +1,74 @@
-/* assets/css/modules/itineraries.css
-   Itineraries module: the stops editor on the prebooking edit page (and, from step 2,
-   the booking pages). Markup: modules/Itineraries/partials/stops_editor.php.
-   Classes use the at-itin- prefix. */
+/* assets/css/modules/itineraries.css */
+/* Itineraries module: list page and the stops editor on the add/edit form. */
 
-/* ========================
-   Stops editor
-======================== */
-
-.at-itin {
-  margin-top: 30px;
-  padding-top: 20px;
-  border-top: 2px solid #e1e8ed;
-}
-
-.at-itin-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.at-itin-title {
-  margin: 0;
-  font-size: 18px;
-}
-
-.at-itin-intro {
-  margin: 8px 0 15px;
-}
-
-.at-itin-badge {
+/* ---- Status badge (list page) ---- */
+.at-itn-status {
   display: inline-block;
   padding: 3px 10px;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
 }
+.at-itn-status-planning  { background: #fff3cd; color: #8a6d0b; }
+.at-itn-status-confirmed { background: #e8f5e9; color: #2e7d32; }
 
-.at-itin-badge--planning {
-  background: #fff4e0;
-  color: #b25900;
-}
-
-.at-itin-badge--confirmed {
-  background: #e3f6ea;
-  color: #1e8449;
-}
-
-.at-itin-empty {
-  margin: 0 0 15px;
-}
-
-/* ========================
-   One stop
-======================== */
-
-.at-itin-stop {
-  margin-bottom: 15px;
-  padding: 15px 15px 0;
-  border: 2px solid #e1e8ed;
+/* ---- Stops editor ---- */
+.at-itn-stops-section {
+  margin: 10px 0 25px;
+  padding: 15px;
+  background: #f8f9fc;
+  border: 2px dashed #d5dbf0;
   border-radius: 8px;
-  background: #fafbfc;
+}
+.at-itn-stops-title {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+.at-itn-stops-title small {
+  font-weight: normal;
+  color: #777;
+}
+.at-itn-stops-empty {
+  color: #777;
+  font-style: italic;
+  margin: 0 0 12px;
 }
 
-.at-itin-stop-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.at-itn-stop {
+  background: #fff;
+  border: 1px solid #e1e8ed;
+  border-left: 4px solid #667eea;
+  border-radius: 6px;
+  padding: 12px 15px 2px;
   margin-bottom: 12px;
 }
-
-.at-itin-stop-num {
-  font-weight: 700;
-  color: #667eea;
+.at-itn-stop-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
 }
-
-.at-itin-stop-actions {
+.at-itn-stop-btns {
   display: flex;
   gap: 6px;
 }
-
-/* Large enough to tap on a phone. */
-.at-itin-icon-btn {
-  width: 40px;
-  height: 40px;
-  border: 2px solid #e1e8ed;
+.at-itn-icon-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
   border-radius: 6px;
-  background: white;
-  font-size: 18px;
-  line-height: 1;
+  background: #667eea;
+  color: #fff;
+  font-size: 14px;
   cursor: pointer;
+  transition: background-color 0.2s ease;
 }
-
-.at-itin-icon-btn:hover:not(:disabled) {
-  border-color: #667eea;
+.at-itn-icon-btn:hover:not(:disabled) { background: #5568d3; }
+.at-itn-icon-btn:disabled {
+  background: #d5d9e0;
+  cursor: not-allowed;
 }
+.at-itn-icon-btn.at-itn-remove { background: #e74c3c; }
+.at-itn-icon-btn.at-itn-remove:hover { background: #c0392b; }
 
-.at-itin-icon-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.at-itin-remove {
-  color: #c0392b;
-}
-
-.at-itin-stop textarea {
-  min-height: 60px;
-}
-
-/* ========================
-   Footer: add / save / unsaved flag
-======================== */
-
-.at-itin-footer {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.at-itin-dirty {
-  color: #b25900;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.at-itin-dirty.hidden {
-  display: none;
-}
+.at-itn-stop textarea { min-height: 60px; }
