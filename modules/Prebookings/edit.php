@@ -170,6 +170,12 @@ $showOtherCost = $savedCost !== '' && !$costInList;
         <a href="<?= BASE_URL ?>/modules/Prebookings/" class="page-action-btn back">← Cancel</a>
     </form>
 
+    <?php
+    // Itinerary stops for this prebooking (own Save button, outside the form above).
+    $prebookingId = (int) $prebooking['id'];
+    include ROOT_DIR . '/modules/Itineraries/partials/stops_editor.php';
+    ?>
+
     <div id="loading" class="loading"></div>
     <div id="result"></div>
 </div>

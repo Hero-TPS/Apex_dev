@@ -7,6 +7,7 @@ require_once ROOT_DIR . '/includes/helpers.php';
 require_once ROOT_DIR . '/google-auth.php';
 require_once ROOT_DIR . '/modules/Bookings/helpers.php';
 require_once ROOT_DIR . '/modules/WhatsApp/helpers.php';
+require_once ROOT_DIR . '/modules/Itineraries/helpers.php';
 
 $action = $_REQUEST['action'] ?? '';
 
@@ -319,6 +320,9 @@ function handleDelete()
 
         $del = $pdo->prepare("DELETE FROM prebookings WHERE id = ?");
         $del->execute([$id]);
+
+        // The itinerary has no foreign key to prebookings, so remove it (and its stops) here.
+        deleteItineraryForPrebooking($pdo, $id);
 
         logInfo('PREBOOKING', 'Prebooking deleted', ['prebooking_id' => $id]);
         jsonResponse(['success' => true, 'message' => 'Prebooking deleted.']);

@@ -1,0 +1,131 @@
+/* assets/css/modules/itineraries.css
+   Itineraries module: the stops editor on the prebooking edit page (and, from step 2,
+   the booking pages). Markup: modules/Itineraries/partials/stops_editor.php.
+   Classes use the at-itin- prefix. */
+
+/* ========================
+   Stops editor
+======================== */
+
+.at-itin {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 2px solid #e1e8ed;
+}
+
+.at-itin-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.at-itin-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.at-itin-intro {
+  margin: 8px 0 15px;
+}
+
+.at-itin-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.at-itin-badge--planning {
+  background: #fff4e0;
+  color: #b25900;
+}
+
+.at-itin-badge--confirmed {
+  background: #e3f6ea;
+  color: #1e8449;
+}
+
+.at-itin-empty {
+  margin: 0 0 15px;
+}
+
+/* ========================
+   One stop
+======================== */
+
+.at-itin-stop {
+  margin-bottom: 15px;
+  padding: 15px 15px 0;
+  border: 2px solid #e1e8ed;
+  border-radius: 8px;
+  background: #fafbfc;
+}
+
+.at-itin-stop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.at-itin-stop-num {
+  font-weight: 700;
+  color: #667eea;
+}
+
+.at-itin-stop-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Large enough to tap on a phone. */
+.at-itin-icon-btn {
+  width: 40px;
+  height: 40px;
+  border: 2px solid #e1e8ed;
+  border-radius: 6px;
+  background: white;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.at-itin-icon-btn:hover:not(:disabled) {
+  border-color: #667eea;
+}
+
+.at-itin-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.at-itin-remove {
+  color: #c0392b;
+}
+
+.at-itin-stop textarea {
+  min-height: 60px;
+}
+
+/* ========================
+   Footer: add / save / unsaved flag
+======================== */
+
+.at-itin-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.at-itin-dirty {
+  color: #b25900;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.at-itin-dirty.hidden {
+  display: none;
+}
