@@ -31,6 +31,8 @@ build/
 *.sql.gz
 *.sqlite
 database/
+# ...except the migration files, which are committed
+!migrations/*.sql
 
 # Private keys
 *.pem

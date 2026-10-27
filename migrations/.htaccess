@@ -1,0 +1,10 @@
+# migrations/.htaccess
+# Migration files are read by PHP only (includes/migrations.php) and must never
+# be downloadable over the web — they describe the database structure.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

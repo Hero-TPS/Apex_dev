@@ -43,7 +43,7 @@ include ROOT_DIR . '/includes/header.php';
 <div id="notification-area"></div>
 
 <?php if ($loadError): ?>
-    <div class="error-message">Could not load invoices. If this is the first time, run the invoices entry in LIVE_MIGRATION.md on this database.</div>
+    <div class="error-message">Could not load invoices. If this is the first time, run the pending updates under Services → Database Updates.</div>
 <?php elseif (empty($invoices)): ?>
     <div class="no-bookings">
         <h3>🧾 No invoices yet</h3>

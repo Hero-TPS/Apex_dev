@@ -14,9 +14,9 @@ down to dev.
 
 ## ✅ Before You Start
 
-- [ ] Check `LIVE_MIGRATION.md` — if there are pending migrations not yet run
-      on live, run those on live first (or the export you pull down won't
-      have the latest columns/tables)
+- [ ] Open **Services → Database Updates** on live — if updates are pending
+      there, run them first (or the export you pull down won't have the
+      latest columns/tables)
 - [ ] Close any open tabs/forms on the dev site so nothing writes to the dev
       DB mid-import
 
@@ -79,6 +79,11 @@ down to dev.
       after any DB work
 - [ ] Spot-check row counts on 1–2 key tables against what you'd expect from
       live
+- [ ] Open **Services → Database Updates** on dev. The import brings live's
+      record of applied updates with it, so anything listed as pending now is
+      a dev-only (not yet released) update — **Run** it again. They are written
+      to be safe to repeat. Do the same on the itinerary database if you
+      refresh it from dev.
 
 ---
 

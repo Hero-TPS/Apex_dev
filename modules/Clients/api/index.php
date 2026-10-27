@@ -714,7 +714,7 @@ function handleGroupMessage()
     }
 
     if (getWhatsAppTemplate($pdo, 'booking_group') === null) {
-        jsonResponse(['success' => false, 'message' => 'The combined message is not set up yet. Run the booking_group entry in LIVE_MIGRATION.md on this database.'], 400);
+        jsonResponse(['success' => false, 'message' => 'The combined message is not set up yet. Run the pending updates under Services → Database Updates.'], 400);
     }
 
     $placeholders = implode(',', array_fill(0, count($bookingIds), '?'));

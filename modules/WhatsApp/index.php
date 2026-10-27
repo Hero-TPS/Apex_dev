@@ -36,7 +36,7 @@ include ROOT_DIR . '/includes/header.php';
 <div id="notification-area"></div>
 
 <?php if ($loadError): ?>
-    <div class="error-message">Could not load the messages. If this is the first time, run the whatsapp entry in LIVE_MIGRATION.md on this database.</div>
+    <div class="error-message">Could not load the messages. If this is the first time, run the pending updates under Services → Database Updates.</div>
 <?php elseif (empty($templates)): ?>
     <div class="no-bookings">
         <h3>💬 No messages yet</h3>
