@@ -72,3 +72,43 @@
 .at-itn-icon-btn.at-itn-remove:hover { background: #c0392b; }
 
 .at-itn-stop textarea { min-height: 60px; }
+
+/* ---- Delete dialog: "also delete the linked booking" tick ---- */
+.at-itn-modal-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  margin: 15px 0;
+  padding: 10px;
+  background: #fff3cd;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.at-itn-modal-check input[type="checkbox"] {
+  width: auto;
+  margin-top: 3px;
+}
+.at-itn-modal-check.hidden { display: none; }
+
+/* ---- Edit page: confirmed (read-only) banner and actions ---- */
+.at-itn-confirmed-banner {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-radius: 6px;
+  padding: 12px 15px;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+.at-itn-readonly {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.at-itn-readonly .at-itn-icon-btn,
+.at-itn-readonly #addStopBtn,
+.at-itn-readonly #submitBtn {
+  display: none;
+}

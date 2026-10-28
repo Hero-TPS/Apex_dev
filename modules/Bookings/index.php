@@ -54,6 +54,10 @@ include ROOT_DIR . '/includes/header.php';
     <div class="modal-content">
         <h3>Are you sure?</h3>
         <p>This will permanently delete the booking. This action cannot be undone.</p>
+        <label id="deleteItineraryRow" class="at-itn-modal-check hidden">
+            <input type="checkbox" id="deleteItineraryCheck">
+            <span>This booking has an itinerary (<strong id="deleteItineraryLabel"></strong>). Also delete the itinerary and its stops?</span>
+        </label>
         <div class="modal-buttons">
             <button id="confirmDeleteBtn" class="modal-btn confirm-btn">Yes, Delete</button>
             <button id="cancelDeleteBtn" class="modal-btn cancel-btn">Cancel</button>
@@ -290,7 +294,24 @@ include ROOT_DIR . '/includes/header.php';
         // Delete booking
         tableBody.on('click', '.delete-btn', function () {
             bookingIdToDelete = $(this).data('id');
+            $('#deleteItineraryCheck').prop('checked', false);
+            $('#deleteItineraryRow').addClass('hidden');
             modal.css('display', 'flex');
+
+            // If this booking came from an itinerary, offer to delete that too
+            var askedFor = bookingIdToDelete;
+            $.ajax({
+                type: 'GET',
+                url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                data: { action: 'linked_itinerary', id: askedFor },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.success && res.itinerary && bookingIdToDelete === askedFor) {
+                        $('#deleteItineraryLabel').text(res.itinerary.label);
+                        $('#deleteItineraryRow').removeClass('hidden');
+                    }
+                }
+            });
         });
 
         // Thank You button
@@ -337,7 +358,8 @@ include ROOT_DIR . '/includes/header.php';
                 url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
                 data: {
                     action: 'delete',
-                    id: bookingIdToDelete
+                    id: bookingIdToDelete,
+                    delete_itinerary: ($('#deleteItineraryCheck').is(':checked') && !$('#deleteItineraryRow').hasClass('hidden')) ? '1' : ''
                 },
                 dataType: 'json',
                 success: function (response) {

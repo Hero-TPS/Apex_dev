@@ -382,6 +382,10 @@ if (isset($_GET['id'])) {
         <div class="modal-content">
             <h3>Are you sure?</h3>
             <p>This will permanently delete the booking and its Google Calendar event. This action cannot be undone.</p>
+            <label id="deleteItineraryRow" class="at-itn-modal-check hidden">
+                <input type="checkbox" id="deleteItineraryCheck">
+                <span>This booking has an itinerary (<strong id="deleteItineraryLabel"></strong>). Also delete the itinerary and its stops?</span>
+            </label>
             <div class="modal-buttons">
                 <button id="confirmDeleteBtn" class="modal-btn confirm-btn">Yes, Delete</button>
                 <button id="cancelDeleteBtn" class="modal-btn cancel-btn">Cancel</button>
@@ -504,7 +508,23 @@ if (isset($_GET['id'])) {
             var modal = $('#deleteConfirmationModal');
 
             $('#deleteBookingBtn').on('click', function () {
+                $('#deleteItineraryCheck').prop('checked', false);
+                $('#deleteItineraryRow').addClass('hidden');
                 modal.show();
+
+                // If this booking came from an itinerary, offer to delete that too
+                $.ajax({
+                    type: 'GET',
+                    url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                    data: { action: 'linked_itinerary', id: bookingId },
+                    dataType: 'json',
+                    success: function (res) {
+                        if (res.success && res.itinerary) {
+                            $('#deleteItineraryLabel').text(res.itinerary.label);
+                            $('#deleteItineraryRow').removeClass('hidden');
+                        }
+                    }
+                });
             });
 
             $('#cancelDeleteBtn').on('click', function () {
@@ -518,7 +538,11 @@ if (isset($_GET['id'])) {
                 $.ajax({
                     type: 'POST',
                     url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
-                    data: { action: 'delete', id: bookingId },
+                    data: {
+                        action: 'delete',
+                        id: bookingId,
+                        delete_itinerary: ($('#deleteItineraryCheck').is(':checked') && !$('#deleteItineraryRow').hasClass('hidden')) ? '1' : ''
+                    },
                     dataType: 'json',
                     success: function (response) {
                         if (response.success) {

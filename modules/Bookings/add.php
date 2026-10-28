@@ -51,6 +51,7 @@ $prefill_description  = isset($_GET['description'])    ? htmlspecialchars(urldec
 $prefill_passenger_name  = isset($_GET['passenger_name'])  ? htmlspecialchars(urldecode($_GET['passenger_name']))  : '';
 $prefill_passenger_phone = isset($_GET['passenger_phone']) ? htmlspecialchars(urldecode($_GET['passenger_phone'])) : '';
 $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_prebooking'] : 0;
+$from_itinerary       = isset($_GET['from_itinerary']) ? (int) $_GET['from_itinerary'] : 0;
 
 // Pickup person section opens by itself when Book Again / prebooking passes one in
 $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone !== '');
@@ -60,6 +61,9 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
     <form id="bookingForm">
         <?php if ($from_prebooking > 0): ?>
             <input type="hidden" name="from_prebooking" value="<?= $from_prebooking ?>">
+        <?php endif; ?>
+        <?php if ($from_itinerary > 0): ?>
+            <input type="hidden" name="from_itinerary" value="<?= $from_itinerary ?>">
         <?php endif; ?>
         <div class="form-group">
             <label for="contactSearch">Select Contact <span class="required">*</span></label>

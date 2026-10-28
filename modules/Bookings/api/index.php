@@ -7,6 +7,7 @@ require_once ROOT_DIR . '/google-auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once __DIR__ . '/../helpers.php';
 require_once ROOT_DIR . '/modules/WhatsApp/helpers.php';
+require_once ROOT_DIR . '/modules/Itineraries/helpers.php';
 
 require_once ROOT_DIR . '/includes/auth_api.php';
 
@@ -41,6 +42,9 @@ try {
             break;
         case 'delete':
             handleDeleteBooking();
+            break;
+        case 'linked_itinerary':
+            handleLinkedItinerary();
             break;
         case 'update_gate_code':
             handleUpdateGateCode();
@@ -404,6 +408,12 @@ function handleAddBooking()
             $markConverted->execute([$booking_id, $fromPrebooking]);
         }
 
+        // Link the itinerary this booking came from and copy its stops (never stops the booking from being created)
+        $fromItinerary = intval($_POST['from_itinerary'] ?? 0);
+        if ($fromItinerary > 0) {
+            linkItineraryToBooking($pdo, $fromItinerary, (int) $booking_id);
+        }
+
         jsonResponse([
             'success' => true,
             'message' => 'Booking created successfully',
@@ -708,6 +718,28 @@ function handleUpdateBooking()
     }
 }
 
+/**
+ * Does this booking have an itinerary? Used by the delete dialogs to offer deleting it too.
+ */
+function handleLinkedItinerary()
+{
+    global $pdo;
+
+    $bookingId = intval($_GET['id'] ?? 0);
+    if ($bookingId <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid booking ID.'], 400);
+    }
+
+    $itn = fetchItineraryForBooking($pdo, $bookingId);
+    jsonResponse([
+        'success'   => true,
+        'itinerary' => $itn ? [
+            'id'    => (int) $itn['id'],
+            'label' => $itn['client_name'] . ', ' . date('d/m/y', strtotime($itn['trip_date'])),
+        ] : null,
+    ]);
+}
+
 function handleDeleteBooking()
 {
     global $pdo;
@@ -731,6 +763,9 @@ function handleDeleteBooking()
         if (!$deleted) {
             jsonResponse(['success' => false, 'message' => "Booking could not be deleted."], 404);
         }
+
+        // Remove the booking's stop copy, and either delete the linked itinerary or leave it unlinked
+        releaseItineraryForBooking($pdo, $bookingId, ($_POST['delete_itinerary'] ?? '') === '1');
 
         $googleEventId = $booking['google_calendar_event_id'] ?? null;
         $calendarDeleted = false;

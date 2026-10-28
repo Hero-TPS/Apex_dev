@@ -10,6 +10,7 @@ if (!isset($pdo, $destinations, $costs, $timeOptions)) {
 
 $isEdit     = !empty($itn['id']);
 $itn        = $itn ?? [];
+$readOnly   = $isEdit && ($itn['status'] ?? '') === 'confirmed';   // confirmed itineraries are locked until reopened
 $stopsData  = $stopsData ?? [];
 $contacts   = $contacts ?? [];
 
@@ -39,6 +40,7 @@ $jsStops = array_map(fn($s) => [
     <?php endif; ?>
 
     <form id="itineraryForm">
+        <fieldset class="at-itn-readonly"<?= $readOnly ? ' disabled' : '' ?>>
         <?php if ($isEdit): ?>
             <input type="hidden" id="itinerary_id" name="id" value="<?= (int)$itn['id'] ?>">
             <div class="form-group">
@@ -151,8 +153,9 @@ $jsStops = array_map(fn($s) => [
         </div>
 
         <button type="submit" class="btn" id="submitBtn"><?= $isEdit ? '💾 Save Changes' : '🗺️ Save Itinerary' ?></button>
+        </fieldset>
         <?php if ($isEdit): ?>
-            <a href="<?= BASE_URL ?>/modules/Itineraries/" class="page-action-btn back">← Cancel</a>
+            <a href="<?= BASE_URL ?>/modules/Itineraries/" class="page-action-btn back">← <?= $readOnly ? 'Back' : 'Cancel' ?></a>
         <?php endif; ?>
     </form>
 

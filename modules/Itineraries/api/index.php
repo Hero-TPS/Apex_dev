@@ -4,6 +4,8 @@
 require_once __DIR__ . '/../../../config.php';
 require_once ROOT_DIR . '/includes/auth_api.php';
 require_once ROOT_DIR . '/includes/helpers.php';
+require_once ROOT_DIR . '/google-auth.php';
+require_once ROOT_DIR . '/modules/Bookings/helpers.php';
 require_once ROOT_DIR . '/modules/Itineraries/helpers.php';
 
 const ITINERARY_MAX_STOPS = 30;
@@ -27,6 +29,15 @@ try {
             break;
         case 'delete':
             handleDelete();
+            break;
+        case 'confirm':
+            handleConfirm();
+            break;
+        case 'reopen':
+            handleReopen();
+            break;
+        case 'update_booking':
+            handleUpdateBooking();
             break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
@@ -216,10 +227,14 @@ function handleUpdate()
     $in = readItineraryInput();
 
     try {
-        $stmt = $pdo->prepare("SELECT id FROM itineraries WHERE id = ? AND contact_id IS NOT NULL LIMIT 1");
+        $stmt = $pdo->prepare("SELECT id, status FROM itineraries WHERE id = ? AND contact_id IS NOT NULL LIMIT 1");
         $stmt->execute([$id]);
-        if (!$stmt->fetch()) {
+        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$existing) {
             jsonResponse(['success' => false, 'message' => 'Itinerary not found.'], 404);
+        }
+        if ($existing['status'] === 'confirmed') {
+            jsonResponse(['success' => false, 'message' => 'This itinerary is confirmed. Reopen it to make changes.'], 409);
         }
 
         $pdo->beginTransaction();
@@ -260,24 +275,48 @@ function handleDelete()
     global $pdo;
 
     $id = intval($_POST['id'] ?? 0);
+    $alsoDeleteBooking = ($_POST['delete_booking'] ?? '') === '1';
     if ($id <= 0) {
         jsonResponse(['success' => false, 'message' => 'Invalid itinerary ID.'], 400);
     }
 
     try {
-        $stmt = $pdo->prepare("SELECT id FROM itineraries WHERE id = ? LIMIT 1");
+        $stmt = $pdo->prepare("SELECT id, booking_id FROM itineraries WHERE id = ? LIMIT 1");
         $stmt->execute([$id]);
-        if (!$stmt->fetch()) {
+        $itn = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$itn) {
             jsonResponse(['success' => false, 'message' => 'Itinerary not found.'], 404);
         }
+
+        // The booking is only removed when asked for, and only if it still exists
+        $booking = $alsoDeleteBooking ? fetchLinkedBooking($pdo, (int) $itn['booking_id']) : null;
 
         $pdo->beginTransaction();
         $pdo->prepare("DELETE FROM itinerary_stops WHERE itinerary_id = ?")->execute([$id]);
         $pdo->prepare("DELETE FROM itineraries WHERE id = ?")->execute([$id]);
+        if ($booking) {
+            $pdo->prepare("DELETE FROM booking_stops WHERE booking_id = ?")->execute([(int) $booking['id']]);
+            deleteBookingFromDb($pdo, (int) $booking['id']);
+        }
         $pdo->commit();
 
-        logInfo('ITINERARY', 'Itinerary deleted', ['itinerary_id' => $id]);
-        jsonResponse(['success' => true, 'message' => 'Itinerary deleted.']);
+        $message = 'Itinerary deleted.';
+        if ($booking) {
+            $calendarDeleted = false;
+            if (!empty($booking['google_calendar_event_id'])) {
+                $calendarDeleted = deleteBookingFromGoogleCalendar($booking['google_calendar_event_id']);
+            }
+            logInfo('BOOKING', 'Booking deleted together with its itinerary', [
+                'booking_id'         => (int) $booking['id'],
+                'itinerary_id'       => $id,
+                'had_calendar_event' => !empty($booking['google_calendar_event_id']),
+                'calendar_deleted'   => $calendarDeleted,
+            ]);
+            $message = 'Itinerary and its booking deleted.';
+        }
+
+        logInfo('ITINERARY', 'Itinerary deleted', ['itinerary_id' => $id, 'booking_also_deleted' => (bool) $booking]);
+        jsonResponse(['success' => true, 'message' => $message]);
 
     } catch (PDOException $e) {
         if ($pdo->inTransaction()) {
@@ -285,5 +324,128 @@ function handleDelete()
         }
         logError('ITINERARY', 'Failed to delete itinerary', ['error' => $e->getMessage(), 'id' => $id]);
         jsonResponse(['success' => false, 'message' => 'Failed to delete itinerary.'], 500);
+    }
+}
+
+function handleConfirm()
+{
+    global $pdo;
+
+    $id = intval($_POST['id'] ?? 0);
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid itinerary ID.'], 400);
+    }
+
+    try {
+        $itn = fetchItinerary($pdo, $id);
+        if (!$itn) {
+            jsonResponse(['success' => false, 'message' => 'Itinerary not found.'], 404);
+        }
+        if ($itn['status'] === 'confirmed') {
+            jsonResponse(['success' => true, 'message' => 'Itinerary is already confirmed.']);
+        }
+
+        $missing = itineraryConfirmProblems($itn);
+        if ($missing) {
+            jsonResponse([
+                'success' => false,
+                'message' => 'Add the ' . implode(', ', $missing) . ' before confirming.',
+            ], 400);
+        }
+
+        $pdo->prepare("UPDATE itineraries SET status = 'confirmed' WHERE id = ?")->execute([$id]);
+        logInfo('ITINERARY', 'Itinerary confirmed', ['itinerary_id' => $id]);
+        jsonResponse(['success' => true, 'message' => 'Itinerary confirmed.']);
+
+    } catch (PDOException $e) {
+        logError('ITINERARY', 'Failed to confirm itinerary', ['error' => $e->getMessage(), 'id' => $id]);
+        jsonResponse(['success' => false, 'message' => 'Failed to confirm itinerary.'], 500);
+    }
+}
+
+function handleReopen()
+{
+    global $pdo;
+
+    $id = intval($_POST['id'] ?? 0);
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid itinerary ID.'], 400);
+    }
+
+    try {
+        $stmt = $pdo->prepare("UPDATE itineraries SET status = 'planning' WHERE id = ? AND contact_id IS NOT NULL");
+        $stmt->execute([$id]);
+
+        $check = $pdo->prepare("SELECT status FROM itineraries WHERE id = ? LIMIT 1");
+        $check->execute([$id]);
+        if ($check->fetchColumn() !== 'planning') {
+            jsonResponse(['success' => false, 'message' => 'Itinerary not found.'], 404);
+        }
+
+        logInfo('ITINERARY', 'Itinerary reopened for planning', ['itinerary_id' => $id]);
+        jsonResponse(['success' => true, 'message' => 'Itinerary is back in planning.']);
+
+    } catch (PDOException $e) {
+        logError('ITINERARY', 'Failed to reopen itinerary', ['error' => $e->getMessage(), 'id' => $id]);
+        jsonResponse(['success' => false, 'message' => 'Failed to reopen itinerary.'], 500);
+    }
+}
+
+/**
+ * Re-convert: push the itinerary's trip details and stops onto the booking it is already linked to.
+ */
+function handleUpdateBooking()
+{
+    global $pdo;
+
+    $id = intval($_POST['id'] ?? 0);
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Invalid itinerary ID.'], 400);
+    }
+
+    try {
+        $itn = fetchItinerary($pdo, $id);
+        if (!$itn) {
+            jsonResponse(['success' => false, 'message' => 'Itinerary not found.'], 404);
+        }
+
+        $booking = fetchLinkedBooking($pdo, (int) $itn['booking_id']);
+        if (!$booking) {
+            jsonResponse([
+                'success' => false,
+                'message' => 'This itinerary has no booking to update. Use Convert to create one.',
+            ], 404);
+        }
+
+        $stops = fetchItineraryStops($pdo, $id);
+
+        $pdo->beginTransaction();
+        $newCost = applyItineraryToBooking($pdo, $itn, $booking, $stops);
+        $pdo->commit();
+
+        logInfo('ITINERARY', 'Booking updated from itinerary', [
+            'itinerary_id' => $id,
+            'booking_id'   => (int) $booking['id'],
+            'stops'        => count($stops),
+            'cost'         => $newCost,
+        ]);
+
+        jsonResponse([
+            'success'    => true,
+            'message'    => 'Booking #' . (int) $booking['id'] . ' updated. Its calendar event is not changed yet.',
+            'booking_id' => (int) $booking['id'],
+        ]);
+
+    } catch (RuntimeException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        jsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
+    } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        logError('ITINERARY', 'Failed to update booking from itinerary', ['error' => $e->getMessage(), 'id' => $id]);
+        jsonResponse(['success' => false, 'message' => 'Failed to update the booking.'], 500);
     }
 }
