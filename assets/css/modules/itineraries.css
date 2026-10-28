@@ -107,8 +107,17 @@
   padding: 0;
   min-width: 0;
 }
-.at-itn-readonly .at-itn-icon-btn,
-.at-itn-readonly #addStopBtn,
-.at-itn-readonly #submitBtn {
+.at-itn-readonly:disabled .at-itn-icon-btn,
+.at-itn-readonly:disabled #addStopBtn,
+.at-itn-readonly:disabled #submitBtn {
   display: none;
 }
+
+/* ---- List page action buttons (colours for the shared .action-btn base) ---- */
+.at-itn-confirm-btn { background-color: #27ae60; }
+.at-itn-confirm-btn:hover { background-color: #229954; }
+.at-itn-reopen-btn { background-color: #f39c12; }
+.at-itn-reopen-btn:hover { background-color: #e67e22; }
+.at-itn-confirm-btn:disabled,
+.at-itn-reopen-btn:disabled,
+.at-itn-update-booking-btn:disabled { opacity: 0.6; cursor: not-allowed; }
