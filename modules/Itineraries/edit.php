@@ -39,8 +39,8 @@ $destinations = fetchData($pdo, 'destinations', 'name ASC');
 $costs        = fetchData($pdo, 'costs', 'amount ASC');
 $timeOptions  = generateTimeOptions();
 
-$isConfirmed = $itn['status'] === 'confirmed';
 $linked      = fetchLinkedBooking($pdo, (int) ($itn['booking_id'] ?? 0));
+$outOfDate   = itineraryBookingOutOfDate($itn, $linked);
 
 // Distances drawn from what is stored; the form script replaces them with fresh figures right after a save
 $distancePayload = itineraryStoredDistancePayload($pdo, $itn, $stopsData);
@@ -48,12 +48,6 @@ $ratePerKm       = (float) getSystemVariable($pdo, 'rate_per_km');
 ?>
 
 <div class="page-actions">
-    <?php if ($isConfirmed): ?>
-        <button type="button" class="page-action-btn toggle" id="reopenBtn">↩️ Reopen for Planning</button>
-    <?php else: ?>
-        <button type="button" class="page-action-btn confirm" id="confirmBtn">✅ Confirm Itinerary</button>
-    <?php endif; ?>
-
     <?php if ($linked): ?>
         <button type="button" class="page-action-btn rebook" id="updateBookingBtn">🔄 Update Booking #<?= (int) $linked['id'] ?></button>
         <a href="<?= BASE_URL ?>/modules/Bookings/view.php?id=<?= (int) $linked['id'] ?>" class="page-action-btn primary">📅 View Booking #<?= (int) $linked['id'] ?></a>
@@ -62,8 +56,11 @@ $ratePerKm       = (float) getSystemVariable($pdo, 'rate_per_km');
     <?php endif; ?>
 </div>
 
-<?php if ($isConfirmed): ?>
-    <div class="at-itn-confirmed-banner">✅ Confirmed. Reopen it for planning to make changes.</div>
+<?php if ($linked): ?>
+    <div class="at-itn-booked-banner">📅 Booked: booking #<?= (int) $linked['id'] ?> was made from this itinerary.<?= $outOfDate ? '' : ' The booking matches the itinerary.' ?></div>
+    <?php if ($outOfDate): ?>
+        <div class="at-itn-stale-banner" id="staleBanner">⚠️ This itinerary changed after booking #<?= (int) $linked['id'] ?> was last updated from it. Use "Update Booking" to bring the booking up to date.</div>
+    <?php endif; ?>
 <?php endif; ?>
 <?php if (!empty($_GET['saved'])): ?>
     <div class="success-message">✅ Itinerary saved. Check the distances below, then use Back when you are done.</div>
@@ -80,7 +77,7 @@ include __DIR__ . '/form.php';
         var id    = <?= (int) $itn['id'] ?>;
         var dirty = false;
 
-        // Confirm, Convert and Update Booking all work on the SAVED itinerary, so unsaved edits must be saved first
+        // Convert and Update Booking both work on the SAVED itinerary, so unsaved edits must be saved first
         $('#itineraryForm').on('input change', function () { dirty = true; });
         $(document).on('itn:saved', function () { dirty = false; });
         $(document).on('click', '#addStopBtn, .at-itn-up, .at-itn-down, .at-itn-remove', function () { dirty = true; });
@@ -116,15 +113,6 @@ include __DIR__ . '/form.php';
             });
         }
 
-        $('#confirmBtn').on('click', function () {
-            if (blockIfDirty()) { return; }
-            call('confirm', $(this), 'Confirming…', function () { location.reload(); });
-        });
-
-        $('#reopenBtn').on('click', function () {
-            call('reopen', $(this), 'Reopening…', function () { location.reload(); });
-        });
-
         $('#convertBtn').on('click', function (e) {
             if (blockIfDirty()) { e.preventDefault(); }
         });
@@ -137,6 +125,7 @@ include __DIR__ . '/form.php';
             var btn = $(this);
             var label = btn.text();
             call('update_booking', btn, 'Updating…', function (res) {
+                $('#staleBanner').remove();
                 $('#actionResult').html('<div class="success-message">✅ ' + $('<div>').text(res.message).html() + '</div>');
                 btn.prop('disabled', false).text(label);
             });

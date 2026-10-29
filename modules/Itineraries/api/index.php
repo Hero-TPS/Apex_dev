@@ -9,6 +9,7 @@ require_once ROOT_DIR . '/modules/Bookings/helpers.php';
 require_once ROOT_DIR . '/modules/Itineraries/helpers.php';
 
 const ITINERARY_MAX_STOPS = 30;
+const ITINERARY_MAX_WAIT_MINUTES = 300;
 
 $action = $_REQUEST['action'] ?? '';
 
@@ -29,12 +30,6 @@ try {
             break;
         case 'delete':
             handleDelete();
-            break;
-        case 'confirm':
-            handleConfirm();
-            break;
-        case 'reopen':
-            handleReopen();
             break;
         case 'update_booking':
             handleUpdateBooking();
@@ -137,8 +132,15 @@ function readItineraryStops(): array
         $arrival = trim((string)($s['arrival_time'] ?? ''));
         $arrival = preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $arrival) ? $arrival : null;
 
+        // Wait time: none, or 15-minute steps up to 5 hours (the form offers hh:mm choices, so anything else is a bad request)
         $wait = trim((string)($s['wait_minutes'] ?? ''));
-        $wait = ($wait !== '' && ctype_digit($wait) && (int)$wait <= 1440) ? (int)$wait : null;
+        if ($wait === '' || $wait === '0') {
+            $wait = null;
+        } elseif (ctype_digit($wait) && (int)$wait % 15 === 0 && (int)$wait <= ITINERARY_MAX_WAIT_MINUTES) {
+            $wait = (int)$wait;
+        } else {
+            jsonResponse(['success' => false, 'message' => "The wait time of stop $n must be in 15-minute steps, up to 5 hours."], 400);
+        }
 
         $client   = trim((string)($s['client_notes'] ?? ''));
         $internal = trim((string)($s['internal_notes'] ?? ''));
@@ -204,8 +206,8 @@ function handleAdd()
 
         $ins = $pdo->prepare("
             INSERT INTO itineraries (contact_id, trip_date, start_time, pickup, pickup_place_id, destination, destination_place_id,
-                                     return_to_pickup, passenger_name, passenger_phone, cost, description, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'planning')
+                                     return_to_pickup, passenger_name, passenger_phone, cost, description, status, edited_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'planning', NOW())
         ");
         $ins->execute([
             $contactId, $in['trip_date'], $in['start_time'], $in['pickup'], $in['pickup_place_id'], $in['destination'],
@@ -253,14 +255,10 @@ function handleUpdate()
     $in = readItineraryInput();
 
     try {
-        $stmt = $pdo->prepare("SELECT id, status FROM itineraries WHERE id = ? AND contact_id IS NOT NULL LIMIT 1");
+        $stmt = $pdo->prepare("SELECT id FROM itineraries WHERE id = ? AND contact_id IS NOT NULL LIMIT 1");
         $stmt->execute([$id]);
-        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$existing) {
+        if (!$stmt->fetch()) {
             jsonResponse(['success' => false, 'message' => 'Itinerary not found.'], 404);
-        }
-        if ($existing['status'] === 'confirmed') {
-            jsonResponse(['success' => false, 'message' => 'This itinerary is confirmed. Reopen it to make changes.'], 409);
         }
 
         $pdo->beginTransaction();
@@ -268,7 +266,8 @@ function handleUpdate()
         $upd = $pdo->prepare("
             UPDATE itineraries
             SET trip_date = ?, start_time = ?, pickup = ?, pickup_place_id = ?, destination = ?, destination_place_id = ?,
-                return_to_pickup = ?, passenger_name = ?, passenger_phone = ?, cost = ?, description = ?
+                return_to_pickup = ?, passenger_name = ?, passenger_phone = ?, cost = ?, description = ?,
+                edited_at = NOW()
             WHERE id = ?
         ");
         $upd->execute([
@@ -355,70 +354,6 @@ function handleDelete()
         }
         logError('ITINERARY', 'Failed to delete itinerary', ['error' => $e->getMessage(), 'id' => $id]);
         jsonResponse(['success' => false, 'message' => 'Failed to delete itinerary.'], 500);
-    }
-}
-
-function handleConfirm()
-{
-    global $pdo;
-
-    $id = intval($_POST['id'] ?? 0);
-    if ($id <= 0) {
-        jsonResponse(['success' => false, 'message' => 'Invalid itinerary ID.'], 400);
-    }
-
-    try {
-        $itn = fetchItinerary($pdo, $id);
-        if (!$itn) {
-            jsonResponse(['success' => false, 'message' => 'Itinerary not found.'], 404);
-        }
-        if ($itn['status'] === 'confirmed') {
-            jsonResponse(['success' => true, 'message' => 'Itinerary is already confirmed.']);
-        }
-
-        $missing = itineraryConfirmProblems($itn);
-        if ($missing) {
-            jsonResponse([
-                'success' => false,
-                'message' => 'Add the ' . implode(', ', $missing) . ' before confirming.',
-            ], 400);
-        }
-
-        $pdo->prepare("UPDATE itineraries SET status = 'confirmed' WHERE id = ?")->execute([$id]);
-        logInfo('ITINERARY', 'Itinerary confirmed', ['itinerary_id' => $id]);
-        jsonResponse(['success' => true, 'message' => 'Itinerary confirmed.']);
-
-    } catch (PDOException $e) {
-        logError('ITINERARY', 'Failed to confirm itinerary', ['error' => $e->getMessage(), 'id' => $id]);
-        jsonResponse(['success' => false, 'message' => 'Failed to confirm itinerary.'], 500);
-    }
-}
-
-function handleReopen()
-{
-    global $pdo;
-
-    $id = intval($_POST['id'] ?? 0);
-    if ($id <= 0) {
-        jsonResponse(['success' => false, 'message' => 'Invalid itinerary ID.'], 400);
-    }
-
-    try {
-        $stmt = $pdo->prepare("UPDATE itineraries SET status = 'planning' WHERE id = ? AND contact_id IS NOT NULL");
-        $stmt->execute([$id]);
-
-        $check = $pdo->prepare("SELECT status FROM itineraries WHERE id = ? LIMIT 1");
-        $check->execute([$id]);
-        if ($check->fetchColumn() !== 'planning') {
-            jsonResponse(['success' => false, 'message' => 'Itinerary not found.'], 404);
-        }
-
-        logInfo('ITINERARY', 'Itinerary reopened for planning', ['itinerary_id' => $id]);
-        jsonResponse(['success' => true, 'message' => 'Itinerary is back in planning.']);
-
-    } catch (PDOException $e) {
-        logError('ITINERARY', 'Failed to reopen itinerary', ['error' => $e->getMessage(), 'id' => $id]);
-        jsonResponse(['success' => false, 'message' => 'Failed to reopen itinerary.'], 500);
     }
 }
 

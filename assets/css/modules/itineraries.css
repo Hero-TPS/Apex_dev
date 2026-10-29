@@ -10,7 +10,17 @@
   font-weight: 600;
 }
 .at-itn-status-planning  { background: #fff3cd; color: #8a6d0b; }
-.at-itn-status-confirmed { background: #e8f5e9; color: #2e7d32; }
+.at-itn-status-booked    { background: #e8f5e9; color: #2e7d32; }
+.at-itn-stale-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #fdecea;
+  color: #b3261e;
+}
 
 /* ---- Stops editor ---- */
 .at-itn-stops-section {
@@ -92,8 +102,8 @@
 }
 .at-itn-modal-check.hidden { display: none; }
 
-/* ---- Edit page: confirmed (read-only) banner and actions ---- */
-.at-itn-confirmed-banner {
+/* ---- Edit page: booking banners and list action buttons ---- */
+.at-itn-booked-banner {
   background: #e8f5e9;
   color: #2e7d32;
   border-radius: 6px;
@@ -101,25 +111,14 @@
   margin-bottom: 15px;
   font-weight: 600;
 }
-.at-itn-readonly {
-  border: none;
-  margin: 0;
-  padding: 0;
-  min-width: 0;
+.at-itn-stale-banner {
+  background: #fff3cd;
+  color: #8a6d0b;
+  border-radius: 6px;
+  padding: 12px 15px;
+  margin-bottom: 15px;
+  font-weight: 600;
 }
-.at-itn-readonly:disabled .at-itn-icon-btn,
-.at-itn-readonly:disabled #addStopBtn,
-.at-itn-readonly:disabled #submitBtn {
-  display: none;
-}
-
-/* ---- List page action buttons (colours for the shared .action-btn base) ---- */
-.at-itn-confirm-btn { background-color: #27ae60; }
-.at-itn-confirm-btn:hover { background-color: #229954; }
-.at-itn-reopen-btn { background-color: #f39c12; }
-.at-itn-reopen-btn:hover { background-color: #e67e22; }
-.at-itn-confirm-btn:disabled,
-.at-itn-reopen-btn:disabled,
 .at-itn-update-booking-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ---- Distances: one line under the field each leg belongs to (inline, never a pop-up) ---- */

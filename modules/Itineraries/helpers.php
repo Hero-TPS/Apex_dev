@@ -15,7 +15,7 @@ function itineraryMigrationReady(PDO $pdo): bool
         ");
         $pdo->query("
             SELECT pickup_place_id, destination_place_id, return_to_pickup, final_leg_km, return_leg_km,
-                   total_km, unknown_legs, distance_calculated_at
+                   total_km, unknown_legs, distance_calculated_at, edited_at, booking_synced_at
             FROM itineraries LIMIT 0
         ");
         $pdo->query("
@@ -98,22 +98,27 @@ function fetchLinkedBooking(PDO $pdo, ?int $bookingId): ?array
 }
 
 /**
- * What is still missing before an itinerary can be confirmed (empty list = ready).
- * The booking form requires these, so a confirmed itinerary can always be converted.
+ * "Booked" while the booking made from the itinerary still exists, otherwise "Planning".
+ * Worked out from the link, never stored, so it cannot drift when a booking is deleted.
  */
-function itineraryConfirmProblems(array $itn): array
+function itineraryStatusLabel(?array $linkedBooking): string
 {
-    $missing = [];
-    if (empty($itn['start_time'])) {
-        $missing[] = 'start time';
+    return $linkedBooking ? 'Booked' : 'Planning';
+}
+
+/**
+ * True when the itinerary was saved after its booking was last created or updated from it, i.e. the booking
+ * no longer matches the plan. Only meaningful when the booking still exists.
+ */
+function itineraryBookingOutOfDate(array $itn, ?array $linkedBooking): bool
+{
+    if (!$linkedBooking || empty($itn['edited_at'])) {
+        return false;
     }
-    if (empty($itn['pickup'])) {
-        $missing[] = 'pickup location';
+    if (empty($itn['booking_synced_at'])) {
+        return true;
     }
-    if (empty($itn['destination'])) {
-        $missing[] = 'destination';
-    }
-    return $missing;
+    return strtotime($itn['edited_at']) > strtotime($itn['booking_synced_at']);
 }
 
 /**
@@ -185,7 +190,7 @@ function linkItineraryToBooking(PDO $pdo, int $itineraryId, int $bookingId): boo
         }
 
         $pdo->beginTransaction();
-        $pdo->prepare("UPDATE itineraries SET booking_id = ? WHERE id = ?")->execute([$bookingId, $itineraryId]);
+        $pdo->prepare("UPDATE itineraries SET booking_id = ?, booking_synced_at = NOW() WHERE id = ?")->execute([$bookingId, $itineraryId]);
         $stops = copyItineraryStopsToBooking($pdo, $itineraryId, $bookingId);
 
         // The booking's distance is the whole route, not the straight pickup-to-destination figure,
@@ -361,6 +366,9 @@ function applyItineraryToBooking(PDO $pdo, array $itn, array $booking, array $st
         $bookingFee, $pickupIsCustom, $distanceKm, $afterHoursCharge,
         $bookingId,
     ]);
+
+    // The booking now matches the itinerary
+    $pdo->prepare("UPDATE itineraries SET booking_synced_at = NOW() WHERE id = ?")->execute([(int) $itn['id']]);
 
     // Stops: replace the booking's copy with the itinerary's current stops
     $pdo->prepare("DELETE FROM booking_stops WHERE booking_id = ?")->execute([$bookingId]);

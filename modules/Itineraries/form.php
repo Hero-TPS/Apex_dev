@@ -10,7 +10,6 @@ if (!isset($pdo, $destinations, $costs, $timeOptions)) {
 
 $isEdit     = !empty($itn['id']);
 $itn        = $itn ?? [];
-$readOnly   = $isEdit && ($itn['status'] ?? '') === 'confirmed';   // confirmed itineraries are locked until reopened
 $stopsData  = $stopsData ?? [];
 $contacts   = $contacts ?? [];
 $distancePayload = $distancePayload ?? null;
@@ -44,7 +43,6 @@ $jsStops = array_map(fn($s) => [
     <?php endif; ?>
 
     <form id="itineraryForm">
-        <fieldset class="at-itn-readonly"<?= $readOnly ? ' disabled' : '' ?>>
         <?php if ($isEdit): ?>
             <input type="hidden" id="itinerary_id" name="id" value="<?= (int)$itn['id'] ?>">
             <div class="form-group">
@@ -172,9 +170,8 @@ $jsStops = array_map(fn($s) => [
         </div>
 
         <button type="submit" class="btn" id="submitBtn"><?= $isEdit ? '💾 Save Changes' : '🗺️ Save Itinerary' ?></button>
-        </fieldset>
         <?php if ($isEdit): ?>
-            <a href="<?= BASE_URL ?>/modules/Itineraries/" class="page-action-btn back">← <?= $readOnly ? 'Back' : 'Cancel' ?></a>
+            <a href="<?= BASE_URL ?>/modules/Itineraries/" class="page-action-btn back">← Cancel</a>
         <?php endif; ?>
     </form>
 
@@ -351,7 +348,7 @@ $(document).ready(function () {
                 '</div>' +
                 '<div class="form-row">' +
                     '<div class="form-group"><label>Arrival Time <small>(optional)</small></label><select class="at-itn-arrival"></select></div>' +
-                    '<div class="form-group"><label>Wait (minutes) <small>(optional)</small></label><input type="number" class="at-itn-wait" min="0" max="1440" step="5"></div>' +
+                    '<div class="form-group"><label>Wait <small>(optional, hh:mm)</small></label><select class="at-itn-wait"></select></div>' +
                 '</div>' +
                 '<div class="form-group"><label>Note for the client <small>(optional)</small></label><textarea class="at-itn-client-notes"></textarea></div>' +
                 '<div class="form-group"><label>Internal note <small>(optional, not for the client)</small></label><textarea class="at-itn-internal-notes"></textarea></div>' +
@@ -364,12 +361,22 @@ $(document).ready(function () {
             $arrival.append($('<option>', { value: t, text: t }));
         });
 
+        // Wait: none, then 15-minute steps up to 5 hours, shown as hh:mm
+        var $wait = $row.find('.at-itn-wait');
+        $wait.append($('<option>', { value: '', text: '— None —' }));
+        for (var m = 15; m <= 300; m += 15) {
+            $wait.append($('<option>', { value: String(m), text: ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2) }));
+        }
+
         var locEl = $row.find('.at-itn-location')[0];
         locEl.value = stop.location || '';
         if (stop.place_id) { locEl.dataset.placeId = stop.place_id; }
         attachPlaces(locEl);
         $arrival.val(stop.arrival_time || '');
-        $row.find('.at-itn-wait').val(stop.wait_minutes === null ? '' : stop.wait_minutes);
+        // Older saves could hold any number of minutes: round to the nearest 15, capped at 5 hours
+        var waitMin = parseInt(stop.wait_minutes, 10);
+        waitMin = isNaN(waitMin) || waitMin <= 0 ? '' : Math.min(300, Math.round(waitMin / 15) * 15);
+        $row.find('.at-itn-wait').val(waitMin === '' ? '' : String(waitMin));
         $row.find('.at-itn-client-notes').val(stop.client_notes || '');
         $row.find('.at-itn-internal-notes').val(stop.internal_notes || '');
         return $row;

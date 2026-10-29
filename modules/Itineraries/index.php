@@ -65,7 +65,8 @@ $distanceLimit = getDistanceWarningKm($pdo);
                 $dateObj = new DateTime($i['trip_date'], $tz);
                 $isPast  = $dateObj < new DateTime('today', $tz);
                 $hasBooking = !empty($i['linked_booking_id']);
-                $isConfirmed = $i['status'] === 'confirmed';
+                $linkedRow  = $hasBooking ? ['id' => $i['linked_booking_id']] : null;
+                $outOfDate  = itineraryBookingOutOfDate($i, $linkedRow);
             ?>
             <tr class="itinerary-row<?= $isPast ? ' past-booking' : '' ?>" id="itn-row-<?= (int)$i['id'] ?>">
                 <td data-label="Client"><?= e($i['client_name']) ?></td>
@@ -85,7 +86,8 @@ $distanceLimit = getDistanceWarningKm($pdo);
                     <?php endif; ?>
                 </td>
                 <td data-label="Status">
-                    <span class="at-itn-status at-itn-status-<?= e($i['status']) ?>"><?= $isConfirmed ? 'Confirmed' : 'Planning' ?></span>
+                    <span class="at-itn-status at-itn-status-<?= $hasBooking ? 'booked' : 'planning' ?>"><?= e(itineraryStatusLabel($linkedRow)) ?></span>
+                    <?php if ($outOfDate): ?><span class="at-itn-stale-tag" title="Changed since the booking was last updated">⚠️ Changed</span><?php endif; ?>
                 </td>
                 <td data-label="Booking">
                     <?php if ($hasBooking): ?>
@@ -97,12 +99,7 @@ $distanceLimit = getDistanceWarningKm($pdo);
                 <td data-label="Actions">
                     <div class="actions-container">
                         <a href="<?= BASE_URL ?>/modules/Itineraries/edit.php?id=<?= (int)$i['id'] ?>"
-                           class="action-btn edit-btn"><?= $isConfirmed ? '👁️ View' : '✏️ Edit' ?></a>
-                        <?php if ($isConfirmed): ?>
-                            <button class="action-btn at-itn-reopen-btn" data-id="<?= (int)$i['id'] ?>">↩️ Reopen</button>
-                        <?php else: ?>
-                            <button class="action-btn at-itn-confirm-btn" data-id="<?= (int)$i['id'] ?>">✅ Confirm</button>
-                        <?php endif; ?>
+                           class="action-btn edit-btn">✏️ Edit</a>
                         <?php if ($hasBooking): ?>
                             <button class="action-btn convert-btn at-itn-update-booking-btn"
                                     data-id="<?= (int)$i['id'] ?>"
@@ -164,16 +161,6 @@ $distanceLimit = getDistanceWarningKm($pdo);
             });
         }
 
-        $(document).on('click', '.at-itn-confirm-btn', function () {
-            var btn = $(this);
-            post('confirm', { id: btn.data('id') }, btn, 'Confirming…', function () { location.reload(); });
-        });
-
-        $(document).on('click', '.at-itn-reopen-btn', function () {
-            var btn = $(this);
-            post('reopen', { id: btn.data('id') }, btn, 'Reopening…', function () { location.reload(); });
-        });
-
         $(document).on('click', '.at-itn-update-booking-btn', function () {
             var btn = $(this);
             if (!confirm('This will update booking #' + btn.data('booking') + ' with this itinerary\'s date, time, pickup, destination, passenger, cost, notes and stops.\n\nThe driver, payment details and the booking\'s calendar event are not changed. Continue?')) {
@@ -182,6 +169,7 @@ $distanceLimit = getDistanceWarningKm($pdo);
             post('update_booking', { id: btn.data('id') }, btn, 'Updating…', function (res) {
                 $('#listResult').html('<div class="success-message">✅ ' + $('<div>').text(res.message).html() + '</div>');
                 btn.prop('disabled', false).text('🔄 Update Booking');
+                btn.closest('tr').find('.at-itn-stale-tag').remove();
             });
         });
 
