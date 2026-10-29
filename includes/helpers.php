@@ -262,6 +262,12 @@ const SYSTEM_VARIABLES = [
     'financial_months_back' => ['label' => 'Financial History (months)', 'type' => 'number', 'default' => 6],
     'apex_booking_fee_pct' => ['label' => 'Apex Booking Fee (%)', 'type' => 'number', 'default' => 0],
     'rate_per_km' => ['label' => 'Rate per Km (R)', 'type' => 'number', 'default' => 15.00],
+    'distance_warning_km' => [
+        'label' => 'Distance Warning (km)',
+        'type' => 'number',
+        'default' => 200,
+        'hint' => 'A single trip or itinerary leg longer than this shows a warning, because it usually means Google placed an address in the wrong town.',
+    ],
     'rent' => ['label' => 'Rent (R/week)', 'type' => 'number', 'default' => 0],
     'debt_payment' => ['label' => 'Debt Payment (R/week)', 'type' => 'number', 'default' => 0],
     'living_expenses_daily' => ['label' => 'Living Expenses (R/day)', 'type' => 'number', 'default' => 120],
@@ -535,6 +541,66 @@ function calculateBookingFee(float $cost, float $pct): float
 }
 
 /**
+ * One Distance Matrix request between two places. Each side is either free text or "place_id:XYZ".
+ * Used by: calculateTripDistanceKm(), calculateLegDistance()
+ *
+ * Returns:
+ *   status       'ok' | 'not_found' (an address could not be located) | 'no_route' | 'error' (network/API problem)
+ *   km           float|null
+ *   origin_found / dest_found   bool, false when Google could not locate that side
+ *   from_address / to_address   the address Google actually used (for "Google read this as ..." messages)
+ *
+ * region=za only biases ambiguous names towards South Africa; it does not restrict results.
+ */
+function requestDistanceMatrix(string $origin, string $destination, int $timeout = 8): array
+{
+    $result = [
+        'status' => 'error', 'km' => null,
+        'origin_found' => true, 'dest_found' => true,
+        'from_address' => '', 'to_address' => '',
+    ];
+
+    $url = GOOGLE_DISTANCE_MATRIX_URL . '?' . http_build_query([
+        'origins'      => $origin,
+        'destinations' => $destination,
+        'units'        => 'metric',
+        'region'       => 'za',
+        'key'          => GOOGLE_API_KEY,
+    ]);
+
+    $context = stream_context_create(['http' => ['timeout' => $timeout, 'ignore_errors' => true]]);
+    $responseJson = @file_get_contents($url, false, $context);
+    if ($responseJson === false) {
+        return $result;
+    }
+
+    $data = json_decode($responseJson, true);
+    if (!is_array($data) || ($data['status'] ?? '') !== 'OK') {
+        return $result;
+    }
+
+    $result['from_address'] = (string) ($data['origin_addresses'][0] ?? '');
+    $result['to_address']   = (string) ($data['destination_addresses'][0] ?? '');
+    $result['origin_found'] = $result['from_address'] !== '';
+    $result['dest_found']   = $result['to_address'] !== '';
+
+    $element = $data['rows'][0]['elements'][0] ?? null;
+    if (!$element) {
+        return $result;
+    }
+
+    if (($element['status'] ?? '') === 'OK') {
+        $result['status'] = 'ok';
+        $result['km']     = round($element['distance']['value'] / 1000, 1);
+    } elseif (($element['status'] ?? '') === 'NOT_FOUND') {
+        $result['status'] = 'not_found';
+    } elseif (($element['status'] ?? '') === 'ZERO_RESULTS') {
+        $result['status'] = 'no_route';
+    }
+    return $result;
+}
+
+/**
  * Calculate driving distance in km between two addresses using the
  * Google Distance Matrix API. Used by: Bookings add/update (distance_km
  * column) and modules/DistanceCalculator.
@@ -548,27 +614,47 @@ function calculateTripDistanceKm(string $origin, string $destination): ?float
     if (trim($origin) === '' || trim($destination) === '') {
         return null;
     }
+    return requestDistanceMatrix($origin, $destination)['km'];
+}
 
-    $url = GOOGLE_DISTANCE_MATRIX_URL . '?' . http_build_query([
-        'origins'      => $origin,
-        'destinations' => $destination,
-        'units'        => 'metric',
-        'key'          => GOOGLE_API_KEY,
-    ]);
-
-    $responseJson = @file_get_contents($url);
-    if ($responseJson === false) {
-        return null;
+/**
+ * Distance between two places with enough detail to tell the user what went wrong.
+ * Either side may carry a Google place id (exact); if Google rejects the id the plain text is tried instead.
+ * Used by: modules/Itineraries (legs), modules/Bookings (live distance check)
+ *
+ * Returns the requestDistanceMatrix() array, with status 'missing' when either side is blank.
+ */
+function calculateLegDistance(string $origin, string $destination, ?string $originPlaceId = null, ?string $destPlaceId = null, int $timeout = 8): array
+{
+    $origin      = trim($origin);
+    $destination = trim($destination);
+    if ($origin === '' || $destination === '') {
+        return [
+            'status' => 'missing', 'km' => null, 'origin_found' => true, 'dest_found' => true,
+            'from_address' => '', 'to_address' => '',
+        ];
     }
 
-    $data = json_decode($responseJson, true);
-    $element = $data['rows'][0]['elements'][0] ?? null;
+    $o = $originPlaceId ? 'place_id:' . $originPlaceId : $origin;
+    $d = $destPlaceId ? 'place_id:' . $destPlaceId : $destination;
 
-    if (!$element || $element['status'] !== 'OK') {
-        return null;
+    $result = requestDistanceMatrix($o, $d, $timeout);
+
+    // A stale or rejected place id: fall back to the typed text before giving up
+    if ($result['status'] === 'not_found' && ($originPlaceId || $destPlaceId)) {
+        $result = requestDistanceMatrix($origin, $destination, $timeout);
     }
+    return $result;
+}
 
-    return round($element['distance']['value'] / 1000, 1);
+/**
+ * The distance (km) above which a single trip or leg gets a "check the address" warning.
+ * Set in Services → System Variables (distance_warning_km).
+ */
+function getDistanceWarningKm(PDO $pdo): float
+{
+    $limit = (float) getSystemVariable($pdo, 'distance_warning_km');
+    return $limit > 0 ? $limit : 200.0;
 }
 
 // --- OUTPUT HELPERS ---

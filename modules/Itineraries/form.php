@@ -2,7 +2,7 @@
 // modules/Itineraries/form.php
 // Shared form for add.php and edit.php. Included by those pages, not opened directly.
 // Expects: $pdo, $itn (array for edit, null for add), $stopsData (list of stops), $destinations, $costs, $timeOptions
-// and, for add only, $contacts.
+// and, for add only, $contacts. Optional: $distancePayload (stored legs, edit only), $ratePerKm.
 
 if (!isset($pdo, $destinations, $costs, $timeOptions)) {
     exit;
@@ -13,6 +13,9 @@ $itn        = $itn ?? [];
 $readOnly   = $isEdit && ($itn['status'] ?? '') === 'confirmed';   // confirmed itineraries are locked until reopened
 $stopsData  = $stopsData ?? [];
 $contacts   = $contacts ?? [];
+$distancePayload = $distancePayload ?? null;
+$ratePerKm       = (float) ($ratePerKm ?? 0);
+$returnChecked   = !empty($itn['return_to_pickup']);
 
 $savedPickup = $itn['pickup'] ?? '';
 $savedDest   = $itn['destination'] ?? '';
@@ -27,6 +30,7 @@ $savedTime       = !empty($itn['start_time']) ? substr($itn['start_time'], 0, 5)
 
 $jsStops = array_map(fn($s) => [
     'location'       => $s['location'] ?? '',
+    'place_id'       => $s['place_id'] ?? '',
     'arrival_time'   => !empty($s['arrival_time']) ? substr($s['arrival_time'], 0, 5) : '',
     'wait_minutes'   => $s['wait_minutes'] ?? '',
     'client_notes'   => $s['client_notes'] ?? '',
@@ -97,7 +101,8 @@ $jsStops = array_map(fn($s) => [
         </div>
         <div class="form-group <?= $showOtherPickup ? '' : 'hidden' ?>" id="otherPickupGroup">
             <label for="otherPickup">Specify Other Pickup</label>
-            <input type="text" id="otherPickup" placeholder="Enter pickup address"
+            <input type="text" id="otherPickup" placeholder="Enter pickup address" autocomplete="off"
+                   data-place-id="<?= $showOtherPickup ? e($itn['pickup_place_id'] ?? '') : '' ?>"
                    value="<?= $showOtherPickup ? e($savedPickup) : '' ?>">
         </div>
 
@@ -106,6 +111,8 @@ $jsStops = array_map(fn($s) => [
             <p class="at-itn-stops-empty" id="stopsEmpty">No stops yet. Add the first one below.</p>
             <div id="stopsList"></div>
             <button type="button" class="page-action-btn add" id="addStopBtn">➕ Add Stop</button>
+            <button type="button" class="page-action-btn gps" id="recalcBtn">📏 Recalculate Distance</button>
+            <p class="at-itn-leg at-itn-leg-info hidden" id="placesNote"></p>
             <datalist id="itnPlaces">
                 <?php foreach ($destinations as $dest): ?>
                     <option value="<?= e($dest['name']) ?>"></option>
@@ -125,9 +132,20 @@ $jsStops = array_map(fn($s) => [
         </div>
         <div class="form-group <?= $showOtherDest ? '' : 'hidden' ?>" id="otherDestinationGroup">
             <label for="otherDestination">Specify Other Destination</label>
-            <input type="text" id="otherDestination" placeholder="Enter destination"
+            <input type="text" id="otherDestination" placeholder="Enter destination" autocomplete="off"
+                   data-place-id="<?= $showOtherDest ? e($itn['destination_place_id'] ?? '') : '' ?>"
                    value="<?= $showOtherDest ? e($savedDest) : '' ?>">
         </div>
+        <div class="at-itn-leg" id="legFinal"></div>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="returnToPickup" <?= $returnChecked ? 'checked' : '' ?>>
+                🔁 Return to the pickup after the destination
+            </label>
+        </div>
+        <div class="at-itn-leg" id="legReturn"></div>
+        <div class="at-itn-distance-summary" id="distanceSummary"></div>
 
         <div class="form-group">
             <label for="cost">Cost <small>(optional)</small></label>
@@ -145,6 +163,7 @@ $jsStops = array_map(fn($s) => [
             <input type="number" id="otherCost" step="0.01" min="0" placeholder="0.00"
                    value="<?= $showOtherCost ? e((string)$savedCost) : '' ?>">
         </div>
+        <div class="at-itn-cost-ref" id="costReference"></div>
 
         <div class="form-group">
             <label for="description">Notes / Description <small>(optional)</small></label>
@@ -168,6 +187,8 @@ $(document).ready(function () {
     var isEdit      = <?= $isEdit ? 'true' : 'false' ?>;
     var timeOptions = <?= json_encode(array_values($timeOptions)) ?>;
     var initial     = <?= json_encode($jsStops, JSON_UNESCAPED_UNICODE) ?>;
+    var storedDistance = <?= json_encode($distancePayload, JSON_UNESCAPED_UNICODE) ?>;
+    var ratePerKm   = <?= json_encode($ratePerKm) ?>;
     var maxStops    = <?= (int)(defined('ITINERARY_MAX_STOPS') ? ITINERARY_MAX_STOPS : 30) ?>;
 
     function escapeHtml(str) {
@@ -191,6 +212,124 @@ $(document).ready(function () {
     bindOther('#destination', '#otherDestinationGroup', '#otherDestination');
     bindOther('#cost', '#otherCostGroup', '#otherCost');
 
+    // ---------- Address suggestions (Google Places) ----------
+    // Picking a suggestion stores the exact Google place, so distances do not depend on Google guessing
+    // what a typed name means. If the Maps script cannot load, every field still works as plain text.
+    var placesReady = false;
+    var pendingPlaces = [];
+
+    function placesUnavailable(reason) {
+        $('#placesNote').text('Address suggestions are unavailable, so type full addresses. (' + reason + ')').removeClass('hidden');
+        $('#stopsList .at-itn-location').attr('list', 'itnPlaces');
+        if (window.logJsError) {
+            logJsError('ERROR', 'Itinerary address suggestions unavailable: ' + reason, { page_url: window.location.href });
+        }
+    }
+
+    function attachPlaces(el) {
+        if (!el) { return; }
+        $(el).on('input', function () { delete el.dataset.placeId; });
+        $(el).on('keydown', function (e) {
+            if (e.key === 'Enter' && $('.pac-container:visible').length) { e.preventDefault(); }
+        });
+        if (!placesReady) { pendingPlaces.push(el); return; }
+        initAutocomplete(el);
+    }
+
+    function initAutocomplete(el) {
+        try {
+            var ac = new google.maps.places.Autocomplete(el, {
+                componentRestrictions: { country: 'za' },
+                fields: ['place_id', 'formatted_address', 'name']
+            });
+            ac.addListener('place_changed', function () {
+                var p = ac.getPlace();
+                if (!p || !p.place_id) { return; }
+                var addr = p.formatted_address || '';
+                var nm   = p.name || '';
+                el.value = (nm && addr.indexOf(nm) !== 0) ? (addr ? nm + ', ' + addr : nm) : (addr || el.value);
+                el.dataset.placeId = p.place_id;
+                markDistanceStale();
+            });
+        } catch (err) {
+            placesUnavailable('Autocomplete error');
+        }
+    }
+
+    window.itnOnMapsLoaded = function () {
+        placesReady = true;
+        pendingPlaces.forEach(initAutocomplete);
+        pendingPlaces = [];
+    };
+    window.gm_authFailure = function () {
+        placesUnavailable('Google rejected the map key for this site. Check its allowed websites.');
+    };
+    window.itnOnMapsError = function () { placesUnavailable('the Google Maps script did not load'); };
+
+    attachPlaces(document.getElementById('otherPickup'));
+    attachPlaces(document.getElementById('otherDestination'));
+
+    // ---------- Distances ----------
+    function formatMoney(n) {
+        return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    function setLeg($el, leg) {
+        $el.attr('class', 'at-itn-leg' + (leg ? ' at-itn-leg-' + leg.level : '')).text(leg ? leg.message : '');
+    }
+
+    function renderDistance(d) {
+        if (!d) { return; }
+        var $rows = $list.children('.at-itn-stop');
+        $rows.find('.at-itn-leg').attr('class', 'at-itn-leg').text('');
+        setLeg($('#legFinal'), null);
+        setLeg($('#legReturn'), null);
+
+        d.legs.forEach(function (leg) {
+            if (leg.kind === 'stop') {
+                var $row = $rows.eq(leg.stop_index);
+                if ($row.length) { setLeg($row.find('.at-itn-leg'), leg); }
+            } else if (leg.kind === 'destination') {
+                setLeg($('#legFinal'), leg);
+            } else if (leg.kind === 'return') {
+                setLeg($('#legReturn'), leg);
+            }
+        });
+
+        var $sum = $('#distanceSummary');
+        var $ref = $('#costReference');
+        if (d.total_km !== null && d.total_km !== undefined) {
+            var partial = d.unknown_legs > 0 ? ' (partial: ' + d.unknown_legs + ' leg' + (d.unknown_legs > 1 ? 's' : '') + ' without a distance)' : '';
+            $sum.attr('class', 'at-itn-distance-summary').text('📍 Total distance: ' + Number(d.total_km).toFixed(1) + ' km' + partial);
+            if (ratePerKm > 0) {
+                $ref.attr('class', 'at-itn-cost-ref').text('Reference cost (display only, the cost above is yours to set): R' +
+                    formatMoney(d.total_km * ratePerKm) + ' = ' + Number(d.total_km).toFixed(1) + ' km × R' + ratePerKm.toFixed(2) + '/km' + partial);
+            }
+        } else {
+            $sum.attr('class', 'at-itn-distance-summary').text('');
+            $ref.attr('class', 'at-itn-cost-ref').text('');
+        }
+    }
+
+    // Anything that can change a distance dims the old figures until they are recalculated
+    function markDistanceStale() {
+        $('#stopsList .at-itn-leg, #legFinal, #legReturn').addClass('at-itn-stale');
+        $('#distanceSummary, #costReference').addClass('at-itn-stale');
+    }
+    $('#itineraryForm').on('input change', '#otherPickup, #otherDestination, #pickup, #destination, #returnToPickup, .at-itn-location', markDistanceStale);
+
+    function currentRouteData() {
+        var pickupOther = $('#pickup').val() === 'other';
+        var destOther   = $('#destination').val() === 'other';
+        return {
+            pickup:               pickupOther ? $('#otherPickup').val().trim() : $('#pickup').val(),
+            pickup_place_id:      pickupOther ? ($('#otherPickup')[0].dataset.placeId || '') : '',
+            destination:          destOther ? $('#otherDestination').val().trim() : $('#destination').val(),
+            destination_place_id: destOther ? ($('#otherDestination')[0].dataset.placeId || '') : '',
+            return_to_pickup:     $('#returnToPickup').is(':checked') ? '1' : ''
+        };
+    }
+
     // ---------- Stops editor ----------
     var $list = $('#stopsList');
 
@@ -207,7 +346,8 @@ $(document).ready(function () {
                 '</div>' +
                 '<div class="form-group">' +
                     '<label>Location <span class="required">*</span></label>' +
-                    '<input type="text" class="at-itn-location" list="itnPlaces" maxlength="255" placeholder="Where is this stop?">' +
+                    '<input type="text" class="at-itn-location" maxlength="255" autocomplete="off" placeholder="Where is this stop?">' +
+                    '<div class="at-itn-leg"></div>' +
                 '</div>' +
                 '<div class="form-row">' +
                     '<div class="form-group"><label>Arrival Time <small>(optional)</small></label><select class="at-itn-arrival"></select></div>' +
@@ -224,7 +364,10 @@ $(document).ready(function () {
             $arrival.append($('<option>', { value: t, text: t }));
         });
 
-        $row.find('.at-itn-location').val(stop.location || '');
+        var locEl = $row.find('.at-itn-location')[0];
+        locEl.value = stop.location || '';
+        if (stop.place_id) { locEl.dataset.placeId = stop.place_id; }
+        attachPlaces(locEl);
         $arrival.val(stop.arrival_time || '');
         $row.find('.at-itn-wait').val(stop.wait_minutes === null ? '' : stop.wait_minutes);
         $row.find('.at-itn-client-notes').val(stop.client_notes || '');
@@ -238,6 +381,7 @@ $(document).ready(function () {
             var $r = $(this);
             stops.push({
                 location:       $r.find('.at-itn-location').val().trim(),
+                place_id:       $r.find('.at-itn-location')[0].dataset.placeId || '',
                 arrival_time:   $r.find('.at-itn-arrival').val(),
                 wait_minutes:   $r.find('.at-itn-wait').val(),
                 client_notes:   $r.find('.at-itn-client-notes').val().trim(),
@@ -269,6 +413,7 @@ $(document).ready(function () {
         var $row = buildStopRow({});
         $list.append($row);
         refreshStopChrome();
+        markDistanceStale();
         $row.find('.at-itn-location').focus();
     });
 
@@ -278,21 +423,71 @@ $(document).ready(function () {
         if (loc !== '' && !confirm('Remove this stop?')) { return; }
         $row.remove();
         refreshStopChrome();
+        markDistanceStale();
     });
 
     $list.on('click', '.at-itn-up', function () {
         var $row = $(this).closest('.at-itn-stop');
         $row.prev('.at-itn-stop').before($row);
         refreshStopChrome();
+        markDistanceStale();
     });
 
     $list.on('click', '.at-itn-down', function () {
         var $row = $(this).closest('.at-itn-stop');
         $row.next('.at-itn-stop').after($row);
         refreshStopChrome();
+        markDistanceStale();
     });
 
     renderStops(initial);
+
+    // Distances: what was just calculated before a redirect, otherwise what is stored
+    var shownDistance = storedDistance;
+    if (isEdit) {
+        try {
+            var key = 'itnLegs' + $('#itinerary_id').val();
+            var fresh = window.sessionStorage.getItem(key);
+            if (fresh) {
+                shownDistance = JSON.parse(fresh);
+                window.sessionStorage.removeItem(key);
+            }
+        } catch (err) { /* storage can be blocked; the stored figures are shown instead */ }
+    }
+    renderDistance(shownDistance);
+
+    // ---------- Recalculate (preview of what is in the form, nothing is saved) ----------
+    $('#recalcBtn').on('click', function () {
+        var stops = readStops();
+        var bad = -1;
+        stops.forEach(function (s, i) { if (bad < 0 && s.location === '') { bad = i; } });
+        if (bad >= 0) {
+            $('#result').html('<div class="error-message">⚠️ Stop ' + (bad + 1) + ' needs a location, or remove it.</div>');
+            return;
+        }
+        var btn = $(this);
+        btn.prop('disabled', true).text('Calculating…');
+        $('#result').html('');
+        var data = currentRouteData();
+        data.stops = JSON.stringify(stops);
+        $.ajax({
+            type: 'POST',
+            url: '<?= BASE_URL ?>/modules/Itineraries/api/index.php?action=calc_legs',
+            data: data,
+            dataType: 'json',
+            success: function (res) {
+                if (res.success) {
+                    renderDistance(res.distance);
+                } else {
+                    $('#result').html('<div class="error-message">❌ ' + escapeHtml(res.message || 'Could not calculate.') + '</div>');
+                }
+            },
+            error: function () {
+                $('#result').html('<div class="error-message">❌ The distance request failed. Please try again.</div>');
+            },
+            complete: function () { btn.prop('disabled', false).text('📏 Recalculate Distance'); }
+        });
+    });
 
     // ---------- Client search (add only) ----------
     if (!isEdit) {
@@ -401,21 +596,16 @@ $(document).ready(function () {
         loading.show();
         $('#result').html('');
 
-        var pickupVal = $('#pickup').val() === 'other' ? $('#otherPickup').val().trim() : $('#pickup').val();
-        var destVal   = $('#destination').val() === 'other' ? $('#otherDestination').val().trim() : $('#destination').val();
         var costVal   = $('#cost').val() === 'other' ? $('#otherCost').val().trim() : $('#cost').val();
 
-        var data = {
-            trip_date:       $('#trip_date').val(),
-            start_time:      $('#start_time').val(),
-            pickup:          pickupVal,
-            destination:     destVal,
-            cost:            costVal,
-            description:     $('#description').val().trim(),
-            passenger_name:  $('#passengerName').val().trim(),
-            passenger_phone: $('#passengerPhone').val().trim(),
-            stops:           JSON.stringify(stops)
-        };
+        var data = currentRouteData();
+        data.trip_date       = $('#trip_date').val();
+        data.start_time      = $('#start_time').val();
+        data.cost            = costVal;
+        data.description     = $('#description').val().trim();
+        data.passenger_name  = $('#passengerName').val().trim();
+        data.passenger_phone = $('#passengerPhone').val().trim();
+        data.stops           = JSON.stringify(stops);
         if (isEdit) { data.id = $('#itinerary_id').val(); }
         else        { data.contact_id = $('#contact_id').val(); }
 
@@ -428,10 +618,28 @@ $(document).ready(function () {
                 loading.hide();
                 submitBtn.show();
                 if (res.success) {
-                    $('#result').html('<div class="success-message">✅ ' + escapeHtml(res.message) + '</div>');
-                    setTimeout(function () {
-                        window.location.href = '<?= BASE_URL ?>/modules/Itineraries/';
-                    }, 600);
+                    var d = res.distance || null;
+
+                    // A new itinerary opens on its own edit page, so the distances can be checked and fixed there
+                    if (!isEdit) {
+                        try { window.sessionStorage.setItem('itnLegs' + res.itinerary_id, JSON.stringify(d)); } catch (err) { /* optional */ }
+                        window.location.href = '<?= BASE_URL ?>/modules/Itineraries/edit.php?id=' + res.itinerary_id + '&saved=1';
+                        return;
+                    }
+
+                    $(document).trigger('itn:saved');
+                    if (d) { renderDistance(d); }
+
+                    if (d && !d.problems) {
+                        $('#result').html('<div class="success-message">✅ ' + escapeHtml(res.message) + '</div>');
+                        setTimeout(function () {
+                            window.location.href = '<?= BASE_URL ?>/modules/Itineraries/';
+                        }, 600);
+                    } else if (d) {
+                        $('#result').html('<div class="success-message">✅ ' + escapeHtml(res.message) + ' Check the highlighted distances below.</div>');
+                    } else {
+                        $('#result').html('<div class="success-message">✅ ' + escapeHtml(res.message) + ' The distances could not be calculated, use Recalculate Distance.</div>');
+                    }
                 } else {
                     $('#result').html('<div class="error-message">❌ ' + escapeHtml(res.message || 'Failed to save.') + '</div>');
                 }
@@ -445,3 +653,4 @@ $(document).ready(function () {
     });
 });
 </script>
+<script src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars(GOOGLE_MAPS_BROWSER_KEY) ?>&libraries=places&callback=itnOnMapsLoaded" async defer onerror="itnOnMapsError()"></script>

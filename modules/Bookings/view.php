@@ -11,6 +11,7 @@ require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once __DIR__ . '/helpers.php';
 require_once ROOT_DIR . '/modules/WhatsApp/helpers.php';
+require_once ROOT_DIR . '/modules/Itineraries/helpers.php';
 $breadcrumb = buildBreadcrumb([
     ['label' => 'Bookings', 'url' => BASE_URL . '/modules/Bookings/'],
     ['label' => 'Booking Details'],
@@ -461,6 +462,18 @@ if (isset($_GET['id'])) {
                     <strong>Distance:</strong>
                     <?= $booking['distance_km'] !== null ? number_format((float) $booking['distance_km'], 1) . ' km' : '—' ?>
                     <?= !empty($booking['is_round_trip']) ? ' (round trip)' : '' ?>
+                    <?php
+                        $viewItinerary = fetchItineraryForBooking($pdo, (int) $booking['id']);
+                        $viewDistanceLimit = getDistanceWarningKm($pdo);
+                        $viewOneWayKm = $booking['distance_km'] !== null
+                            ? (float) $booking['distance_km'] / (!empty($booking['is_round_trip']) ? 2 : 1)
+                            : null;
+                    ?>
+                    <?php if ($viewItinerary && itineraryKnownTotalKm($viewItinerary) !== null): ?>
+                        <small>(whole route, from <a href="<?= BASE_URL ?>/modules/Itineraries/edit.php?id=<?= (int) $viewItinerary['id'] ?>">itinerary #<?= (int) $viewItinerary['id'] ?></a>)</small>
+                    <?php elseif ($viewOneWayKm !== null && $viewOneWayKm > $viewDistanceLimit): ?>
+                        <div class="at-bk-distance-note at-bk-distance-warn">⚠️ This is over <?= e((string) $viewDistanceLimit) ?> km one way. Google may have placed the pickup or destination in the wrong town, so check the addresses.</div>
+                    <?php endif; ?>
                 </div>
                 <?php if ($viewCalculatedCost !== null): ?>
                 <div class="detail-item">

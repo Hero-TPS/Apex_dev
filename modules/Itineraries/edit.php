@@ -41,6 +41,10 @@ $timeOptions  = generateTimeOptions();
 
 $isConfirmed = $itn['status'] === 'confirmed';
 $linked      = fetchLinkedBooking($pdo, (int) ($itn['booking_id'] ?? 0));
+
+// Distances drawn from what is stored; the form script replaces them with fresh figures right after a save
+$distancePayload = itineraryStoredDistancePayload($pdo, $itn, $stopsData);
+$ratePerKm       = (float) getSystemVariable($pdo, 'rate_per_km');
 ?>
 
 <div class="page-actions">
@@ -61,6 +65,9 @@ $linked      = fetchLinkedBooking($pdo, (int) ($itn['booking_id'] ?? 0));
 <?php if ($isConfirmed): ?>
     <div class="at-itn-confirmed-banner">✅ Confirmed. Reopen it for planning to make changes.</div>
 <?php endif; ?>
+<?php if (!empty($_GET['saved'])): ?>
+    <div class="success-message">✅ Itinerary saved. Check the distances below, then use Back when you are done.</div>
+<?php endif; ?>
 <div id="actionResult"></div>
 
 <?php
@@ -75,6 +82,7 @@ include __DIR__ . '/form.php';
 
         // Confirm, Convert and Update Booking all work on the SAVED itinerary, so unsaved edits must be saved first
         $('#itineraryForm').on('input change', function () { dirty = true; });
+        $(document).on('itn:saved', function () { dirty = false; });
         $(document).on('click', '#addStopBtn, .at-itn-up, .at-itn-down, .at-itn-remove', function () { dirty = true; });
 
         function blockIfDirty() {

@@ -307,3 +307,27 @@
     border-bottom: 1px solid #eee;
     cursor: pointer;
 }
+
+/* ---- Distance check under the destination field (add/edit booking) and the warning on the booking view ---- */
+.at-bk-distance-note {
+    margin: -10px 0 15px;
+    font-size: 13px;
+}
+.at-bk-distance-note:empty { display: none; }
+.at-bk-distance-ok   { color: #555; }
+.at-bk-distance-info { color: #777; font-style: italic; }
+.at-bk-distance-warn {
+    color: #8a5a00;
+    background: #fff3cd;
+    border-left: 4px solid #f39c12;
+    padding: 6px 10px;
+    border-radius: 4px;
+}
+.at-bk-distance-fail {
+    color: #a12622;
+    background: #fdecea;
+    border-left: 4px solid #e74c3c;
+    padding: 6px 10px;
+    border-radius: 4px;
+}
+.detail-item .at-bk-distance-note { margin: 6px 0 0; }

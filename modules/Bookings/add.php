@@ -147,6 +147,7 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
             <input type="text" id="otherDestination" name="other_original_destination"
                 placeholder="Enter destination address">
         </div>
+        <div class="at-bk-distance-note" id="distanceNote"></div>
 
         <div class="form-group hidden" id="addToDestinationGroup">
             <label>
@@ -510,6 +511,45 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
         }
         $('#pickup, #destination, #swapLocations').on('change', updateAirportNoticeHint);
         $('#otherPickup, #otherDestination').on('input', updateAirportNoticeHint);
+
+        // Live distance check: inline text under the destination, so a mislocated address is caught before saving
+        var distanceTimer = null;
+        var distanceSeq = 0;
+        function effectiveLocation(selectId, otherId) {
+            var v = $(selectId).val();
+            return v === 'other' ? ($(otherId).val() || '').trim() : (v || '');
+        }
+        function checkDistance() {
+            var origin = effectiveLocation('#pickup', '#otherPickup');
+            var dest = effectiveLocation('#destination', '#otherDestination');
+            var $note = $('#distanceNote');
+            if (!origin || !dest) {
+                $note.attr('class', 'at-bk-distance-note').text('');
+                return;
+            }
+            var seq = ++distanceSeq;
+            $note.attr('class', 'at-bk-distance-note at-bk-distance-info').text('Checking distance…');
+            $.ajax({
+                type: 'GET',
+                url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
+                data: { action: 'check_distance', origin: origin, destination: dest },
+                dataType: 'json',
+                success: function (res) {
+                    if (seq !== distanceSeq) { return; }
+                    $note.attr('class', 'at-bk-distance-note at-bk-distance-' + (res.level || 'info')).text(res.message || '');
+                },
+                error: function () {
+                    if (seq !== distanceSeq) { return; }
+                    $note.attr('class', 'at-bk-distance-note').text('');
+                }
+            });
+        }
+        function scheduleDistanceCheck() {
+            clearTimeout(distanceTimer);
+            distanceTimer = setTimeout(checkDistance, 700);
+        }
+        $('#pickup, #destination').on('change', scheduleDistanceCheck);
+        $('#otherPickup, #otherDestination').on('input', scheduleDistanceCheck);
 
         $('#cost').on('change', function () {
             if ($(this).val() === 'other') {

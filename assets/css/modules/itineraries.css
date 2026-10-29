@@ -121,3 +121,41 @@
 .at-itn-confirm-btn:disabled,
 .at-itn-reopen-btn:disabled,
 .at-itn-update-booking-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ---- Distances: one line under the field each leg belongs to (inline, never a pop-up) ---- */
+.at-itn-leg {
+  margin: 6px 0 0;
+  font-size: 13px;
+  min-height: 0;
+}
+.at-itn-leg:empty { display: none; }
+.at-itn-leg-ok   { color: #555; }
+.at-itn-leg-info { color: #777; font-style: italic; }
+.at-itn-leg-warn {
+  color: #8a5a00;
+  background: #fff3cd;
+  border-left: 4px solid #f39c12;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+.at-itn-leg-fail {
+  color: #a12622;
+  background: #fdecea;
+  border-left: 4px solid #e74c3c;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+.at-itn-stale {
+  opacity: 0.45;
+}
+.at-itn-distance-summary {
+  font-weight: 600;
+  margin: 10px 0 20px;
+}
+.at-itn-distance-summary:empty { display: none; }
+.at-itn-cost-ref {
+  margin: -10px 0 20px;
+  font-size: 13px;
+  color: #555;
+}
+.at-itn-cost-ref:empty { display: none; }

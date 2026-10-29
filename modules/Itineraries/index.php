@@ -21,13 +21,18 @@ if (!itineraryMigrationReady($pdo)) {
 $stmt = $pdo->query("
     SELECT i.*, c.name AS client_name,
            (SELECT COUNT(*) FROM itinerary_stops s WHERE s.itinerary_id = i.id) AS stop_count,
-           b.id AS linked_booking_id, b.trip_date AS linked_booking_date
+           b.id AS linked_booking_id, b.trip_date AS linked_booking_date,
+           GREATEST(
+               COALESCE((SELECT MAX(s2.distance_km) FROM itinerary_stops s2 WHERE s2.itinerary_id = i.id), 0),
+               COALESCE(i.final_leg_km, 0), COALESCE(i.return_leg_km, 0)
+           ) AS longest_leg_km
     FROM itineraries i
     JOIN contacts c ON i.contact_id = c.id
     LEFT JOIN bookings b ON b.id = i.booking_id
     ORDER BY i.trip_date ASC, i.start_time ASC
 ");
 $itineraries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$distanceLimit = getDistanceWarningKm($pdo);
 ?>
 
 <div class="page-actions">
@@ -48,6 +53,7 @@ $itineraries = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <th>Pickup</th>
                 <th>Destination</th>
                 <th>Stops</th>
+                <th>Km</th>
                 <th>Status</th>
                 <th>Booking</th>
                 <th>Actions</th>
@@ -68,6 +74,16 @@ $itineraries = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <td data-label="Pickup"><?= !empty($i['pickup']) ? e($i['pickup']) : '<em>TBC</em>' ?></td>
                 <td data-label="Destination"><?= !empty($i['destination']) ? e($i['destination']) : '<em>TBC</em>' ?></td>
                 <td data-label="Stops"><?= (int)$i['stop_count'] ?></td>
+                <td data-label="Km">
+                    <?php if ($i['total_km'] !== null): ?>
+                        <?= e(number_format((float)$i['total_km'], 1)) ?><?= (int)$i['unknown_legs'] > 0 ? '+' : '' ?>
+                        <?php if ((float)$i['longest_leg_km'] > $distanceLimit): ?>
+                            <span title="A leg is over <?= e((string)$distanceLimit) ?> km. Open the itinerary and check the addresses.">⚠️</span>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <em>—</em>
+                    <?php endif; ?>
+                </td>
                 <td data-label="Status">
                     <span class="at-itn-status at-itn-status-<?= e($i['status']) ?>"><?= $isConfirmed ? 'Confirmed' : 'Planning' ?></span>
                 </td>

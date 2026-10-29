@@ -14,12 +14,17 @@ function itineraryMigrationReady(PDO $pdo): bool
             FROM itineraries LIMIT 0
         ");
         $pdo->query("
-            SELECT id, itinerary_id, sort_order, location, arrival_time,
+            SELECT pickup_place_id, destination_place_id, return_to_pickup, final_leg_km, return_leg_km,
+                   total_km, unknown_legs, distance_calculated_at
+            FROM itineraries LIMIT 0
+        ");
+        $pdo->query("
+            SELECT id, itinerary_id, sort_order, location, place_id, distance_km, arrival_time,
                    wait_minutes, internal_notes, client_notes
             FROM itinerary_stops LIMIT 0
         ");
         $pdo->query("
-            SELECT id, booking_id, sort_order, location, arrival_time,
+            SELECT id, booking_id, sort_order, location, distance_km, arrival_time,
                    wait_minutes, internal_notes, client_notes
             FROM booking_stops LIMIT 0
         ");
@@ -61,7 +66,7 @@ function fetchItinerary(PDO $pdo, int $id): ?array
 function fetchItineraryStops(PDO $pdo, int $itineraryId): array
 {
     $stmt = $pdo->prepare("
-        SELECT id, sort_order, location, arrival_time, wait_minutes, internal_notes, client_notes
+        SELECT id, sort_order, location, place_id, distance_km, arrival_time, wait_minutes, internal_notes, client_notes
         FROM itinerary_stops
         WHERE itinerary_id = ?
         ORDER BY sort_order ASC, id ASC
@@ -146,8 +151,8 @@ function copyItineraryStopsToBooking(PDO $pdo, int $itineraryId, int $bookingId)
     $pdo->prepare("DELETE FROM booking_stops WHERE booking_id = ?")->execute([$bookingId]);
 
     $ins = $pdo->prepare("
-        INSERT INTO booking_stops (booking_id, sort_order, location, arrival_time, wait_minutes, internal_notes, client_notes)
-        SELECT ?, sort_order, location, arrival_time, wait_minutes, internal_notes, client_notes
+        INSERT INTO booking_stops (booking_id, sort_order, location, distance_km, arrival_time, wait_minutes, internal_notes, client_notes)
+        SELECT ?, sort_order, location, distance_km, arrival_time, wait_minutes, internal_notes, client_notes
         FROM itinerary_stops
         WHERE itinerary_id = ?
         ORDER BY sort_order ASC, id ASC
@@ -163,7 +168,7 @@ function copyItineraryStopsToBooking(PDO $pdo, int $itineraryId, int $bookingId)
 function linkItineraryToBooking(PDO $pdo, int $itineraryId, int $bookingId): bool
 {
     try {
-        $stmt = $pdo->prepare("SELECT id, booking_id FROM itineraries WHERE id = ? LIMIT 1");
+        $stmt = $pdo->prepare("SELECT id, booking_id, total_km, unknown_legs FROM itineraries WHERE id = ? LIMIT 1");
         $stmt->execute([$itineraryId]);
         $itn = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$itn) {
@@ -182,6 +187,13 @@ function linkItineraryToBooking(PDO $pdo, int $itineraryId, int $bookingId): boo
         $pdo->beginTransaction();
         $pdo->prepare("UPDATE itineraries SET booking_id = ? WHERE id = ?")->execute([$bookingId, $itineraryId]);
         $stops = copyItineraryStopsToBooking($pdo, $itineraryId, $bookingId);
+
+        // The booking's distance is the whole route, not the straight pickup-to-destination figure,
+        // but only when every leg is known (otherwise the booking keeps the distance it calculated itself)
+        $knownKm = itineraryKnownTotalKm($itn);
+        if ($knownKm !== null) {
+            $pdo->prepare("UPDATE bookings SET distance_km = ? WHERE id = ?")->execute([$knownKm, $bookingId]);
+        }
         $pdo->commit();
 
         logInfo('ITINERARY', 'Itinerary converted to booking', [
@@ -210,7 +222,7 @@ function fetchItineraryForBooking(PDO $pdo, int $bookingId): ?array
 {
     try {
         $stmt = $pdo->prepare("
-            SELECT i.id, i.trip_date, i.pickup, i.destination, c.name AS client_name
+            SELECT i.id, i.trip_date, i.pickup, i.destination, i.total_km, i.unknown_legs, c.name AS client_name
             FROM itineraries i
             JOIN contacts c ON i.contact_id = c.id
             WHERE i.booking_id = ?
@@ -323,10 +335,14 @@ function applyItineraryToBooking(PDO $pdo, array $itn, array $booking, array $st
     $chk->execute([$pickup]);
     $pickupIsCustom = $chk->fetchColumn() ? 0 : 1;
 
-    // Distance is recalculated (null on failure, never guessed)
-    $distanceKm = calculateTripDistanceKm($pickup, $dest);
-    if ($distanceKm !== null && !empty($booking['is_round_trip'])) {
-        $distanceKm = round($distanceKm * 2, 1);
+    // Distance: the itinerary's whole-route total when every leg is known (it already includes any return leg).
+    // Otherwise recalculated pickup to destination (null on failure, never guessed).
+    $distanceKm = itineraryKnownTotalKm($itn);
+    if ($distanceKm === null) {
+        $distanceKm = calculateTripDistanceKm($pickup, $dest);
+        if ($distanceKm !== null && !empty($booking['is_round_trip'])) {
+            $distanceKm = round($distanceKm * 2, 1);
+        }
     }
 
     $upd = $pdo->prepare("
@@ -349,15 +365,264 @@ function applyItineraryToBooking(PDO $pdo, array $itn, array $booking, array $st
     // Stops: replace the booking's copy with the itinerary's current stops
     $pdo->prepare("DELETE FROM booking_stops WHERE booking_id = ?")->execute([$bookingId]);
     $ins = $pdo->prepare("
-        INSERT INTO booking_stops (booking_id, sort_order, location, arrival_time, wait_minutes, internal_notes, client_notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO booking_stops (booking_id, sort_order, location, distance_km, arrival_time, wait_minutes, internal_notes, client_notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ");
     foreach ($stops as $i => $s) {
         $ins->execute([
-            $bookingId, $i + 1, $s['location'], $s['arrival_time'], $s['wait_minutes'],
+            $bookingId, $i + 1, $s['location'], $s['distance_km'] ?? null, $s['arrival_time'], $s['wait_minutes'],
             $s['internal_notes'], $s['client_notes'],
         ]);
     }
 
     return $newCost;
+}
+
+
+// ========== DISTANCES (step 3a) ==========
+
+/**
+ * The itinerary's total km, but only when every leg has a distance. Null otherwise: a partial total
+ * must never be handed to a booking as if it were the real route length.
+ */
+function itineraryKnownTotalKm(array $itn): ?float
+{
+    if (!isset($itn['total_km']) || $itn['total_km'] === null) {
+        return null;
+    }
+    if ((int) ($itn['unknown_legs'] ?? 0) > 0) {
+        return null;
+    }
+    return (float) $itn['total_km'];
+}
+
+/**
+ * The route as an ordered list of points: pickup, each stop, destination and, when asked, the pickup again.
+ * Each point: text, place_id (or null), kind ('pickup'|'stop'|'destination'|'return'), stop_index (stops only).
+ */
+function buildItineraryPoints(?string $pickup, ?string $pickupPlaceId, array $stops, ?string $destination, ?string $destinationPlaceId, bool $returnToPickup): array
+{
+    $points = [['text' => trim((string) $pickup), 'place_id' => $pickupPlaceId ?: null, 'kind' => 'pickup', 'stop_index' => null]];
+    foreach (array_values($stops) as $i => $s) {
+        $points[] = [
+            'text'       => trim((string) ($s['location'] ?? '')),
+            'place_id'   => !empty($s['place_id']) ? $s['place_id'] : null,
+            'kind'       => 'stop',
+            'stop_index' => $i,
+        ];
+    }
+    $points[] = ['text' => trim((string) $destination), 'place_id' => $destinationPlaceId ?: null, 'kind' => 'destination', 'stop_index' => null];
+    if ($returnToPickup && trim((string) $pickup) !== '') {
+        $points[] = ['text' => trim((string) $pickup), 'place_id' => $pickupPlaceId ?: null, 'kind' => 'return', 'stop_index' => null];
+    }
+    return $points;
+}
+
+/**
+ * Plain-language text for one leg, shown inline under the field it belongs to.
+ * level: 'ok' (distance known, within the limit), 'warn' (over the limit), 'fail' (lookup failed),
+ *        'info' (nothing to report yet, e.g. an end of the leg is still blank).
+ */
+function itineraryLegMessage(string $kind, array $leg, float $limit): array
+{
+    $km     = $leg['km'];
+    $status = $leg['status'];
+    $from   = $leg['from'];
+    $to     = $leg['to'];
+
+    if ($status === 'ok' && $km !== null) {
+        $kmText = number_format($km, 1);
+        $labels = ['destination' => 'to the destination', 'return' => 'back to the pickup', 'trip' => 'one way'];
+        $label  = $labels[$kind] ?? 'from the previous point';
+        if ($km > $limit) {
+            $text = "⚠️ $kmText km $label is over $limit km. Check the address.";
+            if (!empty($leg['from_address']) || !empty($leg['to_address'])) {
+                $text .= ' Google read the route as: ' . ($leg['from_address'] ?: $from) . ' → ' . ($leg['to_address'] ?: $to) . '.';
+            }
+            return ['level' => 'warn', 'message' => $text];
+        }
+        return ['level' => 'ok', 'message' => "📏 $kmText km $label"];
+    }
+
+    if ($status === 'not_found') {
+        if (empty($leg['origin_found']) && empty($leg['dest_found'])) {
+            return ['level' => 'fail', 'message' => "❌ Google couldn't find “{$from}” or “{$to}”. Check the addresses."];
+        }
+        $bad = empty($leg['origin_found']) ? $from : $to;
+        return ['level' => 'fail', 'message' => "❌ Google couldn't find “{$bad}”. Check the address."];
+    }
+    if ($status === 'no_route') {
+        return ['level' => 'fail', 'message' => "❌ No driving route found between “{$from}” and “{$to}”. Check the addresses."];
+    }
+    if ($status === 'error') {
+        return ['level' => 'fail', 'message' => '❌ The distance lookup failed (network or Google error). Try Recalculate.'];
+    }
+    if ($status === 'missing') {
+        return ['level' => 'info', 'message' => 'Add both ends of this leg to calculate its distance.'];
+    }
+    return ['level' => 'info', 'message' => 'Distance not calculated yet.'];
+}
+
+/**
+ * Look up every leg of a route. Gives up on the remaining legs after $budgetSeconds so a slow Google
+ * cannot run the page into the host's time limit; those legs are reported as failed lookups.
+ * Returns the payload shared by the API, the edit page and the browser script (see itineraryDistancePayload()).
+ */
+function calculateItineraryLegs(PDO $pdo, array $points, int $budgetSeconds = 20): array
+{
+    $limit    = getDistanceWarningKm($pdo);
+    $started  = microtime(true);
+    $legs     = [];
+
+    for ($i = 1; $i < count($points); $i++) {
+        $a = $points[$i - 1];
+        $b = $points[$i];
+
+        if ((microtime(true) - $started) > $budgetSeconds) {
+            $res = ['status' => 'error', 'km' => null, 'origin_found' => true, 'dest_found' => true, 'from_address' => '', 'to_address' => ''];
+        } else {
+            $res = calculateLegDistance($a['text'], $b['text'], $a['place_id'], $b['place_id']);
+        }
+
+        $leg = [
+            'kind'         => $b['kind'],
+            'stop_index'   => $b['stop_index'],
+            'from'         => $a['text'],
+            'to'           => $b['text'],
+            'km'           => $res['km'],
+            'status'       => $res['status'],
+            'origin_found' => $res['origin_found'],
+            'dest_found'   => $res['dest_found'],
+            'from_address' => $res['from_address'],
+            'to_address'   => $res['to_address'],
+        ];
+        $leg += itineraryLegMessage($b['kind'], $leg, $limit);
+        $legs[] = $leg;
+    }
+
+    return itineraryDistancePayload($legs, $limit, count(array_filter($points, fn($p) => $p['kind'] === 'return')) > 0);
+}
+
+/**
+ * Wrap a list of legs with the totals the page needs.
+ */
+function itineraryDistancePayload(array $legs, float $limit, bool $returnToPickup): array
+{
+    $total    = 0.0;
+    $known    = 0;
+    $unknown  = 0;
+    $problems = false;
+    foreach ($legs as $leg) {
+        if ($leg['km'] !== null) {
+            $total += (float) $leg['km'];
+            $known++;
+        } else {
+            $unknown++;
+        }
+        if ($leg['level'] === 'warn' || $leg['level'] === 'fail') {
+            $problems = true;
+        }
+    }
+    return [
+        'legs'             => $legs,
+        'total_km'         => $known > 0 ? round($total, 1) : null,
+        'unknown_legs'     => $unknown,
+        'limit'            => $limit,
+        'problems'         => $problems,
+        'return_to_pickup' => $returnToPickup,
+    ];
+}
+
+/**
+ * Save the result of calculateItineraryLegs() on the stops and the itinerary.
+ * $stopIds is the list of stop ids in route order.
+ */
+function storeItineraryDistances(PDO $pdo, int $itineraryId, array $stopIds, array $payload): void
+{
+    $final  = null;
+    $return = null;
+    $updStop = $pdo->prepare("UPDATE itinerary_stops SET distance_km = ? WHERE id = ?");
+    foreach ($payload['legs'] as $leg) {
+        if ($leg['kind'] === 'stop' && isset($stopIds[$leg['stop_index']])) {
+            $updStop->execute([$leg['km'], $stopIds[$leg['stop_index']]]);
+        } elseif ($leg['kind'] === 'destination') {
+            $final = $leg['km'];
+        } elseif ($leg['kind'] === 'return') {
+            $return = $leg['km'];
+        }
+    }
+
+    $pdo->prepare("
+        UPDATE itineraries
+        SET final_leg_km = ?, return_leg_km = ?, total_km = ?, unknown_legs = ?, distance_calculated_at = NOW()
+        WHERE id = ?
+    ")->execute([$final, $return, $payload['total_km'], $payload['unknown_legs'], $itineraryId]);
+}
+
+/**
+ * Recalculate and store the distances of a saved itinerary. Returns the payload, or null if it was not found.
+ * Never throws for a failed lookup: failures are part of the payload.
+ */
+function computeAndStoreItineraryDistances(PDO $pdo, int $itineraryId): ?array
+{
+    $itn = fetchItinerary($pdo, $itineraryId);
+    if (!$itn) {
+        return null;
+    }
+    $stops  = fetchItineraryStops($pdo, $itineraryId);
+    $points = buildItineraryPoints(
+        $itn['pickup'], $itn['pickup_place_id'], $stops,
+        $itn['destination'], $itn['destination_place_id'], !empty($itn['return_to_pickup'])
+    );
+    $payload = calculateItineraryLegs($pdo, $points);
+    storeItineraryDistances($pdo, $itineraryId, array_column($stops, 'id'), $payload);
+
+    logInfo('ITINERARY', 'Itinerary distances calculated', [
+        'itinerary_id' => $itineraryId,
+        'total_km'     => $payload['total_km'],
+        'unknown_legs' => $payload['unknown_legs'],
+        'problems'     => $payload['problems'],
+    ]);
+    return $payload;
+}
+
+/**
+ * The same payload built from what is already stored (no Google call), used to draw the edit page.
+ */
+function itineraryStoredDistancePayload(PDO $pdo, array $itn, array $stops): array
+{
+    $limit  = getDistanceWarningKm($pdo);
+    $points = buildItineraryPoints(
+        $itn['pickup'], $itn['pickup_place_id'] ?? null, $stops,
+        $itn['destination'], $itn['destination_place_id'] ?? null, !empty($itn['return_to_pickup'])
+    );
+
+    $storedKm = [];
+    foreach (array_values($stops) as $i => $s) {
+        $storedKm['stop' . $i] = $s['distance_km'] !== null ? (float) $s['distance_km'] : null;
+    }
+    $storedKm['destination'] = $itn['final_leg_km'] !== null ? (float) $itn['final_leg_km'] : null;
+    $storedKm['return']      = $itn['return_leg_km'] !== null ? (float) $itn['return_leg_km'] : null;
+
+    $legs = [];
+    for ($i = 1; $i < count($points); $i++) {
+        $a = $points[$i - 1];
+        $b = $points[$i];
+        $key = $b['kind'] === 'stop' ? 'stop' . $b['stop_index'] : $b['kind'];
+        $km  = $storedKm[$key] ?? null;
+
+        if ($a['text'] === '' || $b['text'] === '') {
+            $status = 'missing';
+        } else {
+            $status = $km !== null ? 'ok' : 'unknown';
+        }
+        $leg = [
+            'kind' => $b['kind'], 'stop_index' => $b['stop_index'], 'from' => $a['text'], 'to' => $b['text'],
+            'km' => $km, 'status' => $status, 'origin_found' => true, 'dest_found' => true,
+            'from_address' => '', 'to_address' => '',
+        ];
+        $leg += itineraryLegMessage($b['kind'], $leg, $limit);
+        $legs[] = $leg;
+    }
+    return itineraryDistancePayload($legs, $limit, !empty($itn['return_to_pickup']));
 }

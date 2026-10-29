@@ -39,6 +39,9 @@ try {
         case 'update_booking':
             handleUpdateBooking();
             break;
+        case 'calc_legs':
+            handleCalcLegs();
+            break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
     }
@@ -66,6 +69,8 @@ function readItineraryInput(): array
     $desc      = trim($_POST['description'] ?? '');
     $paxName   = trim($_POST['passenger_name'] ?? '');
     $paxPhone  = trim($_POST['passenger_phone'] ?? '');
+    $pickupPid = cleanPlaceId($_POST['pickup_place_id'] ?? '');
+    $destPid   = cleanPlaceId($_POST['destination_place_id'] ?? '');
 
     if (!$tripDate || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $tripDate)) {
         jsonResponse(['success' => false, 'message' => 'A valid date is required.'], 400);
@@ -78,7 +83,10 @@ function readItineraryInput(): array
         'trip_date'       => $tripDate,
         'start_time'      => ($startTime && preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $startTime)) ? $startTime : null,
         'pickup'          => $pickup !== '' ? $pickup : null,
+        'pickup_place_id' => $pickup !== '' ? $pickupPid : null,
         'destination'     => $dest !== '' ? $dest : null,
+        'destination_place_id' => $dest !== '' ? $destPid : null,
+        'return_to_pickup' => (($_POST['return_to_pickup'] ?? '') === '1') ? 1 : 0,
         'cost'            => ($cost !== '' && is_numeric($cost) && (float)$cost > 0) ? (float)$cost : null,
         'description'     => $desc !== '' ? $desc : null,
         'passenger_name'  => $paxName !== '' ? $paxName : null,
@@ -86,6 +94,15 @@ function readItineraryInput(): array
         'stops'           => readItineraryStops(),
     ];
     return $input;
+}
+
+/**
+ * A Google place id is a short string of letters, digits, dashes and underscores. Anything else is dropped.
+ */
+function cleanPlaceId(string $raw): ?string
+{
+    $raw = trim($raw);
+    return ($raw !== '' && strlen($raw) <= 255 && preg_match('/^[A-Za-z0-9_\-]+$/', $raw)) ? $raw : null;
 }
 
 /**
@@ -128,6 +145,7 @@ function readItineraryStops(): array
 
         $stops[] = [
             'location'       => $location,
+            'place_id'       => cleanPlaceId((string)($s['place_id'] ?? '')),
             'arrival_time'   => $arrival,
             'wait_minutes'   => $wait,
             'client_notes'   => $client !== '' ? $client : null,
@@ -146,14 +164,15 @@ function saveItineraryStops(PDO $pdo, int $itineraryId, array $stops): void
     $del->execute([$itineraryId]);
 
     $ins = $pdo->prepare("
-        INSERT INTO itinerary_stops (itinerary_id, sort_order, location, arrival_time, wait_minutes, client_notes, internal_notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO itinerary_stops (itinerary_id, sort_order, location, place_id, arrival_time, wait_minutes, client_notes, internal_notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ");
     foreach ($stops as $i => $s) {
         $ins->execute([
             $itineraryId,
             $i + 1,
             $s['location'],
+            $s['place_id'],
             $s['arrival_time'],
             $s['wait_minutes'],
             $s['client_notes'],
@@ -184,11 +203,13 @@ function handleAdd()
         $pdo->beginTransaction();
 
         $ins = $pdo->prepare("
-            INSERT INTO itineraries (contact_id, trip_date, start_time, pickup, destination, passenger_name, passenger_phone, cost, description, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'planning')
+            INSERT INTO itineraries (contact_id, trip_date, start_time, pickup, pickup_place_id, destination, destination_place_id,
+                                     return_to_pickup, passenger_name, passenger_phone, cost, description, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'planning')
         ");
         $ins->execute([
-            $contactId, $in['trip_date'], $in['start_time'], $in['pickup'], $in['destination'],
+            $contactId, $in['trip_date'], $in['start_time'], $in['pickup'], $in['pickup_place_id'], $in['destination'],
+            $in['destination_place_id'], $in['return_to_pickup'],
             $in['passenger_name'], $in['passenger_phone'], $in['cost'], $in['description'],
         ]);
         $itineraryId = (int) $pdo->lastInsertId();
@@ -205,7 +226,12 @@ function handleAdd()
             'stops'        => count($in['stops']),
         ]);
 
-        jsonResponse(['success' => true, 'message' => 'Itinerary saved.', 'itinerary_id' => $itineraryId]);
+        jsonResponse([
+            'success'      => true,
+            'message'      => 'Itinerary saved.',
+            'itinerary_id' => $itineraryId,
+            'distance'     => calculateDistancesAfterSave($pdo, $itineraryId),
+        ]);
 
     } catch (PDOException $e) {
         if ($pdo->inTransaction()) {
@@ -241,12 +267,13 @@ function handleUpdate()
 
         $upd = $pdo->prepare("
             UPDATE itineraries
-            SET trip_date = ?, start_time = ?, pickup = ?, destination = ?,
-                passenger_name = ?, passenger_phone = ?, cost = ?, description = ?
+            SET trip_date = ?, start_time = ?, pickup = ?, pickup_place_id = ?, destination = ?, destination_place_id = ?,
+                return_to_pickup = ?, passenger_name = ?, passenger_phone = ?, cost = ?, description = ?
             WHERE id = ?
         ");
         $upd->execute([
-            $in['trip_date'], $in['start_time'], $in['pickup'], $in['destination'],
+            $in['trip_date'], $in['start_time'], $in['pickup'], $in['pickup_place_id'], $in['destination'],
+            $in['destination_place_id'], $in['return_to_pickup'],
             $in['passenger_name'], $in['passenger_phone'], $in['cost'], $in['description'], $id,
         ]);
 
@@ -259,7 +286,11 @@ function handleUpdate()
             'stops'        => count($in['stops']),
         ]);
 
-        jsonResponse(['success' => true, 'message' => 'Itinerary updated.']);
+        jsonResponse([
+            'success'  => true,
+            'message'  => 'Itinerary updated.',
+            'distance' => calculateDistancesAfterSave($pdo, $id),
+        ]);
 
     } catch (PDOException $e) {
         if ($pdo->inTransaction()) {
@@ -448,4 +479,45 @@ function handleUpdateBooking()
         logError('ITINERARY', 'Failed to update booking from itinerary', ['error' => $e->getMessage(), 'id' => $id]);
         jsonResponse(['success' => false, 'message' => 'Failed to update the booking.'], 500);
     }
+}
+
+// ========== DISTANCES ==========
+
+/**
+ * After a save: look up every leg and store the result. A failed lookup never undoes the save,
+ * it just comes back as a problem the page shows inline.
+ */
+function calculateDistancesAfterSave(PDO $pdo, int $itineraryId): ?array
+{
+    try {
+        return computeAndStoreItineraryDistances($pdo, $itineraryId);
+    } catch (Exception $e) {
+        logError('ITINERARY', 'Distance calculation failed after save', [
+            'error'        => $e->getMessage(),
+            'itinerary_id' => $itineraryId,
+        ]);
+        return null;
+    }
+}
+
+/**
+ * Recalculate button: look up the legs of what is currently in the form, without saving anything.
+ * Saving always recalculates on the server, so numbers sent from the browser are never trusted.
+ */
+function handleCalcLegs()
+{
+    global $pdo;
+
+    $pickup = trim($_POST['pickup'] ?? '');
+    $dest   = trim($_POST['destination'] ?? '');
+    $stops  = readItineraryStops();
+
+    $points = buildItineraryPoints(
+        $pickup !== '' ? $pickup : null, $pickup !== '' ? cleanPlaceId($_POST['pickup_place_id'] ?? '') : null,
+        $stops,
+        $dest !== '' ? $dest : null, $dest !== '' ? cleanPlaceId($_POST['destination_place_id'] ?? '') : null,
+        ($_POST['return_to_pickup'] ?? '') === '1'
+    );
+
+    jsonResponse(['success' => true, 'distance' => calculateItineraryLegs($pdo, $points)]);
 }

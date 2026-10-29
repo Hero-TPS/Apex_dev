@@ -46,6 +46,9 @@ try {
         case 'linked_itinerary':
             handleLinkedItinerary();
             break;
+        case 'check_distance':
+            handleCheckDistance();
+            break;
         case 'update_gate_code':
             handleUpdateGateCode();
             break;
@@ -622,11 +625,21 @@ function handleUpdateBooking()
 
             $description_to_save = $description_input;
 
-            // Recalculate trip distance in case pickup/destination changed
+            // Recalculate trip distance in case pickup/destination changed.
+            // A booking made from an itinerary keeps the itinerary's whole-route distance instead: that figure
+            // is owned by the itinerary (and refreshed by its Update Booking button).
             $is_round_trip = isset($_REQUEST['round_trip']) ? 1 : 0;
-            $distance_km = calculateTripDistanceKm($original_pickup, $original_destination);
-            if ($distance_km !== null && $is_round_trip) {
-                $distance_km = round($distance_km * 2, 1);
+            $linkedItinerary = fetchItineraryForBooking($pdo, $booking_id);
+            if ($linkedItinerary && itineraryKnownTotalKm($linkedItinerary) !== null) {
+                $keepDistance = $pdo->prepare("SELECT distance_km FROM bookings WHERE id = ?");
+                $keepDistance->execute([$booking_id]);
+                $distance_km = $keepDistance->fetchColumn();
+                $distance_km = ($distance_km === false || $distance_km === null) ? null : (float) $distance_km;
+            } else {
+                $distance_km = calculateTripDistanceKm($original_pickup, $original_destination);
+                if ($distance_km !== null && $is_round_trip) {
+                    $distance_km = round($distance_km * 2, 1);
+                }
             }
 
             $sql = "UPDATE bookings SET 
@@ -716,6 +729,38 @@ function handleUpdateBooking()
         ]);
         jsonResponse(['success' => false, 'message' => 'Update failed.'], 400);
     }
+}
+
+/**
+ * Live distance check for the booking forms: how far is it from pickup to destination, and did Google
+ * understand both addresses? Returns ready-made inline text (never a pop-up) plus the raw numbers.
+ */
+function handleCheckDistance()
+{
+    global $pdo;
+
+    $origin = trim($_GET['origin'] ?? '');
+    $dest   = trim($_GET['destination'] ?? '');
+    if ($origin === '' || $dest === '') {
+        jsonResponse(['success' => true, 'level' => 'info', 'message' => '', 'km' => null]);
+    }
+
+    $limit = getDistanceWarningKm($pdo);
+    $res   = calculateLegDistance($origin, $dest);
+    $leg   = [
+        'km' => $res['km'], 'status' => $res['status'], 'from' => $origin, 'to' => $dest,
+        'origin_found' => $res['origin_found'], 'dest_found' => $res['dest_found'],
+        'from_address' => $res['from_address'], 'to_address' => $res['to_address'],
+    ];
+    $text = itineraryLegMessage('trip', $leg, $limit);
+
+    jsonResponse([
+        'success' => true,
+        'level'   => $text['level'],
+        'message' => $text['message'],
+        'km'      => $res['km'],
+        'limit'   => $limit,
+    ]);
 }
 
 /**
