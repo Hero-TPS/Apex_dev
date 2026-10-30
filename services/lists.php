@@ -21,6 +21,16 @@ $current_durations = fetchColumn($pdo, 'durations', 'hours', 'hours ASC');
 $uber_reasons = fetchColumn($pdo, 'uber_cost_reasons', 'reason', 'reason ASC');
 
 $destinations_text = implode("\n", $current_destinations);
+
+// Which presets have been checked against Google yet (needs the address-checking migration)
+$unverifiedDestinations = [];
+$verifyColumnsReady = true;
+try {
+    $unverifiedDestinations = $pdo->query("SELECT name FROM destinations WHERE place_id IS NULL AND (latitude IS NULL OR longitude IS NULL) ORDER BY name ASC")
+        ->fetchAll(PDO::FETCH_COLUMN);
+} catch (PDOException $ex) {
+    $verifyColumnsReady = false;
+}
 $costs_text = implode("\n", $current_costs);
 $durations_text = implode("\n", $current_durations);
 $uber_reasons_text = implode("\n", $uber_reasons);
@@ -35,6 +45,17 @@ $uber_reasons_text = implode("\n", $uber_reasons);
             <textarea id="destinations" name="destinations" rows="8"
                 placeholder="Enter one destination per line"><?php echo htmlspecialchars($destinations_text); ?></textarea>
             <small>Used in booking pickup/destination dropdowns</small>
+            <?php if (!$verifyColumnsReady): ?>
+                <small>Address checking is not set up yet. Run the latest update in Services &rarr; Database Updates.</small>
+            <?php elseif (empty($current_destinations)): ?>
+            <?php elseif (empty($unverifiedDestinations)): ?>
+                <br><small>&#9989; All destinations have a checked location.</small>
+            <?php else: ?>
+                <details>
+                    <summary><small><?= count($unverifiedDestinations) ?> of <?= count($current_destinations) ?> destinations not checked against Google yet</small></summary>
+                    <small><?= htmlspecialchars(implode(' · ', $unverifiedDestinations)) ?></small>
+                </details>
+            <?php endif; ?>
         </div>
 
         <div class="form-group">

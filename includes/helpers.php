@@ -268,6 +268,18 @@ const SYSTEM_VARIABLES = [
         'default' => 200,
         'hint' => 'A single trip or itinerary leg longer than this shows a warning, because it usually means Google placed an address in the wrong town.',
     ],
+    'village_match_text' => [
+        'label' => 'Estate Name in Client Addresses',
+        'type' => 'text',
+        'default' => 'Helderberg Village',
+        'hint' => 'Client addresses containing this text (and with no GPS pin) are located at the estate gate below, because Google cannot find individual house numbers.',
+    ],
+    'village_gate_address' => [
+        'label' => 'Estate Main Gate Address',
+        'type' => 'text',
+        'default' => '59 Bakkerskloof Rd, Helderview, Somerset West',
+        'hint' => 'Used for distances only. The client\'s own address stays on bookings and itineraries.',
+    ],
     'rent' => ['label' => 'Rent (R/week)', 'type' => 'number', 'default' => 0],
     'debt_payment' => ['label' => 'Debt Payment (R/week)', 'type' => 'number', 'default' => 0],
     'living_expenses_daily' => ['label' => 'Living Expenses (R/day)', 'type' => 'number', 'default' => 120],
@@ -655,6 +667,78 @@ function getDistanceWarningKm(PDO $pdo): float
 {
     $limit = (float) getSystemVariable($pdo, 'distance_warning_km');
     return $limit > 0 ? $limit : 200.0;
+}
+
+/**
+ * Where to measure from for a client's home address. Checked in this order:
+ *  1. the client's GPS pin (pickup_lat / pickup_lng)
+ *  2. the estate main gate, when there is no pin and the address contains the estate name
+ *     (Services -> System Variables: village_match_text, village_gate_address)
+ *  3. the client's saved Google place id (address_place_id)
+ *  4. the address as typed
+ * Used by: address checking (distance helpers, bookings, itineraries)
+ *
+ * @param array $client  Keys used: address, pickup_lat, pickup_lng, address_place_id (all optional)
+ * @return array{query: string, place_id: ?string, source: string}  source is pin, village, place_id, address or none
+ */
+function resolveClientLocation(PDO $pdo, array $client): array
+{
+    $lat = $client['pickup_lat'] ?? null;
+    $lng = $client['pickup_lng'] ?? null;
+    if ($lat !== null && $lat !== '' && $lng !== null && $lng !== '' && ((float) $lat !== 0.0 || (float) $lng !== 0.0)) {
+        return ['query' => ((float) $lat) . ',' . ((float) $lng), 'place_id' => null, 'source' => 'pin'];
+    }
+
+    $address = trim((string) ($client['address'] ?? ''));
+
+    $match = trim((string) getSystemVariable($pdo, 'village_match_text'));
+    $gate  = trim((string) getSystemVariable($pdo, 'village_gate_address'));
+    if ($match !== '' && $gate !== '' && $address !== '' && stripos($address, $match) !== false) {
+        return ['query' => $gate, 'place_id' => null, 'source' => 'village'];
+    }
+
+    $placeId = trim((string) ($client['address_place_id'] ?? ''));
+    if ($address !== '' && $placeId !== '') {
+        return ['query' => $address, 'place_id' => $placeId, 'source' => 'place_id'];
+    }
+
+    if ($address !== '') {
+        return ['query' => $address, 'place_id' => null, 'source' => 'address'];
+    }
+    return ['query' => '', 'place_id' => null, 'source' => 'none'];
+}
+
+/**
+ * Where to measure to/from for a destination name. A preset destination with a stored point or place id
+ * uses it; anything else (an "Other" destination, or a preset not yet checked) is used as typed.
+ * Used by: address checking (distance helpers, bookings, itineraries)
+ *
+ * @return array{query: string, place_id: ?string, source: string}  source is point, place_id, address or none
+ */
+function resolveDestinationLocation(PDO $pdo, string $name): array
+{
+    $name = trim($name);
+    if ($name === '') {
+        return ['query' => '', 'place_id' => null, 'source' => 'none'];
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT place_id, latitude, longitude FROM destinations WHERE name = ? LIMIT 1");
+        $stmt->execute([$name]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (PDOException $ex) {
+        $row = false;   // columns not added yet (migration not run): behave as before
+    }
+
+    if ($row) {
+        if ($row['latitude'] !== null && $row['longitude'] !== null && $row['latitude'] !== '' && $row['longitude'] !== '') {
+            return ['query' => ((float) $row['latitude']) . ',' . ((float) $row['longitude']), 'place_id' => null, 'source' => 'point'];
+        }
+        if (!empty($row['place_id'])) {
+            return ['query' => $name, 'place_id' => $row['place_id'], 'source' => 'place_id'];
+        }
+    }
+    return ['query' => $name, 'place_id' => null, 'source' => 'address'];
 }
 
 // --- OUTPUT HELPERS ---
