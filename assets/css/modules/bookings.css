@@ -237,15 +237,34 @@
   font-size: 0.85em;
 }
 
-/* Bookings index (desktop): the 10-column table is wider than the
-   900px .container (overflow: hidden), which clipped the Actions column.
-   Scroll the table sideways instead. Scoped via .at-bookings-index-table to the Bookings
-   index only, since .bookings-table is shared with other pages. Mobile
-   (<= 768px) uses the stacked card layout in styles.css and is untouched. */
+/* Bookings index (desktop): the 10-column table has to fit inside the
+   900px .container (overflow: hidden), otherwise the Actions column is clipped.
+   Sideways scrolling doesn't work here: with "Show All" the table is hundreds of
+   rows tall, so its scrollbar sits far below the screen and the Actions buttons
+   are unreachable. Instead let long unbroken values (addresses, names) wrap inside
+   their cell and tighten the padding, so the table always fits.
+   Scoped via .at-bookings-index-table to the Bookings index only, since
+   .bookings-table is shared with other pages. Mobile (<= 768px) uses the stacked
+   card layout in styles.css and is untouched. */
 @media screen and (min-width: 769px) {
-    .bookings-table.at-bookings-index-table {
-        display: block;
-        overflow-x: auto;
+    .bookings-table.at-bookings-index-table th,
+    .bookings-table.at-bookings-index-table td {
+        padding: 10px 6px;
+    }
+    /* Free-text columns (Client, Pickup, Destination) and the prebooking
+       description may wrap anywhere so one long value can't widen the table */
+    .bookings-table.at-bookings-index-table td:nth-child(3),
+    .bookings-table.at-bookings-index-table td:nth-child(4),
+    .bookings-table.at-bookings-index-table td:nth-child(5),
+    .bookings-table.at-bookings-index-table .prebooking-description {
+        overflow-wrap: anywhere;
+    }
+    /* Short value columns (Date, Cost, Distance, Calc. Cost) stay on one line */
+    .bookings-table.at-bookings-index-table td:nth-child(1),
+    .bookings-table.at-bookings-index-table td:nth-child(6),
+    .bookings-table.at-bookings-index-table td:nth-child(7),
+    .bookings-table.at-bookings-index-table td:nth-child(8) {
+        white-space: nowrap;
     }
 }
 
