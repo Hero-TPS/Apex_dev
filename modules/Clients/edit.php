@@ -42,7 +42,14 @@ if ($client_id <= 0) {
     </div>
     <div class="form-group">
         <label for="address">Address</label>
+        <input type="text" id="addressFind" class="at-addr-find" autocomplete="off" placeholder="🔍 Search Google to fill in the address (optional)">
         <textarea id="address" name="address" placeholder="Full address for pickup location"></textarea>
+        <input type="hidden" id="address_place_id" name="address_place_id" value="">
+        <input type="hidden" id="address_verified" name="address_verified" value="0">
+        <div class="at-addr-row">
+            <button type="button" class="page-action-btn edit" id="addressCheckBtn">📍 Check address</button>
+            <div id="addressStatus" class="at-addr-note"></div>
+        </div>
     </div>
     <div class="form-group">
         <label for="additionalInfo">Additional Information</label>
@@ -77,9 +84,19 @@ if ($client_id <= 0) {
 
 <div id="result"></div>
 
+<script src="<?= BASE_URL ?>/assets/js/address-check.js"></script>
 <script>
 $(document).ready(function() {
     var clientId = <?= $client_id ?>;
+    AtAddress.init('<?= e(GOOGLE_MAPS_BROWSER_KEY) ?>');
+    var addressField = AtAddress.bindClientAddress({
+        address: '#address', find: '#addressFind', placeId: '#address_place_id', verified: '#address_verified',
+        status: '#addressStatus', checkBtn: '#addressCheckBtn',
+        checkUrl: '<?= BASE_URL ?>/modules/Clients/api/index.php?action=check_address',
+        villageMatch: '<?= e(getSystemVariable($pdo, 'village_match_text')) ?>',
+        hasPin: false
+    });
+
     var loading = $('#loading');
     var form = $('#editClientForm');
     var result = $('#result');
@@ -103,8 +120,11 @@ $(document).ready(function() {
                 $('#phone').val(client.phone || '');
                 $('#email').val(client.email || '');
                 $('#address').val(client.address || '');
+                $('#address_place_id').val(client.address_place_id || '');
+                $('#address_verified').val(client.address_verified_at ? '1' : '0');
                 $('#additionalInfo').val(client.additional_info || '');
                 $('#language').prop('checked', client.language === 'af');
+                addressField.setPin(!!(client.pickup_lat && client.pickup_lng));
                 if (client.pickup_lat && client.pickup_lng) {
                     $('#gps-status').html('<span class="success-message">✅ GPS Marked</span>');
                 } else {

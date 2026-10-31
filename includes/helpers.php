@@ -741,6 +741,88 @@ function resolveDestinationLocation(PDO $pdo, string $name): array
     return ['query' => $name, 'place_id' => null, 'source' => 'address'];
 }
 
+/**
+ * True once the address-checking columns exist on contacts (migration 20261030_1600). Pages that save them
+ * use this so they keep working, without the new fields, until the migration has been run.
+ */
+function addressColumnsReady(PDO $pdo): bool
+{
+    static $ready = null;
+    if ($ready === null) {
+        try {
+            $pdo->query("SELECT address_place_id, address_verified_at FROM contacts LIMIT 0");
+            $ready = true;
+        } catch (PDOException $ex) {
+            $ready = false;
+        }
+    }
+    return $ready;
+}
+
+/**
+ * A Google place id as sent by the browser: letters, digits, dash and underscore only. Anything else is dropped.
+ */
+function cleanGooglePlaceId($value): ?string
+{
+    $value = trim((string) $value);
+    return preg_match('/^[A-Za-z0-9_-]{10,255}$/', $value) ? $value : null;
+}
+
+/**
+ * Ask Google whether it can find an address, and whether it sits somewhere believable.
+ * The address is measured against the estate main gate (a point in the Helderberg), so an address that Google
+ * puts in the wrong town shows up as a long distance. Used by: Clients (address check), Services (destination check).
+ *
+ * @return array{success: bool, level: string, message: string, matched: string, km: ?float}
+ *         level is ok (found and plausible), warn (found but suspicious, or no answer) or fail (not found)
+ */
+function checkAddressWithGoogle(PDO $pdo, string $address): array
+{
+    $address = trim($address);
+    if ($address === '') {
+        return ['success' => true, 'level' => 'warn', 'message' => 'Enter an address first.', 'matched' => '', 'km' => null];
+    }
+
+    $reference = trim((string) getSystemVariable($pdo, 'village_gate_address'));
+    if ($reference === '') {
+        $reference = 'Somerset West, South Africa';
+    }
+
+    $res = calculateLegDistance($address, $reference, null, null, 10);
+
+    if ($res['status'] === 'ok') {
+        $matched = $res['from_address'];
+        $km      = (float) $res['km'];
+        if ($km > getDistanceWarningKm($pdo)) {
+            return [
+                'success' => true, 'level' => 'warn', 'matched' => $matched, 'km' => $km,
+                'message' => "Google placed this at {$matched}, {$km} km from the estate main gate. That is a long way, so check that it is the right town.",
+            ];
+        }
+        return [
+            'success' => true, 'level' => 'ok', 'matched' => $matched, 'km' => $km,
+            'message' => "Google found: {$matched} ({$km} km from the estate main gate).",
+        ];
+    }
+
+    if ($res['status'] === 'not_found' || !$res['origin_found']) {
+        return [
+            'success' => true, 'level' => 'fail', 'matched' => '', 'km' => null,
+            'message' => 'Google could not find this address. Try the search box, add the suburb or town, or set a GPS pin.',
+        ];
+    }
+
+    if ($res['status'] === 'no_route') {
+        $matched = $res['from_address'];
+        return [
+            'success' => true, 'level' => 'warn', 'matched' => $matched, 'km' => null,
+            'message' => "Google found {$matched} but could not work out a driving route to it. Check the address.",
+        ];
+    }
+
+    return ['success' => true, 'level' => 'warn', 'message' => 'The check could not be completed (Google did not answer). Please try again.', 'matched' => '', 'km' => null];
+}
+
 // --- OUTPUT HELPERS ---
 
 /**

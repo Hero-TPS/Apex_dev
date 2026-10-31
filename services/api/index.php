@@ -285,6 +285,39 @@ try {
         $response['message'] = "✅ Driver updated.";
         logInfo('MAINTENANCE', 'Driver updated', ['id' => $id, 'name' => $name]);
 
+    } elseif ($action === 'check_destination' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Ask Google whether it can find this text. Nothing is saved here.
+        $response = checkAddressWithGoogle($pdo, trim($_POST['text'] ?? ''));
+
+    } elseif ($action === 'save_destination_location' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Mark a preset destination as checked. With a Google place (place_id, lat, lng) it also stores the exact point.
+        $name = trim($_POST['name'] ?? '');
+        if ($name === '') {
+            throw new Exception('No destination given.');
+        }
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM destinations WHERE name = ?");
+        $stmt->execute([$name]);
+        if ((int) $stmt->fetchColumn() === 0) {
+            throw new Exception('That destination is not in the list. Save the list first.');
+        }
+
+        $placeId = cleanGooglePlaceId($_POST['place_id'] ?? '');
+        $lat = (isset($_POST['lat']) && is_numeric($_POST['lat'])) ? (float) $_POST['lat'] : null;
+        $lng = (isset($_POST['lng']) && is_numeric($_POST['lng'])) ? (float) $_POST['lng'] : null;
+        if ($lat !== null && ($lat < -90 || $lat > 90)) { $lat = null; }
+        if ($lng !== null && ($lng < -180 || $lng > 180)) { $lng = null; }
+
+        if ($placeId !== null) {
+            $pdo->prepare("UPDATE destinations SET place_id = ?, latitude = ?, longitude = ?, verified_at = NOW() WHERE name = ?")
+                ->execute([$placeId, $lat, $lng, $name]);
+        } else {
+            $pdo->prepare("UPDATE destinations SET verified_at = NOW() WHERE name = ?")->execute([$name]);
+        }
+
+        $response['success'] = true;
+        $response['message'] = '✅ Saved.';
+        logInfo('MAINTENANCE', 'Destination location checked', ['name' => $name, 'place_id' => $placeId]);
+
     } elseif ($action === 'delete_driver' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = intval($_POST['id'] ?? 0);
 

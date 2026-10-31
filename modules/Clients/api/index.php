@@ -31,6 +31,9 @@ try {
         case 'delete':
             handleDeleteClient();
             break;
+        case 'check_address':
+            handleCheckAddress();
+            break;
         case 'save_pickup_gps':
             handleSavePickupGps();
             break;
@@ -321,6 +324,7 @@ function handleAddClient()
         $stmt->execute([$name, $phone, $email, $address, $additional_info, $language]);
         
         $clientId = $pdo->lastInsertId();
+        saveClientAddressCheck($pdo, (int) $clientId, $address);
         
         logInfo('CLIENT', 'Client created', [
             'client_id' => $clientId,
@@ -346,6 +350,41 @@ function handleAddClient()
         ]);
         jsonResponse(['success' => false, 'message' => 'Failed to add client'], 500);
     }
+}
+
+/**
+ * Keeps the Google check result with the address it was made for. The form sends address_place_id (set when a
+ * Google suggestion was picked) and address_verified (1 when the address was checked); an address that was typed
+ * or changed after a check arrives with both empty, so a changed address never keeps an old check.
+ * Does nothing until the address-checking migration has been run.
+ */
+function saveClientAddressCheck(PDO $pdo, int $clientId, string $address): void
+{
+    if (!addressColumnsReady($pdo)) {
+        return;
+    }
+    $placeId  = ($address !== '') ? cleanGooglePlaceId($_POST['address_place_id'] ?? '') : null;
+    $verified = ($address !== '') && (($_POST['address_verified'] ?? '') === '1' || $placeId !== null);
+
+    try {
+        $pdo->prepare("UPDATE contacts SET address_place_id = ?, address_verified_at = " . ($verified ? 'NOW()' : 'NULL') . " WHERE id = ?")
+            ->execute([$placeId, $clientId]);
+    } catch (PDOException $e) {
+        // The client itself is already saved; only the address check could not be stored
+        logError('CLIENT', 'Failed to save address check', ['error' => $e->getMessage(), 'client_id' => $clientId]);
+    }
+}
+
+/**
+ * Check a typed address with Google. POST: address. Returns level ok, warn or fail with a message to show beside the field.
+ */
+function handleCheckAddress()
+{
+    global $pdo;
+    $address = trim($_POST['address'] ?? '');
+    $result  = checkAddressWithGoogle($pdo, $address);
+    logInfo('CLIENT', 'Address checked', ['level' => $result['level'], 'address' => $address]);
+    jsonResponse($result);
 }
 
 function handleUpdateClient()
@@ -391,6 +430,7 @@ function handleUpdateClient()
         $updated = $stmt->execute([$name, $phone, $email, $address, $additional_info, $language, $id]);
         
         if ($updated) {
+            saveClientAddressCheck($pdo, $id, $address);
             logInfo('CLIENT', 'Client updated', [
                 'client_id' => $id,
                 'name' => $name
