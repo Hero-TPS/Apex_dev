@@ -104,9 +104,9 @@ cd ~/Projects/Apex-Transit/Apex_dev && git fetch origin && git switch feature/it
 Update the branch.
 
 ```bash
-git merge origin/main
+git merge --no-edit origin/main
 ```
-Merge main in. (Use `git merge --ff-only origin/main` if the branch has no commits of its own: it refuses instead of making a merge commit.)
+Merge main in. `--no-edit` skips the nano message editor. (Use `git merge --ff-only origin/main` if the branch has no commits of its own: it refuses instead of making a merge commit.)
 
 ```bash
 git push
@@ -123,9 +123,9 @@ git status
 Lists the conflicted files. Open them, keep both sides, delete the `<<<<<<<`, `=======`, `>>>>>>>` lines. Then:
 
 ```bash
-git add FILE && git commit
+git add FILE && git commit --no-edit
 ```
-Repeat `git add` for each fixed file, then one `git commit`, then `git push`.
+Repeat `git add` for each fixed file, then one `git commit --no-edit`, then `git push`.
 
 Give up and start over (nothing is lost):
 
@@ -153,6 +153,10 @@ Use `main` or `feature/itinerary`.
 git stash pop
 ```
 Brings the files back on the right branch.
+
+Stuck in the nano editor (a screen with `GNU nano` at the top):
+
+Press `Ctrl+X`. If it asks to save, press `Y`, then `Enter`. The default message is fine.
 
 Pushed from the wrong branch: stop and ask before doing anything else.
 
