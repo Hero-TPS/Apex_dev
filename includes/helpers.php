@@ -769,12 +769,12 @@ function cleanGooglePlaceId($value): ?string
 }
 
 /**
- * Ask Google whether it can find an address, and whether it sits somewhere believable.
- * The address is measured against the estate main gate (a point in the Helderberg), so an address that Google
- * puts in the wrong town shows up as a long distance. Used by: Clients (address check), Services (destination check).
+ * Ask Google whether it can find an address, and return the address Google matched it to.
+ * No reference point and no distance is involved: the address is simply checked against itself.
+ * Used by: Clients (Check address), Services (destination check).
  *
- * @return array{success: bool, level: string, message: string, matched: string, km: ?float}
- *         level is ok (found and plausible), warn (found but suspicious, or no answer) or fail (not found)
+ * @return array{success: bool, level: string, message: string, matched: string, km: null}
+ *         level is ok (Google found it), fail (not found) or warn (no answer from Google)
  */
 function checkAddressWithGoogle(PDO $pdo, string $address): array
 {
@@ -783,25 +783,12 @@ function checkAddressWithGoogle(PDO $pdo, string $address): array
         return ['success' => true, 'level' => 'warn', 'message' => 'Enter an address first.', 'matched' => '', 'km' => null];
     }
 
-    $reference = trim((string) getSystemVariable($pdo, 'village_gate_address'));
-    if ($reference === '') {
-        $reference = 'Somerset West, South Africa';
-    }
+    $res = requestDistanceMatrix($address, $address, 10);
 
-    $res = calculateLegDistance($address, $reference, null, null, 10);
-
-    if ($res['status'] === 'ok') {
-        $matched = $res['from_address'];
-        $km      = (float) $res['km'];
-        if ($km > getDistanceWarningKm($pdo)) {
-            return [
-                'success' => true, 'level' => 'warn', 'matched' => $matched, 'km' => $km,
-                'message' => "Google placed this at {$matched}, {$km} km from the estate main gate. That is a long way, so check that it is the right town.",
-            ];
-        }
+    if ($res['origin_found'] && $res['from_address'] !== '' && $res['status'] !== 'not_found') {
         return [
-            'success' => true, 'level' => 'ok', 'matched' => $matched, 'km' => $km,
-            'message' => "Google found: {$matched} ({$km} km from the estate main gate).",
+            'success' => true, 'level' => 'ok', 'matched' => $res['from_address'], 'km' => null,
+            'message' => "Google found: {$res['from_address']}.",
         ];
     }
 
@@ -809,14 +796,6 @@ function checkAddressWithGoogle(PDO $pdo, string $address): array
         return [
             'success' => true, 'level' => 'fail', 'matched' => '', 'km' => null,
             'message' => 'Google could not find this address. Try the search box, add the suburb or town, or set a GPS pin.',
-        ];
-    }
-
-    if ($res['status'] === 'no_route') {
-        $matched = $res['from_address'];
-        return [
-            'success' => true, 'level' => 'warn', 'matched' => $matched, 'km' => null,
-            'message' => "Google found {$matched} but could not work out a driving route to it. Check the address.",
         ];
     }
 
