@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once __DIR__ . '/helpers.php';
+require_once ROOT_DIR . '/modules/Itineraries/helpers.php';
 $breadcrumb = buildBreadcrumb([
     ['label' => 'Bookings', 'url' => BASE_URL . '/modules/Bookings/'],
     ['label' => 'Add Booking'],
@@ -52,6 +53,16 @@ $prefill_passenger_name  = isset($_GET['passenger_name'])  ? htmlspecialchars(ur
 $prefill_passenger_phone = isset($_GET['passenger_phone']) ? htmlspecialchars(urldecode($_GET['passenger_phone'])) : '';
 $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_prebooking'] : 0;
 $from_itinerary       = isset($_GET['from_itinerary']) ? (int) $_GET['from_itinerary'] : 0;
+
+// A booking made from an itinerary shows the itinerary's calculated cost under Cost (display only)
+$itnCostReference = '';
+if ($from_itinerary > 0) {
+    try {
+        $itnCostReference = itineraryCostReferenceText($pdo, fetchItinerary($pdo, $from_itinerary));
+    } catch (PDOException $ex) {
+        $itnCostReference = '';
+    }
+}
 
 // Pickup person section opens by itself when Book Again / prebooking passes one in
 $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone !== '');
@@ -182,6 +193,9 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
                 <?php endforeach; ?>
                 <option value="other">Other (specify below)</option>
             </select>
+            <?php if ($itnCostReference !== ''): ?>
+                <div class="at-itn-cost-ref"><?= e($itnCostReference) ?></div>
+            <?php endif; ?>
         </div>
 
         <div class="form-group hidden" id="otherCostGroup">

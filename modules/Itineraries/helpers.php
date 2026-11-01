@@ -144,6 +144,27 @@ function itineraryConvertUrl(array $itn): string
     return BASE_URL . '/modules/Bookings/add.php?' . $params;
 }
 
+/**
+ * One line shown under the Cost field on the booking forms: what the itinerary's total distance works out to
+ * at the system rate per km. Display only, the booking's cost is entered by hand.
+ * Not shown on the booking view page, which the client may see.
+ * Needs an array with total_km (and optionally unknown_legs). Returns '' when there is nothing to show.
+ */
+function itineraryCostReferenceText(PDO $pdo, ?array $itn): string
+{
+    if (!$itn || !isset($itn['total_km']) || $itn['total_km'] === null) {
+        return '';
+    }
+    $rate = (float) getSystemVariable($pdo, 'rate_per_km');
+    if ($rate <= 0) {
+        return '';
+    }
+    $km      = (float) $itn['total_km'];
+    $partial = ((int) ($itn['unknown_legs'] ?? 0)) > 0 ? ' (partial: some legs have no distance)' : '';
+    return 'Itinerary #' . (int) $itn['id'] . ' calculated cost: R' . number_format($km * $rate, 2)
+        . ' = ' . number_format($km, 1) . ' km × R' . number_format($rate, 2) . '/km' . $partial . '. Display only.';
+}
+
 // ========== BOOKING SIDE ==========
 // Used by modules/Bookings/api/index.php, which also runs on databases where the itinerary tables do not exist yet,
 // so these functions never throw: they log and carry on.

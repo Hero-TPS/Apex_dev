@@ -7,6 +7,7 @@ require_once ROOT_DIR . '/includes/logger.php';
 require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once __DIR__ . '/helpers.php';
+require_once ROOT_DIR . '/modules/Itineraries/helpers.php';
 
 $page_title = 'Edit Booking';
 $page_subtitle = 'Edit Booking';
@@ -189,6 +190,13 @@ if (isset($_GET['id'])) {
                     <?php endforeach; ?>
                     <option value="other" <?php if (!$isStandardCost) echo 'selected'; ?>>Other</option>
                 </select>
+                <?php
+                    // A booking that has an itinerary shows the itinerary's calculated cost (display only)
+                    $itnCostReference = itineraryCostReferenceText($pdo, fetchItineraryForBooking($pdo, (int) $booking['id']));
+                ?>
+                <?php if ($itnCostReference !== ''): ?>
+                    <div class="at-itn-cost-ref"><?= e($itnCostReference) ?></div>
+                <?php endif; ?>
             </div>
             <div class="form-group <?php if ($isStandardCost) echo 'hidden'; ?>" id="otherCostGroup">
                 <label for="otherCost">Specify Other Cost</label>

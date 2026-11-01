@@ -152,6 +152,12 @@ if (isset($_GET['id'])) {
         <div class="detail-item">
             <strong>Cost:</strong> R <?= number_format((float) $booking['cost'], 2) ?>
         </div>
+        <?php $viewItinerary = fetchItineraryForBooking($pdo, (int) $booking['id']); ?>
+        <?php if ($viewItinerary): ?>
+        <div class="detail-item">
+            <span class="at-itn-status at-itn-status-booked">🗺️ Has itinerary</span>
+        </div>
+        <?php endif; ?>
         <?php
             $viewRatePerKm = (float) getSystemVariable($pdo, 'rate_per_km');
             $viewCalculatedCost = ($booking['distance_km'] !== null && $viewRatePerKm > 0)
@@ -463,7 +469,6 @@ if (isset($_GET['id'])) {
                     <?= $booking['distance_km'] !== null ? number_format((float) $booking['distance_km'], 1) . ' km' : '—' ?>
                     <?= !empty($booking['is_round_trip']) ? ' (round trip)' : '' ?>
                     <?php
-                        $viewItinerary = fetchItineraryForBooking($pdo, (int) $booking['id']);
                         $viewDistanceLimit = getDistanceWarningKm($pdo);
                         $viewOneWayKm = $booking['distance_km'] !== null
                             ? (float) $booking['distance_km'] / (!empty($booking['is_round_trip']) ? 2 : 1)
