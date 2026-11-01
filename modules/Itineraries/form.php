@@ -363,7 +363,7 @@ $(document).ready(function () {
     function updateChain(passive) {
         if (!lastLegs || !legsFresh) { return; }
         var depart = toMin($('#start_time').val());     // when the trip leaves the pickup
-        var $rows  = $list.children('.at-itn-stop');
+        var $rows  = $('#stopsList').children('.at-itn-stop');
 
         $rows.each(function (i) {
             var $r     = $(this);
@@ -400,6 +400,8 @@ $(document).ready(function () {
             } else if (!fixed) {
                 if (arrival !== null && drive !== null) {
                     setTimeNote($note, 'info', 'Follows ' + prevLabel + ' (drive about ' + drive + ' min). Pick a time to fix it.');
+                } else if (suggested !== null) {
+                    setTimeNote($note, 'info', 'Suggested arrival: ' + fmtMin(suggested) + ' (drive about ' + drive + ' min). It is filled in when you change the route or the times.');
                 } else if (prevDepart === null) {
                     setTimeNote($note, 'info', i === 0 ? 'Choose the start time at the top to get a suggested arrival.' : 'Set the previous stop\'s time to get a suggested arrival.');
                 } else {
@@ -424,12 +426,12 @@ $(document).ready(function () {
         }
     }
 
-    $list.on('change', '.at-itn-arrival', function () {
+    $('#stopsList').on('change', '.at-itn-arrival', function () {
         // Choosing a time by hand fixes it; choosing "TBC" hands the stop back to the automatic times
         $(this).closest('.at-itn-stop').find('.at-itn-fixed').prop('checked', $(this).val() !== '');
         updateChain(false);
     });
-    $list.on('change', '.at-itn-fixed, .at-itn-wait', function () { updateChain(false); });
+    $('#stopsList').on('change', '.at-itn-fixed, .at-itn-wait', function () { updateChain(false); });
     $('#start_time').on('change', function () { updateChain(false); });
 
     // ---------- Live distances while editing ----------
@@ -737,9 +739,10 @@ $(document).ready(function () {
         var clients        = <?= json_encode($contacts ?: [], JSON_UNESCAPED_UNICODE) ?>;
         var selected       = -1;
 
-        contactSearch.on('input focus', function () {
+        contactSearch.on('input focus', function (e) {
             var query = $(this).val().trim().toLowerCase();
-            contactIdInput.val('');
+            // Typing changes who is meant, so the choice is cleared; just clicking back into the box keeps it
+            if (e.type === 'input') { contactIdInput.val(''); }
             if (query.length === 0) { suggestionsBox.hide(); return; }
             var filtered = clients.filter(function (c) {
                 return (c.name && c.name.toLowerCase().includes(query)) ||
