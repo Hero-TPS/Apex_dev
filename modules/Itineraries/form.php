@@ -31,6 +31,7 @@ $jsStops = array_map(fn($s) => [
     'location'       => $s['location'] ?? '',
     'place_id'       => $s['place_id'] ?? '',
     'arrival_time'   => !empty($s['arrival_time']) ? substr($s['arrival_time'], 0, 5) : '',
+    'time_fixed'     => $s['time_fixed'] ?? null,
     'wait_minutes'   => $s['wait_minutes'] ?? '',
     'client_notes'   => $s['client_notes'] ?? '',
     'internal_notes' => $s['internal_notes'] ?? '',
@@ -144,6 +145,7 @@ $jsStops = array_map(fn($s) => [
                    value="<?= $showOtherDest ? e($savedDest) : '' ?>">
         </div>
         <div class="at-itn-leg" id="legFinal"></div>
+        <div class="at-itn-time-note" id="etaNote"></div>
         <div class="at-itn-distance-summary" id="distanceSummary"></div>
 
         <div class="form-group">
@@ -249,6 +251,7 @@ $(document).ready(function () {
                 el.value = (nm && addr.indexOf(nm) !== 0) ? (addr ? nm + ', ' + addr : nm) : (addr || el.value);
                 el.dataset.placeId = p.place_id;
                 markDistanceStale();
+                scheduleLive();
             });
         } catch (err) {
             placesUnavailable('Autocomplete error');
@@ -277,8 +280,10 @@ $(document).ready(function () {
         $el.attr('class', 'at-itn-leg' + (leg ? ' at-itn-leg-' + leg.level : '')).text(leg ? leg.message : '');
     }
 
-    function renderDistance(d) {
+    function renderDistance(d, passive) {
         if (!d) { return; }
+        lastLegs = d;
+        legsFresh = true;
         var $rows = $list.children('.at-itn-stop');
         $rows.find('.at-itn-leg').attr('class', 'at-itn-leg').text('');
         setLeg($('#legFinal'), null);
@@ -308,6 +313,7 @@ $(document).ready(function () {
             $sum.attr('class', 'at-itn-distance-summary').text('');
             $ref.attr('class', 'at-itn-cost-ref').text('');
         }
+        updateChain(!!passive);
     }
 
     // Return to pickup: the trip ends at the pickup, so the destination is hidden and not needed
@@ -325,6 +331,200 @@ $(document).ready(function () {
         }
     }
     $('#returnToPickup').on('change', syncReturnTick);
+
+    // ---------- Arrival times that follow the route ----------
+    // Each stop is either "fixed" (a time chosen by hand, never changed by the page) or automatic (it follows the
+    // previous stop: previous arrival + its wait + the drive). Automatic times are rounded up to the next quarter hour.
+    var lastLegs  = null;     // the legs (with drive minutes) behind what is on screen
+    var legsFresh = false;    // false while the route has changed and its legs are being looked up again
+
+    function toMin(hhmm) {
+        var m = /^(\d{2}):(\d{2})/.exec(hhmm || '');
+        return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
+    }
+    function fmtMin(n) {
+        return ('0' + Math.floor(n / 60)).slice(-2) + ':' + ('0' + (n % 60)).slice(-2);
+    }
+    function legMinutes(kind, idx) {
+        if (!lastLegs) { return null; }
+        for (var i = 0; i < lastLegs.legs.length; i++) {
+            var l = lastLegs.legs[i];
+            if (l.kind === kind && (kind !== 'stop' || l.stop_index === idx)) {
+                return (l.minutes === undefined || l.minutes === null) ? null : parseInt(l.minutes, 10);
+            }
+        }
+        return null;
+    }
+    function setTimeNote($el, level, text) {
+        $el.attr('class', 'at-itn-time-note' + (level ? ' at-itn-time-' + level : '')).text(text || '');
+    }
+
+    // passive = only show notes and warnings, do not touch any automatic time (used when the page opens and after a save)
+    function updateChain(passive) {
+        if (!lastLegs || !legsFresh) { return; }
+        var depart = toMin($('#start_time').val());     // when the trip leaves the pickup
+        var $rows  = $list.children('.at-itn-stop');
+
+        $rows.each(function (i) {
+            var $r     = $(this);
+            var $note  = $r.find('.at-itn-time-note');
+            var $sel   = $r.find('.at-itn-arrival');
+            var fixed  = $r.find('.at-itn-fixed').is(':checked');
+            var drive  = legMinutes('stop', i);
+            var prevLabel = i === 0 ? 'the pickup time' : 'stop ' + i;
+            var prevDepart = depart;
+            var suggested = (prevDepart !== null && drive !== null) ? Math.ceil((prevDepart + drive) / 15) * 15 : null;
+            if (suggested !== null && suggested >= 1440) { suggested = null; }
+            var arrival;
+
+            if (fixed || passive) {
+                arrival = toMin($sel.val());
+            } else if (suggested !== null) {
+                $sel.val(fmtMin(suggested));
+                arrival = suggested;
+            } else {
+                $sel.val('');
+                arrival = null;
+            }
+
+            if (fixed && arrival !== null && prevDepart !== null) {
+                if (arrival < prevDepart) {
+                    setTimeNote($note, 'warn', '⚠️ This is before ' + prevLabel + ' is done (leaves ' + fmtMin(prevDepart % 1440) + ').');
+                } else if (drive !== null && arrival < prevDepart + drive) {
+                    setTimeNote($note, 'warn', '⚠️ Tight: the drive takes about ' + drive + ' min, so the earliest arrival is ' + (suggested !== null ? fmtMin(suggested) : fmtMin((prevDepart + drive) % 1440)) + '.');
+                } else if (suggested !== null) {
+                    setTimeNote($note, 'info', 'Earliest arrival: ' + fmtMin(suggested) + ' (drive about ' + drive + ' min).');
+                } else {
+                    setTimeNote($note, '', '');
+                }
+            } else if (!fixed) {
+                if (arrival !== null && drive !== null) {
+                    setTimeNote($note, 'info', 'Follows ' + prevLabel + ' (drive about ' + drive + ' min). Pick a time to fix it.');
+                } else if (prevDepart === null) {
+                    setTimeNote($note, 'info', i === 0 ? 'Choose the start time at the top to get a suggested arrival.' : 'Set the previous stop\'s time to get a suggested arrival.');
+                } else {
+                    setTimeNote($note, 'info', 'No drive time yet for this leg.');
+                }
+            } else {
+                setTimeNote($note, '', '');
+            }
+
+            var wait = parseInt($r.find('.at-itn-wait').val(), 10) || 0;
+            depart = arrival === null ? null : arrival + wait;
+        });
+
+        // Estimated arrival at the end of the trip
+        var endKind = $('#returnToPickup').is(':checked') ? 'return' : 'destination';
+        var endDrive = legMinutes(endKind, null);
+        if (depart !== null && endDrive !== null) {
+            var eta = depart + endDrive;
+            setTimeNote($('#etaNote'), 'info', '🕒 Estimated arrival ' + (endKind === 'return' ? 'back at the pickup' : 'at the destination') + ': ' + fmtMin(eta % 1440) + (eta >= 1440 ? ' (after midnight)' : ''));
+        } else {
+            setTimeNote($('#etaNote'), '', '');
+        }
+    }
+
+    $list.on('change', '.at-itn-arrival', function () {
+        // Choosing a time by hand fixes it; choosing "TBC" hands the stop back to the automatic times
+        $(this).closest('.at-itn-stop').find('.at-itn-fixed').prop('checked', $(this).val() !== '');
+        updateChain(false);
+    });
+    $list.on('change', '.at-itn-fixed, .at-itn-wait', function () { updateChain(false); });
+    $('#start_time').on('change', function () { updateChain(false); });
+
+    // ---------- Live distances while editing ----------
+    // Each leg is looked up once (by its two ends) and remembered, so moving a stop only asks Google about legs that are new.
+    var legCache = {};
+    var liveTimer = null;
+    var liveSeq = 0;
+
+    function scheduleLive() {
+        legsFresh = false;
+        clearTimeout(liveTimer);
+        liveTimer = setTimeout(liveCalc, 700);
+    }
+
+    function routePoints() {
+        var d = currentRouteData();
+        var pts = [{ text: d.pickup, pid: d.pickup_place_id, kind: 'pickup', idx: null }];
+        readStops().forEach(function (s, i) { pts.push({ text: s.location, pid: s.place_id, kind: 'stop', idx: i }); });
+        if (d.return_to_pickup === '1' && d.pickup !== '') {
+            pts.push({ text: d.pickup, pid: d.pickup_place_id, kind: 'return', idx: null });
+        } else {
+            pts.push({ text: d.destination, pid: d.destination_place_id, kind: 'destination', idx: null });
+        }
+        return pts;
+    }
+
+    function liveCalc() {
+        var seq = ++liveSeq;
+        var contact = currentRouteData().contact_id;
+        var pts = routePoints();
+        var legs = [];
+        var todo = [];
+
+        for (var i = 1; i < pts.length; i++) {
+            var a = pts[i - 1], b = pts[i];
+            if (!a.text || !b.text) {
+                legs[i - 1] = { kind: b.kind, stop_index: b.idx, from: a.text, to: b.text, km: null, minutes: null, status: 'missing', level: 'info',
+                                message: 'Add both ends of this leg to calculate its distance.' };
+                continue;
+            }
+            var key = [a.text, a.pid, b.text, b.pid, b.kind, contact].join('|');
+            if (legCache[key]) {
+                legs[i - 1] = $.extend({}, legCache[key], { kind: b.kind, stop_index: b.idx });
+            } else {
+                todo.push({ at: i - 1, key: key, a: a, b: b });
+            }
+        }
+
+        function finish() {
+            if (seq !== liveSeq) { return; }
+            var total = 0, known = 0, unknown = 0, problems = false;
+            legs.forEach(function (l) {
+                if (l.km !== null && l.km !== undefined) { total += parseFloat(l.km); known++; } else { unknown++; }
+                if (l.level === 'warn' || l.level === 'fail') { problems = true; }
+            });
+            renderDistance({
+                legs: legs, total_km: known > 0 ? Math.round(total * 10) / 10 : null,
+                unknown_legs: unknown, problems: problems, return_to_pickup: $('#returnToPickup').is(':checked')
+            }, false);
+        }
+
+        function next() {
+            if (seq !== liveSeq) { return; }
+            if (!todo.length) { finish(); return; }
+            var t = todo.shift();
+            $.ajax({
+                type: 'POST',
+                url: '<?= BASE_URL ?>/modules/Itineraries/api/index.php?action=calc_leg',
+                data: { from: t.a.text, from_place_id: t.a.pid, to: t.b.text, to_place_id: t.b.pid, kind: t.b.kind, contact_id: contact },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.success && res.leg) {
+                        legCache[t.key] = res.leg;
+                        legs[t.at] = $.extend({}, res.leg, { stop_index: t.b.idx });
+                    } else {
+                        legs[t.at] = failedLeg(t);
+                    }
+                    next();
+                },
+                error: function () { legs[t.at] = failedLeg(t); next(); }
+            });
+        }
+
+        function failedLeg(t) {
+            return { kind: t.b.kind, stop_index: t.b.idx, from: t.a.text, to: t.b.text, km: null, minutes: null, status: 'error', level: 'fail',
+                     message: '❌ The distance lookup failed (network or Google error). Try Recalculate.' };
+        }
+
+        if (todo.length) {
+            $('#distanceSummary').attr('class', 'at-itn-distance-summary').text('📏 Calculating distances…');
+        }
+        next();
+    }
+
+    $('#itineraryForm').on('change', '#otherPickup, #otherDestination, #pickup, #destination, #returnToPickup, .at-itn-location', scheduleLive);
 
     // Anything that can change a distance dims the old figures until they are recalculated
     function markDistanceStale() {
@@ -366,9 +566,11 @@ $(document).ready(function () {
                     '<div class="at-itn-leg"></div>' +
                 '</div>' +
                 '<div class="form-row">' +
-                    '<div class="form-group"><label>Arrival Time <small>(optional)</small></label><select class="at-itn-arrival"></select></div>' +
+                    '<div class="form-group"><label>Arrival Time <small>(optional)</small></label><select class="at-itn-arrival"></select>' +
+                        '<label class="at-itn-fixed-label"><input type="checkbox" class="at-itn-fixed"> 🔒 This time is fixed</label></div>' +
                     '<div class="form-group"><label>Wait <small>(optional, hh:mm)</small></label><select class="at-itn-wait"></select></div>' +
                 '</div>' +
+                '<div class="at-itn-time-note"></div>' +
                 '<div class="form-group"><label>Note for the client <small>(optional)</small></label><textarea class="at-itn-client-notes"></textarea></div>' +
                 '<div class="form-group"><label>Internal note <small>(optional, not for the client)</small></label><textarea class="at-itn-internal-notes"></textarea></div>' +
             '</div>'
@@ -392,6 +594,11 @@ $(document).ready(function () {
         if (stop.place_id) { locEl.dataset.placeId = stop.place_id; }
         attachPlaces(locEl);
         $arrival.val(stop.arrival_time || '');
+        // Stops saved before the fixed tick existed count as fixed when they have a time, so nothing planned changes
+        var fixedNow = (stop.time_fixed === null || stop.time_fixed === undefined || stop.time_fixed === '')
+            ? !!stop.arrival_time
+            : String(stop.time_fixed) === '1';
+        $row.find('.at-itn-fixed').prop('checked', fixedNow);
         // Older saves could hold any number of minutes: round to the nearest 15, capped at 5 hours
         var waitMin = parseInt(stop.wait_minutes, 10);
         waitMin = isNaN(waitMin) || waitMin <= 0 ? '' : Math.min(300, Math.round(waitMin / 15) * 15);
@@ -409,6 +616,7 @@ $(document).ready(function () {
                 location:       $r.find('.at-itn-location').val().trim(),
                 place_id:       $r.find('.at-itn-location')[0].dataset.placeId || '',
                 arrival_time:   $r.find('.at-itn-arrival').val(),
+                time_fixed:     $r.find('.at-itn-fixed').is(':checked') ? '1' : '0',
                 wait_minutes:   $r.find('.at-itn-wait').val(),
                 client_notes:   $r.find('.at-itn-client-notes').val().trim(),
                 internal_notes: $r.find('.at-itn-internal-notes').val().trim()
@@ -440,6 +648,7 @@ $(document).ready(function () {
         $list.append($row);
         refreshStopChrome();
         markDistanceStale();
+        scheduleLive();
         $row.find('.at-itn-location').focus();
     });
 
@@ -450,6 +659,7 @@ $(document).ready(function () {
         $row.remove();
         refreshStopChrome();
         markDistanceStale();
+        scheduleLive();
     });
 
     $list.on('click', '.at-itn-up', function () {
@@ -457,6 +667,7 @@ $(document).ready(function () {
         $row.prev('.at-itn-stop').before($row);
         refreshStopChrome();
         markDistanceStale();
+        scheduleLive();
     });
 
     $list.on('click', '.at-itn-down', function () {
@@ -464,6 +675,7 @@ $(document).ready(function () {
         $row.next('.at-itn-stop').after($row);
         refreshStopChrome();
         markDistanceStale();
+        scheduleLive();
     });
 
     renderStops(initial);
@@ -480,7 +692,7 @@ $(document).ready(function () {
             }
         } catch (err) { /* storage can be blocked; the stored figures are shown instead */ }
     }
-    renderDistance(shownDistance);
+    renderDistance(shownDistance, true);
 
     // ---------- Recalculate (preview of what is in the form, nothing is saved) ----------
     $('#recalcBtn').on('click', function () {
@@ -503,7 +715,7 @@ $(document).ready(function () {
             dataType: 'json',
             success: function (res) {
                 if (res.success) {
-                    renderDistance(res.distance);
+                    renderDistance(res.distance, false);
                 } else {
                     $('#result').html('<div class="error-message">❌ ' + escapeHtml(res.message || 'Could not calculate.') + '</div>');
                 }
@@ -663,7 +875,7 @@ $(document).ready(function () {
                     }
 
                     $(document).trigger('itn:saved');
-                    if (d) { renderDistance(d); }
+                    if (d) { renderDistance(d, true); }
 
                     if (d && !d.problems) {
                         $('#result').html('<div class="success-message">✅ ' + escapeHtml(res.message) + '</div>');

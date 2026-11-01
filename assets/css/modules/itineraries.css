@@ -158,3 +158,23 @@
   color: #555;
 }
 .at-itn-cost-ref:empty { display: none; }
+
+/* ---- Arrival times: fixed tick and notes under each stop ---- */
+.at-itn-fixed-label {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: normal;
+}
+.at-itn-fixed-label input {
+  width: auto;
+  margin-right: 4px;
+}
+.at-itn-time-note {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #555;
+}
+.at-itn-time-note:empty { display: none; }
+.at-itn-time-warn { color: #8a6d0b; font-weight: 600; }

@@ -15,12 +15,13 @@ function itineraryMigrationReady(PDO $pdo): bool
         ");
         $pdo->query("
             SELECT pickup_place_id, destination_place_id, return_to_pickup, final_leg_km, return_leg_km,
-                   total_km, unknown_legs, distance_calculated_at, edited_at, booking_synced_at
+                   total_km, unknown_legs, distance_calculated_at, edited_at, booking_synced_at,
+                   final_leg_minutes, return_leg_minutes
             FROM itineraries LIMIT 0
         ");
         $pdo->query("
             SELECT id, itinerary_id, sort_order, location, place_id, distance_km, arrival_time,
-                   wait_minutes, internal_notes, client_notes
+                   wait_minutes, internal_notes, client_notes, drive_minutes, time_fixed
             FROM itinerary_stops LIMIT 0
         ");
         $pdo->query("
@@ -66,7 +67,7 @@ function fetchItinerary(PDO $pdo, int $id): ?array
 function fetchItineraryStops(PDO $pdo, int $itineraryId): array
 {
     $stmt = $pdo->prepare("
-        SELECT id, sort_order, location, place_id, distance_km, arrival_time, wait_minutes, internal_notes, client_notes
+        SELECT id, sort_order, location, place_id, distance_km, drive_minutes, arrival_time, time_fixed, wait_minutes, internal_notes, client_notes
         FROM itinerary_stops
         WHERE itinerary_id = ?
         ORDER BY sort_order ASC, id ASC
@@ -507,33 +508,43 @@ function calculateItineraryLegs(PDO $pdo, array $points, int $budgetSeconds = 20
     $legs     = [];
 
     for ($i = 1; $i < count($points); $i++) {
-        $a = $points[$i - 1];
-        $b = $points[$i];
-
-        if ((microtime(true) - $started) > $budgetSeconds) {
-            $res = ['status' => 'error', 'km' => null, 'origin_found' => true, 'dest_found' => true, 'from_address' => '', 'to_address' => ''];
-        } else {
-            // Where each end really is: the client's pin or estate gate rule, a saved destination's checked point, or the typed text
-            $res = calculateResolvedLegDistance($pdo, $client, $a['text'], $b['text'], $a['place_id'], $b['place_id']);
-        }
-
-        $leg = [
-            'kind'         => $b['kind'],
-            'stop_index'   => $b['stop_index'],
-            'from'         => $a['text'],
-            'to'           => $b['text'],
-            'km'           => $res['km'],
-            'status'       => $res['status'],
-            'origin_found' => $res['origin_found'],
-            'dest_found'   => $res['dest_found'],
-            'from_address' => $res['from_address'],
-            'to_address'   => $res['to_address'],
-        ];
-        $leg += itineraryLegMessage($b['kind'], $leg, $limit);
-        $legs[] = $leg;
+        $outOfTime = (microtime(true) - $started) > $budgetSeconds;
+        $legs[] = calculateItineraryLeg($pdo, $client, $points[$i - 1], $points[$i], $limit, $outOfTime);
     }
 
     return itineraryDistancePayload($legs, $limit, count(array_filter($points, fn($p) => $p['kind'] === 'return')) > 0);
+}
+
+/**
+ * One leg of the route: distance, drive time and the plain-language message for it.
+ * $a and $b are route points (text, place_id, and for $b: kind, stop_index). When $giveUp is true no lookup is made
+ * and the leg is reported as a failed lookup (used when the time budget for a whole route has run out).
+ * Used by: calculateItineraryLegs(), the calc_leg action (live distances while editing).
+ */
+function calculateItineraryLeg(PDO $pdo, ?array $client, array $a, array $b, float $limit, bool $giveUp = false): array
+{
+    if ($giveUp) {
+        $res = ['status' => 'error', 'km' => null, 'minutes' => null, 'origin_found' => true, 'dest_found' => true, 'from_address' => '', 'to_address' => ''];
+    } else {
+        // Where each end really is: the client's pin or estate gate rule, a saved destination's checked point, or the typed text
+        $res = calculateResolvedLegDistance($pdo, $client, $a['text'], $b['text'], $a['place_id'] ?? null, $b['place_id'] ?? null);
+    }
+
+    $leg = [
+        'kind'         => $b['kind'],
+        'stop_index'   => $b['stop_index'] ?? null,
+        'from'         => $a['text'],
+        'to'           => $b['text'],
+        'km'           => $res['km'],
+        'minutes'      => $res['minutes'] ?? null,
+        'status'       => $res['status'],
+        'origin_found' => $res['origin_found'],
+        'dest_found'   => $res['dest_found'],
+        'from_address' => $res['from_address'],
+        'to_address'   => $res['to_address'],
+    ];
+    $leg += itineraryLegMessage($b['kind'], $leg, $limit);
+    return $leg;
 }
 
 /**
@@ -574,22 +585,27 @@ function storeItineraryDistances(PDO $pdo, int $itineraryId, array $stopIds, arr
 {
     $final  = null;
     $return = null;
-    $updStop = $pdo->prepare("UPDATE itinerary_stops SET distance_km = ? WHERE id = ?");
+    $finalMin  = null;
+    $returnMin = null;
+    $updStop = $pdo->prepare("UPDATE itinerary_stops SET distance_km = ?, drive_minutes = ? WHERE id = ?");
     foreach ($payload['legs'] as $leg) {
         if ($leg['kind'] === 'stop' && isset($stopIds[$leg['stop_index']])) {
-            $updStop->execute([$leg['km'], $stopIds[$leg['stop_index']]]);
+            $updStop->execute([$leg['km'], $leg['minutes'] ?? null, $stopIds[$leg['stop_index']]]);
         } elseif ($leg['kind'] === 'destination') {
-            $final = $leg['km'];
+            $final    = $leg['km'];
+            $finalMin = $leg['minutes'] ?? null;
         } elseif ($leg['kind'] === 'return') {
-            $return = $leg['km'];
+            $return    = $leg['km'];
+            $returnMin = $leg['minutes'] ?? null;
         }
     }
 
     $pdo->prepare("
         UPDATE itineraries
-        SET final_leg_km = ?, return_leg_km = ?, total_km = ?, unknown_legs = ?, distance_calculated_at = NOW()
+        SET final_leg_km = ?, return_leg_km = ?, final_leg_minutes = ?, return_leg_minutes = ?,
+            total_km = ?, unknown_legs = ?, distance_calculated_at = NOW()
         WHERE id = ?
-    ")->execute([$final, $return, $payload['total_km'], $payload['unknown_legs'], $itineraryId]);
+    ")->execute([$final, $return, $finalMin, $returnMin, $payload['total_km'], $payload['unknown_legs'], $itineraryId]);
 }
 
 /**
@@ -630,12 +646,16 @@ function itineraryStoredDistancePayload(PDO $pdo, array $itn, array $stops): arr
         $itn['destination'], $itn['destination_place_id'] ?? null, !empty($itn['return_to_pickup'])
     );
 
-    $storedKm = [];
+    $storedKm  = [];
+    $storedMin = [];
     foreach (array_values($stops) as $i => $s) {
-        $storedKm['stop' . $i] = $s['distance_km'] !== null ? (float) $s['distance_km'] : null;
+        $storedKm['stop' . $i]  = $s['distance_km'] !== null ? (float) $s['distance_km'] : null;
+        $storedMin['stop' . $i] = isset($s['drive_minutes']) && $s['drive_minutes'] !== null ? (int) $s['drive_minutes'] : null;
     }
     $storedKm['destination'] = $itn['final_leg_km'] !== null ? (float) $itn['final_leg_km'] : null;
     $storedKm['return']      = $itn['return_leg_km'] !== null ? (float) $itn['return_leg_km'] : null;
+    $storedMin['destination'] = isset($itn['final_leg_minutes']) && $itn['final_leg_minutes'] !== null ? (int) $itn['final_leg_minutes'] : null;
+    $storedMin['return']      = isset($itn['return_leg_minutes']) && $itn['return_leg_minutes'] !== null ? (int) $itn['return_leg_minutes'] : null;
 
     $legs = [];
     for ($i = 1; $i < count($points); $i++) {
@@ -651,7 +671,7 @@ function itineraryStoredDistancePayload(PDO $pdo, array $itn, array $stops): arr
         }
         $leg = [
             'kind' => $b['kind'], 'stop_index' => $b['stop_index'], 'from' => $a['text'], 'to' => $b['text'],
-            'km' => $km, 'status' => $status, 'origin_found' => true, 'dest_found' => true,
+            'km' => $km, 'minutes' => $storedMin[$key] ?? null, 'status' => $status, 'origin_found' => true, 'dest_found' => true,
             'from_address' => '', 'to_address' => '',
         ];
         $leg += itineraryLegMessage($b['kind'], $leg, $limit);

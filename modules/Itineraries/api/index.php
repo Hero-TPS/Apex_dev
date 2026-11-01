@@ -37,6 +37,9 @@ try {
         case 'calc_legs':
             handleCalcLegs();
             break;
+        case 'calc_leg':
+            handleCalcLeg();
+            break;
         default:
             jsonResponse(['success' => false, 'message' => 'Unknown action'], 400);
     }
@@ -151,6 +154,9 @@ function readItineraryStops(): array
             jsonResponse(['success' => false, 'message' => "The wait time of stop $n must be in 15-minute steps, up to 5 hours."], 400);
         }
 
+        // "This time is fixed": 1 = set by hand, 0 = follows the previous stop
+        $timeFixed = (($s['time_fixed'] ?? '') === '1' || ($s['time_fixed'] ?? '') === 1 || ($s['time_fixed'] ?? '') === true) ? 1 : 0;
+
         $client   = trim((string)($s['client_notes'] ?? ''));
         $internal = trim((string)($s['internal_notes'] ?? ''));
 
@@ -159,6 +165,7 @@ function readItineraryStops(): array
             'place_id'       => cleanPlaceId((string)($s['place_id'] ?? '')),
             'arrival_time'   => $arrival,
             'wait_minutes'   => $wait,
+            'time_fixed'     => $timeFixed,
             'client_notes'   => $client !== '' ? $client : null,
             'internal_notes' => $internal !== '' ? $internal : null,
         ];
@@ -175,8 +182,8 @@ function saveItineraryStops(PDO $pdo, int $itineraryId, array $stops): void
     $del->execute([$itineraryId]);
 
     $ins = $pdo->prepare("
-        INSERT INTO itinerary_stops (itinerary_id, sort_order, location, place_id, arrival_time, wait_minutes, client_notes, internal_notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO itinerary_stops (itinerary_id, sort_order, location, place_id, arrival_time, time_fixed, wait_minutes, client_notes, internal_notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     foreach ($stops as $i => $s) {
         $ins->execute([
@@ -185,6 +192,7 @@ function saveItineraryStops(PDO $pdo, int $itineraryId, array $stops): void
             $s['location'],
             $s['place_id'],
             $s['arrival_time'],
+            $s['time_fixed'],
             $s['wait_minutes'],
             $s['client_notes'],
             $s['internal_notes'],
@@ -464,4 +472,32 @@ function handleCalcLegs()
     );
 
     jsonResponse(['success' => true, 'distance' => calculateItineraryLegs($pdo, $points, 20, fetchClientForLocation($pdo, intval($_POST['contact_id'] ?? 0)))]);
+}
+
+/**
+ * One leg, looked up on its own, so the edit page can show distances and drive times as the route is changed
+ * without recalculating the whole route each time. Nothing is saved. POST: from, to, from_place_id, to_place_id,
+ * kind (stop, destination or return), contact_id.
+ */
+function handleCalcLeg()
+{
+    global $pdo;
+
+    $kind = $_POST['kind'] ?? 'stop';
+    if (!in_array($kind, ['stop', 'destination', 'return'], true)) {
+        $kind = 'stop';
+    }
+    $from = trim($_POST['from'] ?? '');
+    $to   = trim($_POST['to'] ?? '');
+    if (mb_strlen($from) > 255 || mb_strlen($to) > 255) {
+        jsonResponse(['success' => false, 'message' => 'An address is too long.'], 400);
+    }
+
+    $a = ['text' => $from, 'place_id' => cleanPlaceId($_POST['from_place_id'] ?? '')];
+    $b = ['text' => $to, 'place_id' => cleanPlaceId($_POST['to_place_id'] ?? ''), 'kind' => $kind, 'stop_index' => null];
+
+    $client = fetchClientForLocation($pdo, intval($_POST['contact_id'] ?? 0));
+    $leg    = calculateItineraryLeg($pdo, $client, $a, $b, getDistanceWarningKm($pdo));
+
+    jsonResponse(['success' => true, 'leg' => $leg]);
 }

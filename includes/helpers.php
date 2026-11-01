@@ -567,7 +567,7 @@ function calculateBookingFee(float $cost, float $pct): float
 function requestDistanceMatrix(string $origin, string $destination, int $timeout = 8): array
 {
     $result = [
-        'status' => 'error', 'km' => null,
+        'status' => 'error', 'km' => null, 'minutes' => null,
         'origin_found' => true, 'dest_found' => true,
         'from_address' => '', 'to_address' => '',
     ];
@@ -604,6 +604,7 @@ function requestDistanceMatrix(string $origin, string $destination, int $timeout
     if (($element['status'] ?? '') === 'OK') {
         $result['status'] = 'ok';
         $result['km']     = round($element['distance']['value'] / 1000, 1);
+        $result['minutes'] = isset($element['duration']['value']) ? (int) round($element['duration']['value'] / 60) : null;
     } elseif (($element['status'] ?? '') === 'NOT_FOUND') {
         $result['status'] = 'not_found';
     } elseif (($element['status'] ?? '') === 'ZERO_RESULTS') {
@@ -642,7 +643,7 @@ function calculateLegDistance(string $origin, string $destination, ?string $orig
     $destination = trim($destination);
     if ($origin === '' || $destination === '') {
         return [
-            'status' => 'missing', 'km' => null, 'origin_found' => true, 'dest_found' => true,
+            'status' => 'missing', 'km' => null, 'minutes' => null, 'origin_found' => true, 'dest_found' => true,
             'from_address' => '', 'to_address' => '',
         ];
     }
