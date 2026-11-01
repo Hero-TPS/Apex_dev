@@ -74,6 +74,15 @@ function readItineraryInput(): array
         jsonResponse(['success' => false, 'message' => 'One of the fields is too long.'], 400);
     }
 
+    // A trip that returns to the pickup ends at the pickup, so the destination is the pickup. Otherwise a destination is needed.
+    $returnToPickup = (($_POST['return_to_pickup'] ?? '') === '1');
+    if ($returnToPickup) {
+        $dest    = $pickup;
+        $destPid = $pickupPid;
+    } elseif ($dest === '') {
+        jsonResponse(['success' => false, 'message' => 'A destination is required, unless the trip returns to the pickup.'], 400);
+    }
+
     $input = [
         'trip_date'       => $tripDate,
         'start_time'      => ($startTime && preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $startTime)) ? $startTime : null,
@@ -81,7 +90,7 @@ function readItineraryInput(): array
         'pickup_place_id' => $pickup !== '' ? $pickupPid : null,
         'destination'     => $dest !== '' ? $dest : null,
         'destination_place_id' => $dest !== '' ? $destPid : null,
-        'return_to_pickup' => (($_POST['return_to_pickup'] ?? '') === '1') ? 1 : 0,
+        'return_to_pickup' => $returnToPickup ? 1 : 0,
         'cost'            => ($cost !== '' && is_numeric($cost) && (float)$cost > 0) ? (float)$cost : null,
         'description'     => $desc !== '' ? $desc : null,
         'passenger_name'  => $paxName !== '' ? $paxName : null,

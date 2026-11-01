@@ -405,7 +405,8 @@ function itineraryKnownTotalKm(array $itn): ?float
 }
 
 /**
- * The route as an ordered list of points: pickup, each stop, destination and, when asked, the pickup again.
+ * The route as an ordered list of points: pickup, each stop, then either the destination or, when the trip
+ * returns to the pickup, the pickup again as the end of the trip.
  * Each point: text, place_id (or null), kind ('pickup'|'stop'|'destination'|'return'), stop_index (stops only).
  */
 function buildItineraryPoints(?string $pickup, ?string $pickupPlaceId, array $stops, ?string $destination, ?string $destinationPlaceId, bool $returnToPickup): array
@@ -419,9 +420,11 @@ function buildItineraryPoints(?string $pickup, ?string $pickupPlaceId, array $st
             'stop_index' => $i,
         ];
     }
-    $points[] = ['text' => trim((string) $destination), 'place_id' => $destinationPlaceId ?: null, 'kind' => 'destination', 'stop_index' => null];
     if ($returnToPickup && trim((string) $pickup) !== '') {
+        // A trip that returns to the pickup ends there: the last leg is the way home, there is no separate destination
         $points[] = ['text' => trim((string) $pickup), 'place_id' => $pickupPlaceId ?: null, 'kind' => 'return', 'stop_index' => null];
+    } else {
+        $points[] = ['text' => trim((string) $destination), 'place_id' => $destinationPlaceId ?: null, 'kind' => 'destination', 'stop_index' => null];
     }
     return $points;
 }

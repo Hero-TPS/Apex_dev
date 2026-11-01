@@ -17,7 +17,7 @@ $ratePerKm       = (float) ($ratePerKm ?? 0);
 $returnChecked   = !empty($itn['return_to_pickup']);
 
 $savedPickup = $itn['pickup'] ?? '';
-$savedDest   = $itn['destination'] ?? '';
+$savedDest   = $returnChecked ? '' : ($itn['destination'] ?? '');   // a returning trip ends at the pickup, so no destination is shown
 $savedCost   = $itn['cost'] ?? '';
 $destNames   = array_column($destinations, 'name');
 $costKeys    = array_map(fn($c) => number_format((float)$c['amount'], 2), $costs);
@@ -119,30 +119,31 @@ $jsStops = array_map(fn($s) => [
         </div>
 
         <div class="form-group">
-            <label for="destination">Destination <small>(optional)</small></label>
+            <label>
+                <input type="checkbox" id="returnToPickup" <?= $returnChecked ? 'checked' : '' ?>>
+                🔁 Return to pickup
+            </label>
+            <small>Tick this if the trip ends back at the pickup. Otherwise choose where it ends below.</small>
+        </div>
+        <div class="at-itn-leg" id="legReturn"></div>
+
+        <div class="form-group <?= $returnChecked ? 'hidden' : '' ?>" id="destinationGroup">
+            <label for="destination">Destination <span class="required">*</span></label>
             <select id="destination" name="destination">
-                <option value="">— Not known yet —</option>
+                <option value="">— Choose destination —</option>
                 <?php foreach ($destinations as $dest): ?>
                     <option value="<?= e($dest['name']) ?>" <?= (!$showOtherDest && $savedDest === $dest['name']) ? 'selected' : '' ?>><?= e($dest['name']) ?></option>
                 <?php endforeach; ?>
                 <option value="other" <?= $showOtherDest ? 'selected' : '' ?>>Other (specify below)</option>
             </select>
         </div>
-        <div class="form-group <?= $showOtherDest ? '' : 'hidden' ?>" id="otherDestinationGroup">
+        <div class="form-group <?= ($showOtherDest && !$returnChecked) ? '' : 'hidden' ?>" id="otherDestinationGroup">
             <label for="otherDestination">Specify Other Destination</label>
             <input type="text" id="otherDestination" placeholder="Enter destination" autocomplete="off"
                    data-place-id="<?= $showOtherDest ? e($itn['destination_place_id'] ?? '') : '' ?>"
                    value="<?= $showOtherDest ? e($savedDest) : '' ?>">
         </div>
         <div class="at-itn-leg" id="legFinal"></div>
-
-        <div class="form-group">
-            <label>
-                <input type="checkbox" id="returnToPickup" <?= $returnChecked ? 'checked' : '' ?>>
-                🔁 Return to the pickup after the destination
-            </label>
-        </div>
-        <div class="at-itn-leg" id="legReturn"></div>
         <div class="at-itn-distance-summary" id="distanceSummary"></div>
 
         <div class="form-group">
@@ -308,6 +309,22 @@ $(document).ready(function () {
             $ref.attr('class', 'at-itn-cost-ref').text('');
         }
     }
+
+    // Return to pickup: the trip ends at the pickup, so the destination is hidden and not needed
+    function syncReturnTick() {
+        var on = $('#returnToPickup').is(':checked');
+        if (on) {
+            $('#destinationGroup, #otherDestinationGroup').addClass('hidden');
+            $('#destination').val('');
+            $('#otherDestination').val('');
+            delete $('#otherDestination')[0].dataset.placeId;
+            setLeg($('#legFinal'), null);
+        } else {
+            $('#destinationGroup').removeClass('hidden');
+            $('#destination').trigger('change');
+        }
+    }
+    $('#returnToPickup').on('change', syncReturnTick);
 
     // Anything that can change a distance dims the old figures until they are recalculated
     function markDistanceStale() {
@@ -597,6 +614,15 @@ $(document).ready(function () {
             $('#result').html('<div class="error-message">⚠️ Stop ' + (missing + 1) + ' needs a location, or remove it.</div>');
             $list.children('.at-itn-stop').eq(missing).find('.at-itn-location').focus();
             return;
+        }
+
+        if (!$('#returnToPickup').is(':checked')) {
+            var destVal = $('#destination').val() === 'other' ? $('#otherDestination').val().trim() : $('#destination').val();
+            if (!destVal) {
+                $('#result').html('<div class="error-message">⚠️ Choose a destination, or tick Return to pickup if the trip ends back at the pickup.</div>');
+                ($('#destination').val() === 'other' ? $('#otherDestination') : $('#destination')).focus();
+                return;
+            }
         }
 
         var submitBtn = $('#submitBtn');
