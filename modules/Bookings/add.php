@@ -532,7 +532,7 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
             $.ajax({
                 type: 'GET',
                 url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
-                data: { action: 'check_distance', origin: origin, destination: dest },
+                data: { action: 'check_distance', origin: origin, destination: dest, contact_id: $('#contact_id').val() },
                 dataType: 'json',
                 success: function (res) {
                     if (seq !== distanceSeq) { return; }

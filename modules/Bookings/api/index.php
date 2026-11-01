@@ -329,7 +329,7 @@ function handleAddBooking()
 
         // Calculate trip distance (null on failure — never guessed)
         $is_round_trip = isset($_POST['round_trip']) ? 1 : 0;
-        $distance_km = calculateTripDistanceKm($original_pickup, $original_destination);
+        $distance_km = calculateResolvedLegDistance($pdo, fetchClientForLocation($pdo, (int) $contact_id), $original_pickup, $original_destination)['km'];
         if ($distance_km !== null && $is_round_trip) {
             $distance_km = round($distance_km * 2, 1);
         }
@@ -636,7 +636,7 @@ function handleUpdateBooking()
                 $distance_km = $keepDistance->fetchColumn();
                 $distance_km = ($distance_km === false || $distance_km === null) ? null : (float) $distance_km;
             } else {
-                $distance_km = calculateTripDistanceKm($original_pickup, $original_destination);
+                $distance_km = calculateResolvedLegDistance($pdo, fetchClientForLocation($pdo, (int) $contact_id), $original_pickup, $original_destination)['km'];
                 if ($distance_km !== null && $is_round_trip) {
                     $distance_km = round($distance_km * 2, 1);
                 }
@@ -746,7 +746,7 @@ function handleCheckDistance()
     }
 
     $limit = getDistanceWarningKm($pdo);
-    $res   = calculateLegDistance($origin, $dest);
+    $res   = calculateResolvedLegDistance($pdo, fetchClientForLocation($pdo, intval($_GET['contact_id'] ?? 0)), $origin, $dest);
     $leg   = [
         'km' => $res['km'], 'status' => $res['status'], 'from' => $origin, 'to' => $dest,
         'origin_found' => $res['origin_found'], 'dest_found' => $res['dest_found'],

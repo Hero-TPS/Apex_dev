@@ -742,6 +742,59 @@ function resolveDestinationLocation(PDO $pdo, string $name): array
 }
 
 /**
+ * The client row used to work out where a trip's pickup or destination really is.
+ * Used by: Bookings (distance), Itineraries (distance legs)
+ */
+function fetchClientForLocation(PDO $pdo, int $contactId): ?array
+{
+    if ($contactId <= 0) {
+        return null;
+    }
+    $stmt = $pdo->prepare("SELECT * FROM contacts WHERE id = ? LIMIT 1");
+    $stmt->execute([$contactId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row ?: null;
+}
+
+/**
+ * Where to measure from/to for one end of a trip, given the text on the booking or itinerary.
+ *  - a Google place already picked on this form (placeId) is used as is
+ *  - the client's own address uses the client's location rules (pin, then estate gate, then saved place, then text)
+ *  - a saved destination name uses its checked location
+ *  - anything else is used as typed
+ *
+ * @return array{query: string, place_id: ?string, source: string}
+ */
+function resolveTripPoint(PDO $pdo, string $text, ?array $client, ?string $placeId = null): array
+{
+    $text = trim($text);
+    if ($text === '') {
+        return ['query' => '', 'place_id' => null, 'source' => 'none'];
+    }
+    if ($placeId) {
+        return ['query' => $text, 'place_id' => $placeId, 'source' => 'place_id'];
+    }
+    if ($client) {
+        $norm = fn(string $s) => strtolower(preg_replace('/\s+/', ' ', trim($s)));
+        if ($norm((string) ($client['address'] ?? '')) !== '' && $norm($text) === $norm((string) $client['address'])) {
+            return resolveClientLocation($pdo, $client);
+        }
+    }
+    return resolveDestinationLocation($pdo, $text);
+}
+
+/**
+ * Driving distance between two ends of a trip using the best known location for each end.
+ * Same return shape as calculateLegDistance(). Used by: Bookings (distance_km, live check), Itineraries (legs).
+ */
+function calculateResolvedLegDistance(PDO $pdo, ?array $client, string $from, string $to, ?string $fromPlaceId = null, ?string $toPlaceId = null, int $timeout = 8): array
+{
+    $a = resolveTripPoint($pdo, $from, $client, $fromPlaceId);
+    $b = resolveTripPoint($pdo, $to, $client, $toPlaceId);
+    return calculateLegDistance($a['query'], $b['query'], $a['place_id'], $b['place_id'], $timeout);
+}
+
+/**
  * True once the address-checking columns exist on contacts (migration 20261030_1600). Pages that save them
  * use this so they keep working, without the new fields, until the migration has been run.
  */

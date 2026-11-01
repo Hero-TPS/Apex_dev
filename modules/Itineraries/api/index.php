@@ -454,5 +454,5 @@ function handleCalcLegs()
         ($_POST['return_to_pickup'] ?? '') === '1'
     );
 
-    jsonResponse(['success' => true, 'distance' => calculateItineraryLegs($pdo, $points)]);
+    jsonResponse(['success' => true, 'distance' => calculateItineraryLegs($pdo, $points, 20, fetchClientForLocation($pdo, intval($_POST['contact_id'] ?? 0)))]);
 }

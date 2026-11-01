@@ -344,7 +344,7 @@ function applyItineraryToBooking(PDO $pdo, array $itn, array $booking, array $st
     // Otherwise recalculated pickup to destination (null on failure, never guessed).
     $distanceKm = itineraryKnownTotalKm($itn);
     if ($distanceKm === null) {
-        $distanceKm = calculateTripDistanceKm($pickup, $dest);
+        $distanceKm = calculateResolvedLegDistance($pdo, fetchClientForLocation($pdo, (int) $itn['contact_id']), $pickup, $dest)['km'];
         if ($distanceKm !== null && !empty($booking['is_round_trip'])) {
             $distanceKm = round($distanceKm * 2, 1);
         }
@@ -476,7 +476,7 @@ function itineraryLegMessage(string $kind, array $leg, float $limit): array
  * cannot run the page into the host's time limit; those legs are reported as failed lookups.
  * Returns the payload shared by the API, the edit page and the browser script (see itineraryDistancePayload()).
  */
-function calculateItineraryLegs(PDO $pdo, array $points, int $budgetSeconds = 20): array
+function calculateItineraryLegs(PDO $pdo, array $points, int $budgetSeconds = 20, ?array $client = null): array
 {
     $limit    = getDistanceWarningKm($pdo);
     $started  = microtime(true);
@@ -489,7 +489,8 @@ function calculateItineraryLegs(PDO $pdo, array $points, int $budgetSeconds = 20
         if ((microtime(true) - $started) > $budgetSeconds) {
             $res = ['status' => 'error', 'km' => null, 'origin_found' => true, 'dest_found' => true, 'from_address' => '', 'to_address' => ''];
         } else {
-            $res = calculateLegDistance($a['text'], $b['text'], $a['place_id'], $b['place_id']);
+            // Where each end really is: the client's pin or estate gate rule, a saved destination's checked point, or the typed text
+            $res = calculateResolvedLegDistance($pdo, $client, $a['text'], $b['text'], $a['place_id'], $b['place_id']);
         }
 
         $leg = [
@@ -582,7 +583,7 @@ function computeAndStoreItineraryDistances(PDO $pdo, int $itineraryId): ?array
         $itn['pickup'], $itn['pickup_place_id'], $stops,
         $itn['destination'], $itn['destination_place_id'], !empty($itn['return_to_pickup'])
     );
-    $payload = calculateItineraryLegs($pdo, $points);
+    $payload = calculateItineraryLegs($pdo, $points, 20, fetchClientForLocation($pdo, (int) $itn['contact_id']));
     storeItineraryDistances($pdo, $itineraryId, array_column($stops, 'id'), $payload);
 
     logInfo('ITINERARY', 'Itinerary distances calculated', [

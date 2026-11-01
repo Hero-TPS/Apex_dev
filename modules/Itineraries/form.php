@@ -182,6 +182,7 @@ $jsStops = array_map(fn($s) => [
 <script>
 $(document).ready(function () {
     var isEdit      = <?= $isEdit ? 'true' : 'false' ?>;
+    var itnContactId = <?= (int) ($itn['contact_id'] ?? 0) ?>;
     var timeOptions = <?= json_encode(array_values($timeOptions)) ?>;
     var initial     = <?= json_encode($jsStops, JSON_UNESCAPED_UNICODE) ?>;
     var storedDistance = <?= json_encode($distancePayload, JSON_UNESCAPED_UNICODE) ?>;
@@ -323,7 +324,8 @@ $(document).ready(function () {
             pickup_place_id:      pickupOther ? ($('#otherPickup')[0].dataset.placeId || '') : '',
             destination:          destOther ? $('#otherDestination').val().trim() : $('#destination').val(),
             destination_place_id: destOther ? ($('#otherDestination')[0].dataset.placeId || '') : '',
-            return_to_pickup:     $('#returnToPickup').is(':checked') ? '1' : ''
+            return_to_pickup:     $('#returnToPickup').is(':checked') ? '1' : '',
+            contact_id:           $('#contact_id').val() || itnContactId || ''
         };
     }
 
