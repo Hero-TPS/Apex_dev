@@ -155,7 +155,7 @@ if (isset($_GET['id'])) {
         <?php $viewItinerary = fetchItineraryForBooking($pdo, (int) $booking['id']); ?>
         <?php if ($viewItinerary): ?>
         <div class="detail-item">
-            <span class="at-itn-status at-itn-status-booked">🗺️ Has itinerary</span>
+            <a href="<?= BASE_URL ?>/modules/Itineraries/edit.php?id=<?= (int) $viewItinerary['id'] ?>" class="at-itn-status at-itn-status-booked">🗺️ Has itinerary</a>
         </div>
         <?php endif; ?>
         <?php
