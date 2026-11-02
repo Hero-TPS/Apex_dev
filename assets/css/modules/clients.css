@@ -288,3 +288,27 @@
 }
 .at-dest-status-ok   { color: #2e7d32; font-weight: 600; }
 .at-dest-status-todo { color: #8a6d0b; font-weight: 600; }
+
+/* ---- Services: Address Check page ---- */
+.at-addrchk-group {
+    border: 1px solid #e1e8ed;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+}
+.at-addrchk-option {
+    display: block;
+    margin-bottom: 6px;
+}
+.at-addrchk-option input {
+    width: auto;
+    margin-right: 6px;
+}
+.at-addrchk-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.at-addrchk-table .at-addrchk-result { min-width: 240px; }

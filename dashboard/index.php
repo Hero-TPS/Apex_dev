@@ -110,6 +110,7 @@ include ROOT_DIR . '/includes/header.php';
         <div id="services-section" class="menu-content">
             <a href="<?= BASE_URL ?>/services/lists.php" class="dashboard-button db-maintenance">Dropdown Lists</a>
             <a href="<?= BASE_URL ?>/services/variables.php" class="dashboard-button db-maintenance">System Variables</a>
+            <a href="<?= BASE_URL ?>/services/address_check.php" class="dashboard-button db-maintenance">Address Check</a>
             <a href="<?= BASE_URL ?>/services/cleanup.php" class="dashboard-button db-maintenance">Cleanup Tools</a>
             <a href="<?= BASE_URL ?>/services/drivers.php" class="dashboard-button db-maintenance">Drivers</a>
             <a href="<?= BASE_URL ?>/services/logs.php" class="dashboard-button db-maintenance">System Logs</a>

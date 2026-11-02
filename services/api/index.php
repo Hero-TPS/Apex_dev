@@ -285,6 +285,106 @@ try {
         $response['message'] = "✅ Driver updated.";
         logInfo('MAINTENANCE', 'Driver updated', ['id' => $id, 'name' => $name]);
 
+    } elseif ($action === 'check_item' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Address Check page: ask Google about one saved destination or one client address. Nothing is saved here.
+        $type = $_POST['type'] ?? '';
+        $id   = intval($_POST['id'] ?? 0);
+        if ($type === 'client') {
+            $stmt = $pdo->prepare("SELECT address FROM contacts WHERE id = ?");
+            $stmt->execute([$id]);
+        } elseif ($type === 'destination') {
+            $stmt = $pdo->prepare("SELECT name FROM destinations WHERE id = ?");
+            $stmt->execute([$id]);
+        } else {
+            throw new Exception('Unknown item type.');
+        }
+        $text = $stmt->fetchColumn();
+        if ($text === false || trim((string) $text) === '') {
+            throw new Exception('That item has no address to check.');
+        }
+        $response = checkAddressWithGoogle($pdo, (string) $text);
+
+    } elseif ($action === 'mark_checked' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Address Check page: record that these items were found by Google
+        $type = $_POST['type'] ?? '';
+        $ids  = array_values(array_filter(array_map('intval', (array) ($_POST['ids'] ?? [])), fn($v) => $v > 0));
+        if (empty($ids) || count($ids) > 500) {
+            throw new Exception('Nothing to save.');
+        }
+        $marks = implode(',', array_fill(0, count($ids), '?'));
+        if ($type === 'client') {
+            $stmt = $pdo->prepare("UPDATE contacts SET address_verified_at = NOW() WHERE id IN ($marks)");
+        } elseif ($type === 'destination') {
+            $stmt = $pdo->prepare("UPDATE destinations SET verified_at = NOW() WHERE id IN ($marks)");
+        } else {
+            throw new Exception('Unknown item type.');
+        }
+        $stmt->execute($ids);
+        $response['success'] = true;
+        $response['message'] = '✅ Saved ' . $stmt->rowCount() . ' as checked.';
+        logInfo('MAINTENANCE', 'Addresses marked as checked', ['type' => $type, 'count' => $stmt->rowCount()]);
+
+    } elseif ($action === 'merge_destinations' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Address Check page: keep one saved destination and fold the duplicates of it into it
+        $keep   = trim($_POST['keep'] ?? '');
+        $remove = array_values(array_unique(array_filter(array_map('trim', (array) ($_POST['remove'] ?? [])), fn($v) => $v !== '' && $v !== trim($_POST['keep'] ?? ''))));
+        if ($keep === '' || empty($remove)) {
+            throw new Exception('Choose the destination to keep and at least one duplicate to remove.');
+        }
+
+        $stmt = $pdo->prepare("SELECT * FROM destinations WHERE name = ?");
+        $stmt->execute([$keep]);
+        $keepRow = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$keepRow) {
+            throw new Exception('The destination to keep was not found.');
+        }
+        foreach ($remove as $name) {
+            if (normalizeDestinationName($name) !== normalizeDestinationName($keep)) {
+                throw new Exception('"' . $name . '" is not a duplicate of "' . $keep . '".');
+            }
+        }
+
+        $pdo->beginTransaction();
+        $changed = 0;
+        foreach ($remove as $name) {
+            // Anything not yet done uses the kept name; bookings from past days are left as they were
+            $refs = [
+                "UPDATE bookings SET original_pickup = ? WHERE original_pickup = ? AND trip_date >= CURDATE()",
+                "UPDATE bookings SET original_destination = ? WHERE original_destination = ? AND trip_date >= CURDATE()",
+                "UPDATE prebookings SET original_pickup = ? WHERE original_pickup = ?",
+                "UPDATE prebookings SET original_destination = ? WHERE original_destination = ?",
+                "UPDATE itineraries SET pickup = ? WHERE pickup = ?",
+                "UPDATE itineraries SET destination = ? WHERE destination = ?",
+                "UPDATE itinerary_stops SET location = ? WHERE location = ?",
+            ];
+            foreach ($refs as $sql) {
+                try {
+                    $u = $pdo->prepare($sql);
+                    $u->execute([$keep, $name]);
+                    $changed += $u->rowCount();
+                } catch (PDOException $e) {
+                    // The itinerary tables may not exist on this database yet: nothing to update there
+                    if (strpos($sql, 'itinerar') === false) { throw $e; }
+                }
+            }
+
+            // A checked duplicate passes its checked location on to the kept one if that is not checked yet
+            $stmt = $pdo->prepare("SELECT * FROM destinations WHERE name = ?");
+            $stmt->execute([$name]);
+            $dup = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($dup && empty($keepRow['verified_at']) && !empty($dup['verified_at'])) {
+                $pdo->prepare("UPDATE destinations SET place_id = ?, latitude = ?, longitude = ?, verified_at = ? WHERE name = ?")
+                    ->execute([$dup['place_id'], $dup['latitude'], $dup['longitude'], $dup['verified_at'], $keep]);
+                $keepRow['verified_at'] = $dup['verified_at'];
+            }
+            $pdo->prepare("DELETE FROM destinations WHERE name = ?")->execute([$name]);
+        }
+        $pdo->commit();
+
+        $response['success'] = true;
+        $response['message'] = '✅ Merged into "' . $keep . '". Removed ' . count($remove) . ' duplicate(s), updated ' . $changed . ' booking/itinerary reference(s).';
+        logInfo('MAINTENANCE', 'Destinations merged', ['keep' => $keep, 'removed' => $remove, 'references' => $changed]);
+
     } elseif ($action === 'check_destination' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         // Ask Google whether it can find this text. Nothing is saved here.
         $response = checkAddressWithGoogle($pdo, trim($_POST['text'] ?? ''));
@@ -340,6 +440,9 @@ try {
     }
 
 } catch (Exception $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     logError('MAINTENANCE', 'Maintenance operation failed', [
         'error'  => $e->getMessage(),
         'action' => $action

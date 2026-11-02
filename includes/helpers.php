@@ -671,6 +671,15 @@ function getDistanceWarningKm(PDO $pdo): float
 }
 
 /**
+ * A destination name reduced for comparing: lower case, letters and digits only. "Cape Town  Airport." and
+ * "cape town airport" come out the same. Used by: Services -> Address Check (finding duplicate destinations).
+ */
+function normalizeDestinationName(string $name): string
+{
+    return preg_replace('/[^a-z0-9]+/', '', strtolower($name));
+}
+
+/**
  * Where to measure from for a client's home address. Checked in this order:
  *  1. the client's GPS pin (pickup_lat / pickup_lng)
  *  2. the estate main gate, when there is no pin and the address contains the estate name
