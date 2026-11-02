@@ -376,6 +376,13 @@ function handleAddBooking()
         reactivateContactIfArchived($pdo, (int) $contact_id);
         syncClientLanguageFromBooking($pdo, (int) $contact_id, $language);
 
+        // Link the itinerary this booking came from and copy its stops (never stops the booking from being created).
+        // Done before the calendar event is made so the event already shows the tour icon and the stops.
+        $fromItinerary = intval($_POST['from_itinerary'] ?? 0);
+        if ($fromItinerary > 0) {
+            linkItineraryToBooking($pdo, $fromItinerary, (int) $booking_id);
+        }
+
         // CREATE GOOGLE CALENDAR EVENT
         $googleEventId = null;
         $stmt = $pdo->prepare("
@@ -409,12 +416,6 @@ function handleAddBooking()
         if ($fromPrebooking > 0) {
             $markConverted = $pdo->prepare("UPDATE prebookings SET converted_booking_id = ? WHERE id = ? AND converted_booking_id IS NULL");
             $markConverted->execute([$booking_id, $fromPrebooking]);
-        }
-
-        // Link the itinerary this booking came from and copy its stops (never stops the booking from being created)
-        $fromItinerary = intval($_POST['from_itinerary'] ?? 0);
-        if ($fromItinerary > 0) {
-            linkItineraryToBooking($pdo, $fromItinerary, (int) $booking_id);
         }
 
         jsonResponse([

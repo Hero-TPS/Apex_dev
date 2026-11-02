@@ -56,11 +56,15 @@ $from_itinerary       = isset($_GET['from_itinerary']) ? (int) $_GET['from_itine
 
 // A booking made from an itinerary shows the itinerary's calculated cost under Cost (display only)
 $itnCostReference = '';
+$itnDuration = null;   // the itinerary's estimated length in hours, used to preselect the duration
 if ($from_itinerary > 0) {
     try {
-        $itnCostReference = itineraryCostReferenceText($pdo, fetchItinerary($pdo, $from_itinerary));
+        $itnForBooking    = fetchItinerary($pdo, $from_itinerary);
+        $itnCostReference = itineraryCostReferenceText($pdo, $itnForBooking);
+        $itnDuration      = $itnForBooking ? itineraryEstimatedHours($itnForBooking, fetchItineraryStops($pdo, $from_itinerary)) : null;
     } catch (PDOException $ex) {
         $itnCostReference = '';
+        $itnDuration      = null;
     }
 }
 
@@ -112,8 +116,18 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
         <div class="form-group">
             <label for="duration">Duration (hours) <span class="required">*</span></label>
             <select id="duration" name="duration" required>
+                <?php
+                    // From an itinerary: the shortest saved duration that covers its estimated length (else the longest)
+                    $preselectDur = null;
+                    if ($itnDuration !== null && !empty($durations)) {
+                        foreach ($durations as $dur) {
+                            if ((float) $dur >= $itnDuration - 0.001) { $preselectDur = $dur; break; }
+                        }
+                        if ($preselectDur === null) { $preselectDur = end($durations); }
+                    }
+                ?>
                 <?php foreach ($durations as $dur): ?>
-                    <option value="<?= htmlspecialchars($dur) ?>" <?= ($dur == '1.0' || $dur == '1') ? 'selected' : '' ?>>
+                    <option value="<?= htmlspecialchars($dur) ?>" <?= $preselectDur !== null ? ((string) $dur === (string) $preselectDur ? 'selected' : '') : (($dur == '1.0' || $dur == '1') ? 'selected' : '') ?>>
                         <?= htmlspecialchars($dur) ?> hour<?= ($dur != '1' && $dur != '1.0') ? 's' : '' ?>
                     </option>
                 <?php endforeach; ?>

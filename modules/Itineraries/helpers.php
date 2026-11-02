@@ -146,6 +146,51 @@ function itineraryConvertUrl(array $itn): string
 }
 
 /**
+ * How long the trip should take, in hours rounded up to the half hour (at least 0.5), from the start time through
+ * every stop (arrival, then the wait) and the last drive. A stop without a saved arrival time uses the previous
+ * departure plus its drive, rounded up to the quarter hour, as the form does. Returns null when it cannot be
+ * worked out (no start time, or a drive time is missing), so callers keep the duration they already have.
+ *
+ * @param array $itn    needs start_time, return_to_pickup, final_leg_minutes, return_leg_minutes
+ * @param array $stops  from fetchItineraryStops(): arrival_time, wait_minutes, drive_minutes
+ */
+function itineraryEstimatedHours(array $itn, array $stops): ?float
+{
+    if (empty($itn['start_time'])) {
+        return null;
+    }
+    $toMin = function (string $t): int {
+        return (int) substr($t, 0, 2) * 60 + (int) substr($t, 3, 2);
+    };
+    $startMin = $toMin($itn['start_time']);
+    $depart   = $startMin;
+
+    foreach ($stops as $s) {
+        if (!empty($s['arrival_time'])) {
+            $arrival = $toMin($s['arrival_time']);
+            if ($arrival < $depart - 720) {
+                $arrival += 1440;   // a time after midnight
+            }
+        } elseif (isset($s['drive_minutes']) && $s['drive_minutes'] !== null) {
+            $arrival = (int) (ceil(($depart + (int) $s['drive_minutes']) / 15) * 15);
+        } else {
+            return null;
+        }
+        $depart = $arrival + (int) ($s['wait_minutes'] ?? 0);
+    }
+
+    $last = !empty($itn['return_to_pickup']) ? ($itn['return_leg_minutes'] ?? null) : ($itn['final_leg_minutes'] ?? null);
+    if ($last === null) {
+        return null;
+    }
+    $total = $depart + (int) $last - $startMin;
+    if ($total <= 0) {
+        return null;
+    }
+    return max(0.5, ceil($total / 30) / 2);
+}
+
+/**
  * One line shown under the Cost field on the booking forms: what the itinerary's total distance works out to
  * at the system rate per km. Display only, the booking's cost is entered by hand.
  * Not shown on the booking view page, which the client may see.
@@ -314,12 +359,18 @@ function applyItineraryToBooking(PDO $pdo, array $itn, array $booking, array $st
 {
     $bookingId = (int) $booking['id'];
 
-    // Keep the booking's own duration (the itinerary has none)
-    $oldStart = strtotime('1970-01-01 ' . $booking['start_time']);
-    $oldEnd   = strtotime('1970-01-01 ' . $booking['end_time']);
-    $seconds  = $oldEnd - $oldStart;
-    if ($seconds <= 0) {
-        $seconds += 86400;
+    // Duration follows the itinerary's estimated finish when it can be worked out (rounded up to the half hour),
+    // otherwise the booking keeps the duration it had
+    $estimatedHours = itineraryEstimatedHours($itn, $stops);
+    if ($estimatedHours !== null) {
+        $seconds = (int) round($estimatedHours * 3600);
+    } else {
+        $oldStart = strtotime('1970-01-01 ' . $booking['start_time']);
+        $oldEnd   = strtotime('1970-01-01 ' . $booking['end_time']);
+        $seconds  = $oldEnd - $oldStart;
+        if ($seconds <= 0) {
+            $seconds += 86400;
+        }
     }
 
     $tripDate  = $itn['trip_date'];

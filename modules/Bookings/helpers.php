@@ -147,6 +147,64 @@ function resolveTransportIcon(string $pickup, string $destination): string
 }
 
 /**
+ * True when this booking was made from an itinerary (the link is stored on the itinerary).
+ * Never throws: on a database without the itinerary tables the answer is simply no.
+ * Used by: the calendar title (tour icon) and description (stops).
+ */
+function bookingHasItinerary(PDO $pdo, int $bookingId): bool
+{
+    if ($bookingId <= 0) {
+        return false;
+    }
+    try {
+        $stmt = $pdo->prepare("SELECT 1 FROM itineraries WHERE booking_id = ? LIMIT 1");
+        $stmt->execute([$bookingId]);
+        return (bool) $stmt->fetchColumn();
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
+/**
+ * The stops of a booking made from an itinerary, as a short timeline for the calendar description:
+ * "1. 09:30 Place, wait 0:30 - note for the client". Client notes only, never the internal ones.
+ * Returns '' when the booking has no stops.
+ */
+function buildBookingStopsText(PDO $pdo, int $bookingId): string
+{
+    if ($bookingId <= 0) {
+        return '';
+    }
+    try {
+        $stmt = $pdo->prepare("SELECT location, arrival_time, wait_minutes, client_notes FROM booking_stops WHERE booking_id = ? ORDER BY sort_order ASC, id ASC");
+        $stmt->execute([$bookingId]);
+        $stops = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        return '';
+    }
+    if (empty($stops)) {
+        return '';
+    }
+
+    $lines = [];
+    foreach ($stops as $i => $s) {
+        $time = !empty($s['arrival_time']) ? substr($s['arrival_time'], 0, 5) : 'time TBC';
+        $line = ($i + 1) . '. ' . $time . ' ' . $s['location'];
+        $wait = (int) ($s['wait_minutes'] ?? 0);
+        if ($wait > 0) {
+            $line .= ', wait ' . intdiv($wait, 60) . ':' . str_pad((string) ($wait % 60), 2, '0', STR_PAD_LEFT);
+        }
+        $note = trim((string) ($s['client_notes'] ?? ''));
+        if ($note !== '') {
+            $note = preg_replace('/\s+/', ' ', $note);
+            $line .= ' - ' . (mb_strlen($note) > 60 ? mb_substr($note, 0, 57) . '...' : $note);
+        }
+        $lines[] = $line;
+    }
+    return implode("\n", $lines);
+}
+
+/**
  * Builds the Google Calendar event title for a booking:
  * "{transport icon} {payment icon if paid} {overlap icon if any} {driver icon if assigned} {Client Name}"
  * — all icons lead, client name always comes last. No cost in the title
@@ -162,7 +220,10 @@ function buildBookingCalendarSummary(array $bookingData): string
 
     $pickup = $bookingData['pickup_location'] ?? $bookingData['original_pickup'] ?? '';
     $destination = $bookingData['destination'] ?? $bookingData['original_destination'] ?? '';
-    $transportIcon = resolveTransportIcon($pickup, $destination);
+    // A booking made from an itinerary is a tour: it gets the minivan instead of the car or plane
+    $transportIcon = (!empty($bookingData['id']) && bookingHasItinerary($pdo, (int) $bookingData['id']))
+        ? '🚐'
+        : resolveTransportIcon($pickup, $destination);
     $paymentIcon = !empty($bookingData['payment_received']) ? '💰' : '';
 
     $overlaps = [];
@@ -535,6 +596,13 @@ function createEventDescription(array $bookingData): string
 
     $description = "📍 Pickup: " . $pickup . "\n";
     $description .= "🎯 Destination: " . $destination . "\n";
+    if (!empty($bookingData['id'])) {
+        global $pdo;
+        $stopsText = buildBookingStopsText($pdo, (int) $bookingData['id']);
+        if ($stopsText !== '') {
+            $description .= "🗺️ Stops:\n" . $stopsText . "\n";
+        }
+    }
     $description .= "💰 Cost: R" . number_format($bookingData['cost'], 2) . "\n";
     $description .= "💳 Payment: " . ($bookingData['payment_method'] === 'eft' ? 'EFT' : 'Cash') . "\n";
 

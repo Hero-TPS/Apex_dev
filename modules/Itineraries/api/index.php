@@ -413,9 +413,26 @@ function handleUpdateBooking()
             'cost'         => $newCost,
         ]);
 
+        // The booking's calendar event follows the booking (time, location, tour icon and the stops)
+        $calendarNote = '';
+        $fresh = getBookingById($pdo, (int) $booking['id']);
+        if ($fresh && !empty($fresh['google_calendar_event_id'])) {
+            $fresh['pickup_location'] = $fresh['was_swapped'] ? $fresh['original_destination'] : $fresh['original_pickup'];
+            $fresh['destination']     = $fresh['was_swapped'] ? $fresh['original_pickup'] : $fresh['original_destination'];
+            $tz    = new DateTimeZone(TIME_ZONE);
+            $start = new DateTime($fresh['trip_date'] . ' ' . $fresh['start_time'], $tz);
+            $end   = new DateTime($fresh['trip_date'] . ' ' . $fresh['end_time'], $tz);
+            if ($end <= $start) {
+                $end->modify('+1 day');
+            }
+            $calendarNote = updateBookingInGoogleCalendar($fresh, $start, $end)
+                ? ' Its calendar event was updated.'
+                : ' Its calendar event could not be updated: open the booking and save it to try again.';
+        }
+
         jsonResponse([
             'success'    => true,
-            'message'    => 'Booking #' . (int) $booking['id'] . ' updated. Its calendar event is not changed yet.',
+            'message'    => 'Booking #' . (int) $booking['id'] . ' updated.' . $calendarNote,
             'booking_id' => (int) $booking['id'],
         ]);
 
