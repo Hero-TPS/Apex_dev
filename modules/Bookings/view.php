@@ -156,6 +156,7 @@ if (isset($_GET['id'])) {
         <?php if ($viewItinerary): ?>
         <div class="detail-item">
             <a href="<?= BASE_URL ?>/modules/Itineraries/edit.php?id=<?= (int) $viewItinerary['id'] ?>" class="at-itn-status at-itn-status-booked">🗺️ Has itinerary</a>
+            <a href="<?= BASE_URL ?>/modules/Itineraries/print.php?id=<?= (int) $viewItinerary['id'] ?>" target="_blank" class="at-itn-status">🖨️ Print itinerary</a>
         </div>
         <?php endif; ?>
         <?php

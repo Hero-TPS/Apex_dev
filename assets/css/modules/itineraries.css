@@ -178,3 +178,34 @@
 }
 .at-itn-time-note:empty { display: none; }
 .at-itn-time-warn { color: #8a6d0b; font-weight: 600; }
+
+/* ---- Printable itinerary page (modules/Itineraries/print.php) ---- */
+.at-itn-print-body { background: #fff; }
+.at-itn-print {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  color: #111;
+}
+.at-itn-print h1 { font-size: 22px; margin: 0 0 4px; }
+.at-itn-print h2 { font-size: 16px; font-weight: normal; color: #555; margin: 0 0 20px; }
+.at-itn-print-actions { display: flex; gap: 8px; margin-bottom: 24px; }
+.at-itn-print-meta { border-collapse: collapse; margin-bottom: 20px; }
+.at-itn-print-meta th { text-align: left; padding: 2px 16px 2px 0; color: #555; font-weight: normal; }
+.at-itn-print-stops { list-style: none; margin: 0 0 20px; padding: 0; }
+.at-itn-print-stops li {
+  display: flex;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid #ddd;
+  page-break-inside: avoid;
+}
+.at-itn-print-time { flex: 0 0 56px; font-weight: 600; }
+.at-itn-print-place { flex: 1; }
+.at-itn-print-place em { color: #555; }
+.at-itn-print-note { display: block; margin-top: 4px; font-size: 14px; color: #444; }
+.at-itn-print-cost { font-size: 18px; margin: 0; }
+@media print {
+  .at-itn-print-actions { display: none; }
+  .at-itn-print { padding: 0; }
+}

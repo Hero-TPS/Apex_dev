@@ -117,6 +117,8 @@ function getWhatsAppBookingVariables(): array
         'driver_notes'       => 'Driver notes',
         'waze_pickup'        => 'Waze link to the pickup',
         'waze_destination'   => 'Waze link to the destination',
+        'stops'              => 'Itinerary stops for the client: time, place, wait and client note (empty when the booking has no itinerary)',
+        'stops_driver'       => 'Itinerary stops for the driver: same as stops, with a Waze link under each stop (empty when the booking has no itinerary)',
         'is_eft'             => 'Filled for EFT bookings (use with {if})',
         'no_booking_fee'     => 'Filled when no booking fee applies (use with {if})',
         'has_booking_fee'    => 'Filled when a booking fee applies (use with {if})',
@@ -556,6 +558,7 @@ function buildBookingMessageVars(PDO $pdo, array $b): array
 
     $flightNumber = trim($b['flight_number'] ?? '');
     $waze = buildWazeUrls($b);
+    $stops = getWhatsAppBookingStops($pdo, (int) ($b['id'] ?? 0));
 
     $settlement = calculateDriverSettlement($b);
     $fee = $settlement['fee'];
@@ -582,6 +585,8 @@ function buildBookingMessageVars(PDO $pdo, array $b): array
         'driver_notes'      => (string) ($b['driver_notes'] ?? ''),
         'waze_pickup'       => $waze['pickup'],
         'waze_destination'  => $waze['destination'],
+        'stops'             => formatWhatsAppStops($stops, $lang, false),
+        'stops_driver'      => formatWhatsAppStops($stops, $lang, true),
         'is_eft'            => $settlement['is_eft'] ? '1' : '',
         'no_booking_fee'    => $settlement['no_booking_fee'] ? '1' : '',
         'has_booking_fee'   => $hasBookingFee ? '1' : '',
@@ -682,6 +687,70 @@ function getWhatsAppRecentClientBookings(PDO $pdo, array $booking, int $hours = 
     }
     unset($row);
     return $rows;
+}
+
+/**
+ * The stops of a booking made from an itinerary (the booking's own copy), in order.
+ * Never throws: a database without the stops table, or a booking without an itinerary, gives an empty list.
+ * Used by: buildBookingMessageVars(), buildWhatsAppTripsText()
+ *
+ * @return array<int,array{location:string,arrival_time:?string,wait_minutes:?int,client_notes:?string}>
+ */
+function getWhatsAppBookingStops(PDO $pdo, int $bookingId): array
+{
+    if ($bookingId <= 0) {
+        return [];
+    }
+    try {
+        // Client notes only: internal notes are for admin and never go into a message
+        $stmt = $pdo->prepare("SELECT location, arrival_time, wait_minutes, client_notes FROM booking_stops WHERE booking_id = ? ORDER BY sort_order ASC, id ASC");
+        $stmt->execute([$bookingId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+
+/**
+ * The stops as message text: a heading, then one line per stop, e.g.
+ *   🗺️ Stops
+ *   1. 09:30 Checkers Somerset Mall (wait 0:30) - client note
+ * With $withWaze a Waze link goes on the line under each stop (the driver version).
+ * Returns '' when there are no stops, so a template line holding only {stops} drops out.
+ * Used by: buildBookingMessageVars(), buildWhatsAppTripsText()
+ *
+ * @param array[] $stops  From getWhatsAppBookingStops()
+ */
+function formatWhatsAppStops(array $stops, string $language = 'en', bool $withWaze = false): string
+{
+    if (empty($stops)) {
+        return '';
+    }
+    $isAf = normalizeWhatsAppLanguage($language) === 'af';
+    $lines = ['🗺️ ' . ($isAf ? 'Stoppe' : 'Stops')];
+
+    foreach ($stops as $i => $s) {
+        $line = ($i + 1) . '.';
+        if (!empty($s['arrival_time'])) {
+            $line .= ' ' . substr($s['arrival_time'], 0, 5);
+        }
+        $line .= ' ' . $s['location'];
+
+        $wait = (int) ($s['wait_minutes'] ?? 0);
+        if ($wait > 0) {
+            $line .= ' (' . ($isAf ? 'wag' : 'wait') . ' ' . intdiv($wait, 60) . ':' . str_pad((string) ($wait % 60), 2, '0', STR_PAD_LEFT) . ')';
+        }
+        $note = trim(preg_replace('/\s+/', ' ', (string) ($s['client_notes'] ?? '')));
+        if ($note !== '') {
+            $line .= ' - ' . $note;
+        }
+        $lines[] = $line;
+
+        if ($withWaze && trim((string) $s['location']) !== '') {
+            $lines[] = '   🧭 https://waze.com/ul?q=' . urlencode($s['location']) . '&navigate=yes';
+        }
+    }
+    return implode("\n", $lines);
 }
 
 /**
@@ -829,6 +898,7 @@ function buildWhatsAppTripsText(PDO $pdo, array $bookings, string $clientName, s
             'notices'   => getWhatsAppTripNoticeLines($pdo, $b, $language),
             'passenger' => $passengersDiffer ? formatWhatsAppPersonLine('👤', getWhatsAppGroupPassenger($b, $clientName)) : '',
             'driver'    => $driversDiffer ? formatWhatsAppPersonLine('🚗', getWhatsAppGroupDriver($b)) : '',
+            'stops'     => formatWhatsAppStops(getWhatsAppBookingStops($pdo, (int) ($b['id'] ?? 0)), $language, false),
         ];
 
         $key = mb_strtolower(json_encode($detail, JSON_UNESCAPED_UNICODE));
@@ -857,6 +927,9 @@ function buildWhatsAppTripsText(PDO $pdo, array $bookings, string $clientName, s
         }
         if ($d['driver'] !== '') {
             $lines[] = $d['driver'];
+        }
+        if ($d['stops'] !== '') {
+            $lines[] = $d['stops'];
         }
         $out[] = implode("\n", $lines);
     }
