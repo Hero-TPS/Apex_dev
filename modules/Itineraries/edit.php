@@ -48,7 +48,6 @@ $ratePerKm       = (float) getSystemVariable($pdo, 'rate_per_km');
 ?>
 
 <div class="page-actions">
-    <a href="<?= BASE_URL ?>/modules/Itineraries/print.php?id=<?= (int) $itn['id'] ?>" target="_blank" class="page-action-btn">🖨️ Print / PDF</a>
     <?php if ($linked): ?>
         <button type="button" class="page-action-btn rebook" id="updateBookingBtn">🔄 Update Booking #<?= (int) $linked['id'] ?></button>
         <a href="<?= BASE_URL ?>/modules/Bookings/view.php?id=<?= (int) $linked['id'] ?>" class="page-action-btn primary">📅 View Booking #<?= (int) $linked['id'] ?></a>
@@ -82,6 +81,7 @@ include __DIR__ . '/form.php';
         $('#itineraryForm').on('input change', function () { dirty = true; });
         $(document).on('itn:saved', function () { dirty = false; });
         $(document).on('click', '#addStopBtn, .at-itn-up, .at-itn-down, .at-itn-remove', function () { dirty = true; });
+        $(document).on('itn:shifted', function () { dirty = true; });
 
         function blockIfDirty() {
             if (dirty) {

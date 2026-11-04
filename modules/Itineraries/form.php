@@ -411,6 +411,7 @@ $(document).ready(function () {
                 setTimeNote($note, '', '');
             }
 
+            $sel.data('prev', $sel.val());
             var wait = parseInt($r.find('.at-itn-wait').val(), 10) || 0;
             depart = arrival === null ? null : arrival + wait;
         });
@@ -426,10 +427,59 @@ $(document).ready(function () {
         }
     }
 
+    // Moving a stop's time offers to move the fixed times of the stops after it by the same amount.
+    // Stops that follow automatically already move by themselves, so only fixed ones are counted and shifted.
+    function offerShift($row, delta) {
+        var $offer = $row.find('.at-itn-shift');
+        var count = $row.nextAll('.at-itn-stop').filter(function () {
+            return $(this).find('.at-itn-fixed').is(':checked') && $(this).find('.at-itn-arrival').val() !== '';
+        }).length;
+        if (delta === 0 || count === 0) { $offer.empty(); return; }
+        var sign = delta > 0 ? '+' : '-';
+        var abs  = Math.abs(delta);
+        var label = sign + Math.floor(abs / 60) + ':' + ('0' + (abs % 60)).slice(-2);
+        $offer.empty().append(
+            $('<button>', { type: 'button', 'class': 'at-itn-shift-btn', text: '⏩ Shift the ' + count + ' following fixed stop' + (count === 1 ? '' : 's') + ' by ' + label }).data('delta', delta),
+            $('<button>', { type: 'button', 'class': 'at-itn-shift-dismiss', text: 'No thanks' })
+        );
+    }
+
     $('#stopsList').on('change', '.at-itn-arrival', function () {
+        var $sel = $(this);
+        var $row = $sel.closest('.at-itn-stop');
+        var oldV = $sel.data('prev') || '';
+        var newV = $sel.val();
+        $sel.data('prev', newV);
         // Choosing a time by hand fixes it; choosing "TBC" hands the stop back to the automatic times
-        $(this).closest('.at-itn-stop').find('.at-itn-fixed').prop('checked', $(this).val() !== '');
+        $row.find('.at-itn-fixed').prop('checked', newV !== '');
+        $('#stopsList .at-itn-shift').empty();
         updateChain(false);
+        if (oldV !== '' && newV !== '') {
+            offerShift($row, toMin(newV) - toMin(oldV));
+        }
+    });
+
+    $('#stopsList').on('click', '.at-itn-shift-dismiss', function () {
+        $(this).closest('.at-itn-shift').empty();
+    });
+
+    $('#stopsList').on('click', '.at-itn-shift-btn', function () {
+        var delta = $(this).data('delta');
+        var $row  = $(this).closest('.at-itn-stop');
+        var skipped = 0;
+        $row.nextAll('.at-itn-stop').each(function () {
+            var $sel = $(this).find('.at-itn-arrival');
+            if (!$(this).find('.at-itn-fixed').is(':checked') || $sel.val() === '') { return; }
+            var moved = toMin($sel.val()) + delta;
+            if (moved < 0 || moved >= 1440) { skipped++; return; }
+            $sel.val(fmtMin(moved)).data('prev', fmtMin(moved));
+        });
+        $row.find('.at-itn-shift').empty();
+        updateChain(false);
+        $(document).trigger('itn:shifted');
+        if (skipped > 0) {
+            alert(skipped + ' stop' + (skipped === 1 ? ' was' : 's were') + ' not moved because the new time would fall outside the day.');
+        }
     });
     $('#stopsList').on('change', '.at-itn-fixed, .at-itn-wait', function () { updateChain(false); });
     $('#start_time').on('change', function () { updateChain(false); });
@@ -573,6 +623,7 @@ $(document).ready(function () {
                     '<div class="form-group"><label>Wait <small>(optional, hh:mm)</small></label><select class="at-itn-wait"></select></div>' +
                 '</div>' +
                 '<div class="at-itn-time-note"></div>' +
+                '<div class="at-itn-shift"></div>' +
                 '<div class="form-group"><label>Note for the client <small>(optional)</small></label><textarea class="at-itn-client-notes"></textarea></div>' +
                 '<div class="form-group"><label>Internal note <small>(optional, not for the client)</small></label><textarea class="at-itn-internal-notes"></textarea></div>' +
             '</div>'
@@ -595,7 +646,7 @@ $(document).ready(function () {
         locEl.value = stop.location || '';
         if (stop.place_id) { locEl.dataset.placeId = stop.place_id; }
         attachPlaces(locEl);
-        $arrival.val(stop.arrival_time || '');
+        $arrival.val(stop.arrival_time || '').data('prev', stop.arrival_time || '');
         // Stops saved before the fixed tick existed count as fixed when they have a time, so nothing planned changes
         var fixedNow = (stop.time_fixed === null || stop.time_fixed === undefined || stop.time_fixed === '')
             ? !!stop.arrival_time

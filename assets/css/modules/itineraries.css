@@ -209,3 +209,17 @@
   .at-itn-print-actions { display: none; }
   .at-itn-print { padding: 0; }
 }
+
+/* ---- Shift following stops ---- */
+.at-itn-shift:empty { display: none; }
+.at-itn-shift { margin: 0 0 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+.at-itn-shift-btn,
+.at-itn-shift-dismiss {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: #f7f7f7;
+  cursor: pointer;
+  font-size: 13px;
+}
+.at-itn-shift-btn { background: #fff3cd; border-color: #e0c565; color: #6b5300; font-weight: 600; }
