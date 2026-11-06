@@ -157,13 +157,12 @@ function getWhatsAppPrebookingVariables(): array
 function getWhatsAppGroupVariables(): array
 {
     return getWhatsAppClientVariables() + [
-        'trips'            => 'One block per trip (identical trips are merged under several dates): date, route, flight, cost, the airport / after-hours notices, and the passenger / driver when they differ between trips (layout is fixed)',
+        'trips'            => 'One block per trip, in date and time order: date, route, flight, cost, "Payment Received" (only when some, not all, trips are paid), the notes typed on the booking followed by the airport / after-hours notices, and the passenger / driver when they differ between trips (layout is fixed)',
         'booking_count'    => 'Number of bookings in the message',
         'cost_total'       => 'Total of all the trips with R, e.g. R1,100.00 (empty when no trip has a cost)',
         'passenger_name'   => 'Passenger name. Only filled when every trip has the same passenger (other than the client); otherwise each trip shows its own in {trips}',
         'passenger_phone'  => 'Passenger phone. Filled together with the passenger name',
-        'payment_received' => 'Filled when every trip has been paid (use with {if}). When only some are paid, those trips are listed with their dates in {notes} instead',
-        'notes'            => 'Notes typed on the bookings. A note that applies to every trip is shown plainly; the others start with the date(s) of the trip(s) they belong to',
+        'payment_received' => 'Filled when every trip has been paid (use with {if}). When only some are paid, each paid trip shows a "Payment Received" line in {trips} instead',
         'driver_name'      => 'Driver name. Only filled when every trip has the same driver; otherwise each trip shows its own in {trips}',
         'driver_phone'     => 'Driver phone. Filled together with the driver name',
     ];
@@ -686,7 +685,7 @@ function getWhatsAppRecentClientBookings(PDO $pdo, array $booking, int $hours = 
 
 /**
  * Splits note text into its non-empty, trimmed, unique lines.
- * Used by: getWhatsAppTripNoticeLines(), buildWhatsAppGroupNotes()
+ * Used by: getWhatsAppTripNoticeLines(), buildWhatsAppTripsText()
  *
  * @return string[]
  */
@@ -705,7 +704,7 @@ function splitWhatsAppNoteLines(?string $text): array
 /**
  * The notices the system adds to a trip (airport pickup, after-hours surcharge), one per line, in
  * the given language. They belong to a single trip, so {trips} shows them under that trip.
- * Used by: buildWhatsAppTripsText(), buildWhatsAppGroupNotes()
+ * Used by: buildWhatsAppTripsText()
  *
  * @param array $booking  Row with pickup_location and after_hours_charge
  * @return string[]
@@ -776,29 +775,29 @@ function getSharedWhatsAppPair(array $pairs): array
 }
 
 /**
- * The {trips} text: one block per trip, merged into one block (with several date lines) when
- * trips are identical in everything but the date. A block is, in this order:
- *   📅 date (and time) - one line per date
+ * The {trips} text: one block per trip, in date and time order. Trips are never merged, even when
+ * they are identical in everything but the date. A block is, in this order:
+ *   📅 date (and time)
  *   📍 pickup -> destination
  *   ✈️ flight number
- *   💰 cost ("each" when the block covers several dates)
- *   📝 the airport / after-hours notices of the trip
+ *   💰 cost
+ *   ✅ Payment Received - only when some, not all, of the trips are paid (all paid is the
+ *      {payment_received} flag of the template)
+ *   📝 the notes typed on the booking, then the airport / after-hours notices - one line each
  *   👤 passenger and 🚗 driver - only when they differ between the trips (when every trip has the
  *      same ones they are the {passenger_name} / {driver_name} lines of the template)
- * Blocks are in the order of their earliest trip; dates are in time order.
  * Used by: buildGroupMessageVars()
  *
- * @param array[] $bookings  Rows with trip_date, start_time, cost, flight_number, after_hours_charge,
- *                           passenger_name / passenger_phone, driver_name / driver_phone and
- *                           pickup_location / destination already resolved for was_swapped
- * @param string  $language  'en' or 'af' (only the words "at" and "each" change)
+ * @param array[] $bookings  Rows with trip_date, start_time, cost, flight_number, description,
+ *                           after_hours_charge, payment_received, passenger_name / passenger_phone,
+ *                           driver_name / driver_phone and pickup_location / destination already
+ *                           resolved for was_swapped
+ * @param string  $language  'en' or 'af' (the word "at", the payment line and the notices change)
  */
 function buildWhatsAppTripsText(PDO $pdo, array $bookings, string $clientName, string $language = 'en'): string
 {
     $tz = new DateTimeZone(TIME_ZONE);
-    $isAf = normalizeWhatsAppLanguage($language) === 'af';
-    $atWord = $isAf ? 'om' : 'at';
-    $eachWord = $isAf ? 'elk' : 'each';
+    $atWord = normalizeWhatsAppLanguage($language) === 'af' ? 'om' : 'at';
 
     usort($bookings, fn($a, $b) => [(string) ($a['trip_date'] ?? ''), (string) ($a['start_time'] ?? '')]
         <=> [(string) ($b['trip_date'] ?? ''), (string) ($b['start_time'] ?? '')]);
@@ -807,6 +806,10 @@ function buildWhatsAppTripsText(PDO $pdo, array $bookings, string $clientName, s
     $driverKeys = array_map(fn($b) => implode("\n", getWhatsAppGroupDriver($b)), $bookings);
     $passengersDiffer = count(array_unique($passengerKeys)) > 1;
     $driversDiffer = count(array_unique($driverKeys)) > 1;
+
+    $paidCount = count(array_filter($bookings, fn($b) => !empty($b['payment_received'])));
+    $somePaid = $paidCount > 0 && $paidCount < count($bookings);
+    $paidLine = normalizeWhatsAppLanguage($language) === 'af' ? '✅ Betaling ontvang' : '✅ Payment Received';
 
     $blocks = [];
     foreach ($bookings as $b) {
@@ -822,118 +825,52 @@ function buildWhatsAppTripsText(PDO $pdo, array $bookings, string $clientName, s
 
         $pickup = trim((string) ($b['pickup_location'] ?? ''));
         $destination = trim((string) ($b['destination'] ?? ''));
-        $detail = [
-            'route'     => '📍 ' . $pickup . ' -> ' . $destination,
-            'flight'    => trim((string) ($b['flight_number'] ?? '')),
-            'cents'     => (int) round(((float) ($b['cost'] ?? 0)) * 100),
-            'notices'   => getWhatsAppTripNoticeLines($pdo, $b, $language),
-            'passenger' => $passengersDiffer ? formatWhatsAppPersonLine('👤', getWhatsAppGroupPassenger($b, $clientName)) : '',
-            'driver'    => $driversDiffer ? formatWhatsAppPersonLine('🚗', getWhatsAppGroupDriver($b)) : '',
-        ];
+        $lines = [$dateLine, '📍 ' . $pickup . ' -> ' . $destination];
 
-        $key = mb_strtolower(json_encode($detail, JSON_UNESCAPED_UNICODE));
-        if (!isset($blocks[$key])) {
-            $blocks[$key] = ['detail' => $detail, 'dates' => []];
+        $flight = trim((string) ($b['flight_number'] ?? ''));
+        if ($flight !== '') {
+            $lines[] = '✈️ ' . $flight;
         }
-        $blocks[$key]['dates'][] = $dateLine;
-    }
 
-    $out = [];
-    foreach ($blocks as $block) {
-        $d = $block['detail'];
-        $lines = $block['dates'];
-        $lines[] = $d['route'];
-        if ($d['flight'] !== '') {
-            $lines[] = '✈️ ' . $d['flight'];
+        $cents = (int) round(((float) ($b['cost'] ?? 0)) * 100);
+        if ($cents > 0) {
+            $lines[] = '💰 R' . number_format($cents / 100, 2);
         }
-        if ($d['cents'] > 0) {
-            $lines[] = '💰 R' . number_format($d['cents'] / 100, 2) . (count($block['dates']) > 1 ? ' ' . $eachWord : '');
+
+        if ($somePaid && !empty($b['payment_received'])) {
+            $lines[] = $paidLine;
         }
-        foreach ($d['notices'] as $notice) {
-            $lines[] = '📝 ' . $notice;
+
+        // Typed notes first, then the notices (same order as the single booking message)
+        $notices = getWhatsAppTripNoticeLines($pdo, $b, $language);
+        $typedNotes = array_diff(splitWhatsAppNoteLines($b['description'] ?? ''), $notices);
+        foreach (array_unique(array_merge($typedNotes, $notices)) as $noteLine) {
+            $lines[] = '📝 ' . $noteLine;
         }
-        if ($d['passenger'] !== '') {
-            $lines[] = $d['passenger'];
+
+        if ($passengersDiffer) {
+            $passengerLine = formatWhatsAppPersonLine('👤', getWhatsAppGroupPassenger($b, $clientName));
+            if ($passengerLine !== '') {
+                $lines[] = $passengerLine;
+            }
         }
-        if ($d['driver'] !== '') {
-            $lines[] = $d['driver'];
-        }
-        $out[] = implode("\n", $lines);
-    }
-    return implode("\n\n", $out);
-}
-
-/**
- * The {notes} text for the combined message: the notes typed on the bookings (the airport /
- * after-hours notices are shown under their own trip in {trips}, so they are left out here).
- * A line that every trip has is shown plainly; any other line starts with the date(s) of the
- * trips it belongs to, so the client can tell which trip it is about (a date gets the time added
- * when two trips share a date). When only some trips are paid, a "Payment Received" line is added
- * for those trips the same way.
- * Used by: buildGroupMessageVars()
- *
- * @param array[] $bookings  Same rows as buildWhatsAppTripsText(), plus description and payment_received
- * @param string  $language  'en' or 'af'
- */
-function buildWhatsAppGroupNotes(PDO $pdo, array $bookings, string $language = 'en'): string
-{
-    $tz = new DateTimeZone(TIME_ZONE);
-    $isAf = normalizeWhatsAppLanguage($language) === 'af';
-    $atWord = $isAf ? 'om' : 'at';
-
-    usort($bookings, fn($a, $b) => [(string) ($a['trip_date'] ?? ''), (string) ($a['start_time'] ?? '')]
-        <=> [(string) ($b['trip_date'] ?? ''), (string) ($b['start_time'] ?? '')]);
-    $total = count($bookings);
-
-    $dateCounts = array_count_values(array_map(fn($b) => (string) ($b['trip_date'] ?? ''), $bookings));
-
-    // note line => ['count' => trips it applies to, 'labels' => date labels of those trips]
-    $entries = [];
-    $paidCount = 0;
-    $paidLabels = [];
-
-    foreach ($bookings as $b) {
-        $label = '';
-        if (!empty($b['trip_date'])) {
-            $start = new DateTime($b['trip_date'] . ' ' . (!empty($b['start_time']) ? $b['start_time'] : '00:00:00'), $tz);
-            $label = $start->format('d/m/y');
-            if ($dateCounts[$b['trip_date']] > 1 && !empty($b['start_time'])) {
-                $label .= ' ' . $atWord . ' ' . $start->format('H:i');
+        if ($driversDiffer) {
+            $driverLine = formatWhatsAppPersonLine('🚗', getWhatsAppGroupDriver($b));
+            if ($driverLine !== '') {
+                $lines[] = $driverLine;
             }
         }
 
-        $notices = getWhatsAppTripNoticeLines($pdo, $b, $language);
-        $lines = array_values(array_diff(splitWhatsAppNoteLines($b['description'] ?? ''), $notices));
-        foreach ($lines as $line) {
-            $entries[$line]['count'] = ($entries[$line]['count'] ?? 0) + 1;
-            $entries[$line]['labels'][] = $label;
-        }
-
-        if (!empty($b['payment_received'])) {
-            $paidCount++;
-            $paidLabels[] = $label;
-        }
+        $blocks[] = implode("\n", $lines);
     }
-
-    // Everyone paid is the {payment_received} flag; nobody paid needs no line.
-    if ($paidCount > 0 && $paidCount < $total) {
-        $paidLine = $isAf ? '✅ Betaling ontvang' : '✅ Payment Received';
-        $entries[$paidLine] = ['count' => $paidCount, 'labels' => $paidLabels];
-    }
-
-    $out = [];
-    foreach ($entries as $line => $entry) {
-        $labels = array_values(array_unique(array_filter($entry['labels'], fn($l) => $l !== '')));
-        $out[] = ($entry['count'] >= $total || !$labels) ? (string) $line : implode(', ', $labels) . ': ' . $line;
-    }
-    return implode("\n", $out);
+    return implode("\n\n", $blocks);
 }
 
 /**
  * Values for the combined bookings message placeholders.
  * Used by: getWhatsAppGroupMessage()
  *
- * @param array[] $bookings  Same rows as buildWhatsAppTripsText(), plus description and payment_received
+ * @param array[] $bookings  Same rows as buildWhatsAppTripsText(), plus payment_received
  * @return array<string,string>
  */
 function buildGroupMessageVars(PDO $pdo, string $clientName, string $clientPhone, array $bookings, string $language = 'en'): array
@@ -954,7 +891,6 @@ function buildGroupMessageVars(PDO $pdo, string $clientName, string $clientPhone
         'passenger_name'   => $passengerName,
         'passenger_phone'  => $passengerPhone,
         'payment_received' => $allPaid ? '1' : '',
-        'notes'            => buildWhatsAppGroupNotes($pdo, $bookings, $language),
         'driver_name'      => $driverName,
         'driver_phone'     => $driverPhone,
     ];
