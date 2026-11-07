@@ -570,3 +570,114 @@ function createEventDescription(array $bookingData): string
 
     return $description;
 }
+
+// --- BOOKING FEE PERCENTAGE (per booking, chosen when a driver is allocated) ---
+
+const BOOKING_FEE_PCT_MAX  = 30;
+const BOOKING_FEE_PCT_STEP = 5;
+
+/**
+ * The percentages offered in the booking fee dropdown: 0, 5, 10 ... 30.
+ * 0 means "no booking fee" (full amount goes to the driver).
+ * Used by: add.php, edit.php, view.php and the API.
+ *
+ * @return int[]
+ */
+function getBookingFeePctOptions(): array
+{
+    return range(0, BOOKING_FEE_PCT_MAX, BOOKING_FEE_PCT_STEP);
+}
+
+/**
+ * Round any percentage to the nearest dropdown option (clamped to 0–30).
+ */
+function snapBookingFeePct(float $pct): int
+{
+    $snapped = (int) (round($pct / BOOKING_FEE_PCT_STEP) * BOOKING_FEE_PCT_STEP);
+    return max(0, min(BOOKING_FEE_PCT_MAX, $snapped));
+}
+
+/**
+ * The dropdown's default: the apex_booking_fee_pct system variable, snapped
+ * to the nearest dropdown option so an odd value (e.g. 12.5) still selects something valid.
+ */
+function getDefaultBookingFeePct(PDO $pdo): int
+{
+    return snapBookingFeePct((float) getSystemVariable($pdo, 'apex_booking_fee_pct'));
+}
+
+/**
+ * Validate a submitted percentage. Anything that isn't one of the dropdown
+ * options falls back to $default — the client-side value is never trusted.
+ *
+ * @param mixed $raw
+ */
+function parseBookingFeePct($raw, int $default): int
+{
+    if ($raw === null || $raw === '' || !is_numeric($raw)) {
+        return $default;
+    }
+    $value = (int) $raw;
+    if ((float) $raw !== (float) $value || !in_array($value, getBookingFeePctOptions(), true)) {
+        return $default;
+    }
+    return $value;
+}
+
+/**
+ * Turn the chosen percentage into the three stored values, so the existing
+ * no_booking_fee flag and booking_fee amount (read by the settlement logic,
+ * WhatsApp messages, reports and the calendar event) stay consistent.
+ *   - No driver:        pct NULL, no fee, flag 0.
+ *   - Driver + 0%:      pct 0, no fee, no_booking_fee 1.
+ *   - Driver + pct > 0: pct stored, fee = cost × pct, no_booking_fee 0.
+ *
+ * @return array{pct: ?int, fee: ?float, no_booking_fee: int}
+ */
+function resolveBookingFeeFields(?int $driverId, float $cost, int $pct): array
+{
+    if ($driverId === null) {
+        return ['pct' => null, 'fee' => null, 'no_booking_fee' => 0];
+    }
+    if ($pct <= 0) {
+        return ['pct' => 0, 'fee' => null, 'no_booking_fee' => 1];
+    }
+    $fee = calculateBookingFee($cost, (float) $pct);
+    return ['pct' => $pct, 'fee' => $fee > 0 ? $fee : null, 'no_booking_fee' => 0];
+}
+
+/**
+ * Which dropdown option to pre-select for an existing booking.
+ * Older bookings (booking_fee_pct is NULL) are worked out from what they
+ * stored: no_booking_fee → 0%, a stored fee → its share of the cost, else the default.
+ */
+function getBookingFeePctForForm(array $booking, int $default): int
+{
+    if (empty($booking['driver_id'])) {
+        return $default;
+    }
+    if (isset($booking['booking_fee_pct']) && $booking['booking_fee_pct'] !== null && $booking['booking_fee_pct'] !== '') {
+        return snapBookingFeePct((float) $booking['booking_fee_pct']);
+    }
+    if (!empty($booking['no_booking_fee'])) {
+        return 0;
+    }
+    $cost = (float) ($booking['cost'] ?? 0);
+    $fee  = (float) ($booking['booking_fee'] ?? 0);
+    if ($cost > 0 && $fee > 0) {
+        return snapBookingFeePct($fee / $cost * 100);
+    }
+    return $default;
+}
+
+/**
+ * When a save fails because the booking_fee_pct column doesn't exist yet,
+ * return a message pointing at Services → Database Updates; otherwise null.
+ */
+function bookingFeePctMigrationHint(Throwable $e): ?string
+{
+    if (stripos($e->getMessage(), 'booking_fee_pct') !== false && stripos($e->getMessage(), 'unknown column') !== false) {
+        return 'The database needs an update before booking fees can be saved. Run Services → Database Updates.';
+    }
+    return null;
+}

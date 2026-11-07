@@ -50,7 +50,10 @@ if (isset($_GET['id'])) {
                 // Fetch drivers and booking fee for the Manage Driver section
                 $driversStmt = $pdo->query("SELECT id, name, phone FROM drivers WHERE active = 1 ORDER BY name ASC");
                 $drivers = $driversStmt->fetchAll(PDO::FETCH_ASSOC);
-                $booking_fee_pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
+
+                // Booking fee dropdown: options (0–30) and this booking's current choice (default = apex_booking_fee_pct system variable)
+                $feePctOptions = getBookingFeePctOptions();
+                $selectedFeePct = getBookingFeePctForForm($booking, getDefaultBookingFeePct($pdo));
 
                 // Same "against all bookings" overlap rule as add/edit/index/reports
                 $bookingOverlaps = getBookingOverlapsForDates($pdo, [$booking['trip_date']])[$booking['id']] ?? [];
@@ -411,18 +414,19 @@ if (isset($_GET['id'])) {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div>
-                        <label for="booking-fee-input" class="manage-driver-label">Booking Fee (R)</label>
-                        <input type="number" id="booking-fee-input" step="0.01" min="0"
-                            value="<?= number_format((float)($booking['booking_fee'] ?? 0), 2) ?>">
+                    <div id="bookingFeePctGroup"<?= empty($booking['driver_id']) ? ' class="hidden"' : '' ?>>
+                        <label for="booking-fee-pct-select" class="manage-driver-label">Booking Fee</label>
+                        <select id="booking-fee-pct-select">
+                            <?php foreach ($feePctOptions as $opt): ?>
+                                <option value="<?= $opt ?>" <?= ($opt === $selectedFeePct) ? 'selected' : '' ?>>
+                                    <?= $opt === 0 ? '0% — No booking fee' : $opt . '%' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="no-booking-fee-check"
-                            <?= !empty($booking['no_booking_fee']) ? 'checked' : '' ?>>
-                        No Booking Fee (full amount goes to driver)
-                    </label>
+                <div class="form-group<?= empty($booking['driver_id']) ? ' hidden' : '' ?>" id="bookingFeeNote">
+                    <small id="bookingFeeDisplay"></small>
                 </div>
                 <div class="form-group">
                     <label for="driver-notes-input" class="manage-driver-label">Driver Notes</label>
@@ -762,33 +766,32 @@ if (isset($_GET['id'])) {
                 $('#manage-driver-section').slideToggle(200);
             });
 
-            var apexFeePct = <?= (float) $booking_fee_pct ?>;
             var bookingCost = <?= (float) $booking['cost'] ?>;
 
-            $('#driver-select').on('change', autoCalcFee);
-
-            function autoCalcFee() {
-                var noFee = $('#no-booking-fee-check').is(':checked');
-                $('#booking-fee-input').prop('disabled', noFee);
-                if (noFee) {
-                    $('#booking-fee-input').val('0.00');
-                } else if (apexFeePct > 0 && bookingCost > 0 && $('#driver-select').val()) {
-                    var fee = Math.round(bookingCost * apexFeePct / 100 * 100) / 100;
-                    $('#booking-fee-input').val(fee.toFixed(2));
-                } else if (!$('#driver-select').val()) {
-                    $('#booking-fee-input').val('0.00');
+            // Fee preview: cost × the chosen percentage (0% = no booking fee, full amount to driver).
+            // The server works out the stored fee itself when the driver is saved.
+            function updateBookingFeeNote() {
+                var driverSelected = $('#driver-select').val() !== '';
+                $('#bookingFeePctGroup').toggleClass('hidden', !driverSelected);
+                $('#bookingFeeNote').toggleClass('hidden', !driverSelected);
+                var pct = parseInt($('#booking-fee-pct-select').val(), 10) || 0;
+                if (pct === 0) {
+                    $('#bookingFeeDisplay').text('No booking fee — the full amount goes to the driver.');
+                } else {
+                    var fee = Math.round(bookingCost * pct / 100 * 100) / 100;
+                    $('#bookingFeeDisplay').text('Booking fee: R' + fee.toFixed(2) + ' (cost × ' + pct + '%), saved when you update the driver.');
                 }
             }
 
-            $('#no-booking-fee-check').on('change', autoCalcFee);
-            autoCalcFee();
+            $('#driver-select, #booking-fee-pct-select').on('change', updateBookingFeeNote);
+            updateBookingFeeNote();
 
             function doRemoveDriver() {
                 var resultArea = $('#manage-driver-result');
                 $.ajax({
                     type: 'POST',
                     url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
-                    data: { action: 'assign_driver', booking_id: bookingId, driver_id: '', booking_fee: 0, no_booking_fee: 0, driver_notes: '' },
+                    data: { action: 'assign_driver', booking_id: bookingId, driver_id: '', driver_notes: '' },
                     dataType: 'json',
                     success: function (res) {
                         if (res.success) {
@@ -806,8 +809,7 @@ if (isset($_GET['id'])) {
 
             $('#assign-driver-btn').on('click', function () {
                 var driverId = $('#driver-select').val();
-                var fee = parseFloat($('#booking-fee-input').val()) || 0;
-                var noFee = $('#no-booking-fee-check').is(':checked') ? 1 : 0;
+                var feePct = $('#booking-fee-pct-select').val();
                 var driverNotes = $('#driver-notes-input').val();
                 var resultArea = $('#manage-driver-result');
 
@@ -822,7 +824,7 @@ if (isset($_GET['id'])) {
                 $.ajax({
                     type: 'POST',
                     url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
-                    data: { action: 'assign_driver', booking_id: bookingId, driver_id: driverId, booking_fee: fee, no_booking_fee: noFee, driver_notes: driverNotes },
+                    data: { action: 'assign_driver', booking_id: bookingId, driver_id: driverId, booking_fee_pct: feePct, driver_notes: driverNotes },
                     dataType: 'json',
                     success: function (res) {
                         if (res.success) {

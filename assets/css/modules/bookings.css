@@ -102,8 +102,8 @@
     min-width: 180px;
 }
 
-#booking-fee-input {
-    width: 110px;
+#booking-fee-pct-select {
+    min-width: 150px;
 }
 
 #driver-notes-input {
@@ -129,10 +129,9 @@
     vertical-align: middle;
 }
 
-/* Booking fee display (add / edit pages) */
+/* Booking fee preview line (Allocate Driver panel on add / edit, Manage Driver on view) */
 #bookingFeeDisplay {
-    font-weight: bold;
-    padding: 6px 0;
+    color: #555;
 }
 
 /* More Actions button row */
