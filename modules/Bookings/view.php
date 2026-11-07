@@ -196,27 +196,6 @@ if (isset($_GET['id'])) {
         <div class="detail-item">
             <strong>Driver:</strong> 🚗 <?= htmlspecialchars($booking['driver_name']) ?>
         </div>
-        <?php
-        // Same logic as the driver WhatsApp message (calculateDriverSettlement in includes/helpers.php)
-        $driverSettlement = calculateDriverSettlement($booking);
-        ?>
-        <div class="detail-item">
-            <strong>Driver Due:</strong>
-            <?php if ($driverSettlement['direction'] === 'driver_pays_apex'): ?>
-                💵 Driver pays Apex R<?= number_format($driverSettlement['amount'], 2) ?>
-            <?php elseif ($driverSettlement['direction'] === 'apex_pays_driver'): ?>
-                📲 Apex pays driver R<?= number_format($driverSettlement['amount'], 2) ?>
-                <?php if ($driverSettlement['no_booking_fee']): ?>
-                    (no booking fee)
-                <?php else: ?>
-                    (after R<?= number_format((float) $driverSettlement['fee'], 2) ?> fee)
-                <?php endif; ?>
-            <?php elseif ($driverSettlement['no_booking_fee']): ?>
-                ✅ Nothing due (cash, no booking fee)
-            <?php else: ?>
-                —
-            <?php endif; ?>
-        </div>
         <?php endif; ?>
 
         <!-- Gate Code -->
@@ -428,6 +407,29 @@ if (isset($_GET['id'])) {
                 <div class="form-group<?= empty($booking['driver_id']) ? ' hidden' : '' ?>" id="bookingFeeNote">
                     <small id="bookingFeeDisplay"></small>
                 </div>
+                <?php if (!empty($booking['driver_name'])): ?>
+                <?php
+                // Same logic as the driver WhatsApp message (calculateDriverSettlement in includes/helpers.php)
+                $driverSettlement = calculateDriverSettlement($booking);
+                ?>
+                <div class="form-group">
+                    <strong>Driver Due:</strong>
+                    <?php if ($driverSettlement['direction'] === 'driver_pays_apex'): ?>
+                        💵 Driver pays Apex R<?= number_format($driverSettlement['amount'], 2) ?>
+                    <?php elseif ($driverSettlement['direction'] === 'apex_pays_driver'): ?>
+                        📲 Apex pays driver R<?= number_format($driverSettlement['amount'], 2) ?>
+                        <?php if ($driverSettlement['no_booking_fee']): ?>
+                            (no booking fee)
+                        <?php else: ?>
+                            (after R<?= number_format((float) $driverSettlement['fee'], 2) ?> fee)
+                        <?php endif; ?>
+                    <?php elseif ($driverSettlement['no_booking_fee']): ?>
+                        ✅ Nothing due (cash, no booking fee)
+                    <?php else: ?>
+                        —
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
                 <div class="form-group">
                     <label for="driver-notes-input" class="manage-driver-label">Driver Notes</label>
                     <textarea id="driver-notes-input" rows="3"
