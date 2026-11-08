@@ -230,21 +230,19 @@ if (isset($_GET['id'])) {
                 <small id="airportNoticeHint" class="at-help-text hidden">✈️ Airport pickup detected — this will be added to the notes automatically: "<?= htmlspecialchars($airport_pickup_notice ?? '') ?>"</small>
             </div>
 
-            <!-- Pickup person (collapsed unless the booking has one — rarely used) -->
+            <!-- Passenger details (same collapsible panel as Allocate Driver; collapsed unless the booking has one — rarely used) -->
             <?php $pickupPersonOpen = trim($booking['passenger_name'] ?? '') !== '' || trim($booking['passenger_phone'] ?? '') !== ''; ?>
-            <div class="form-group">
-                <button type="button" id="pickupPersonToggle" class="at-toggle-link" aria-expanded="<?= $pickupPersonOpen ? 'true' : 'false' ?>">
-                    👤 Picking up someone else? <span class="at-toggle-arrow"><?= $pickupPersonOpen ? '▴' : '▾' ?></span>
-                </button>
-                <div id="pickupPersonSection" class="at-pickup-person<?= $pickupPersonOpen ? '' : ' hidden' ?>">
+            <div class="menu-section">
+                <h3 class="menu-toggle" data-target="passenger-section">👤 Passenger Details</h3>
+                <div id="passenger-section" class="section-body<?= $pickupPersonOpen ? '' : ' hidden' ?>">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="passengerName">Picking Up (if not the client)</label>
+                            <label for="passengerName" class="manage-driver-label">Picking Up (if not the client)</label>
                             <input type="text" id="passengerName" name="passenger_name" placeholder="Name of person being collected"
                                 value="<?php echo htmlspecialchars($booking['passenger_name'] ?? ''); ?>">
                         </div>
                         <div class="form-group">
-                            <label for="passengerPhone">Passenger Phone</label>
+                            <label for="passengerPhone" class="manage-driver-label">Passenger Phone</label>
                             <input type="tel" id="passengerPhone" name="passenger_phone"
                                 value="<?php echo htmlspecialchars($booking['passenger_phone'] ?? ''); ?>">
                         </div>
@@ -522,13 +520,9 @@ $(document).ready(function () {
     updateDriverSections();
     updateBookingFee();
 
-    // Pickup person section toggle (fields stay in the form and submit even when collapsed)
-    $('#pickupPersonToggle').on('click', function () {
-        var section = $('#pickupPersonSection');
-        section.toggleClass('hidden');
-        var isOpen = !section.hasClass('hidden');
-        $(this).attr('aria-expanded', isOpen ? 'true' : 'false');
-        $(this).find('.at-toggle-arrow').text(isOpen ? '▴' : '▾');
+    // Passenger Details panel: header toggles it (fields stay in the form and submit even when collapsed)
+    $('.menu-toggle[data-target="passenger-section"]').on('click', function () {
+        $('#passenger-section').slideToggle(200);
     });
 
     $('#editBookingForm').on('submit', function (e) {
