@@ -187,10 +187,12 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
 
         <!-- Payment Method -->
         <div class="form-group">
-            <label>
-                <input type="checkbox" id="payment_method" name="payment_method" value="eft">
-                EFT Payment
-            </label>
+            <label for="payment_method">Payment Method</label>
+            <select id="payment_method" name="payment_method">
+                <?php foreach (PAYMENT_METHODS as $methodKey => $methodLabel): ?>
+                    <option value="<?= $methodKey ?>"><?= htmlspecialchars($methodLabel) ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
 
         <!-- Payment Received -->
@@ -625,9 +627,8 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
             loading.show();
             result.html('');
 
-            var paymentMethod = $('#payment_method').is(':checked') ? 'eft' : 'cash';
             var paymentReceived = $('#payment_received').is(':checked') ? '1' : '0';
-            var formData = $(this).serialize() + '&payment_method=' + paymentMethod + '&payment_received=' + paymentReceived +
+            var formData = $(this).serialize() + '&payment_received=' + paymentReceived +
                 '&after_hours_confirmed=' + afterHoursConfirmed;
 
             $.ajax({

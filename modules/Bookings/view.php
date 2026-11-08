@@ -173,7 +173,7 @@ if (isset($_GET['id'])) {
         <?php endif; ?>
         <div class="detail-item">
             <strong>Payment Method:</strong>
-            <?= $booking['payment_method'] === 'eft' ? 'EFT' : 'Cash' ?>
+            <?= htmlspecialchars(paymentMethodLabel($booking['payment_method'] ?? '')) ?>
         </div>
         <div class="detail-item">
             <strong>Payment Received:</strong>

@@ -196,13 +196,14 @@ if (isset($_GET['id'])) {
                 <input type="number" id="otherCost" name="other_cost">
             </div>
 
-            <!-- Payment Method: EFT Checkbox -->
+            <!-- Payment Method -->
             <div class="form-group">
-                <label>
-                    <input type="checkbox" id="payment_method" name="payment_method" value="eft"
-                           <?= $booking['payment_method'] === 'eft' ? 'checked' : '' ?>>
-                    EFT Payment
-                </label>
+                <label for="payment_method">Payment Method</label>
+                <select id="payment_method" name="payment_method">
+                    <?php foreach (PAYMENT_METHODS as $methodKey => $methodLabel): ?>
+                        <option value="<?= $methodKey ?>" <?= ($booking['payment_method'] ?? 'cash') === $methodKey ? 'selected' : '' ?>><?= htmlspecialchars($methodLabel) ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
 
             <!-- Payment Received -->
@@ -544,9 +545,8 @@ $(document).ready(function () {
         loading.show();
         result.html('');
 
-        var paymentMethod = $('#payment_method').is(':checked') ? 'eft' : 'cash';
         var paymentReceived = $('#payment_received').is(':checked') ? '1' : '0';
-        var formData = $(this).serialize() + '&payment_method=' + paymentMethod + '&payment_received=' + paymentReceived +
+        var formData = $(this).serialize() + '&payment_received=' + paymentReceived +
             '&after_hours_confirmed=' + afterHoursConfirmed;
 
         $.ajax({

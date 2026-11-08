@@ -536,7 +536,7 @@ function createEventDescription(array $bookingData): string
     $description = "📍 Pickup: " . $pickup . "\n";
     $description .= "🎯 Destination: " . $destination . "\n";
     $description .= "💰 Cost: R" . number_format($bookingData['cost'], 2) . "\n";
-    $description .= "💳 Payment: " . ($bookingData['payment_method'] === 'eft' ? 'EFT' : 'Cash') . "\n";
+    $description .= "💳 Payment: " . paymentMethodLabel($bookingData['payment_method'] ?? '') . "\n";
 
     if (!empty($bookingData['client_phone'])) {
         $description .= "📞 Phone: " . $bookingData['client_phone'] . "\n";

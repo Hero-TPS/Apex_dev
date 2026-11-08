@@ -246,7 +246,7 @@ function handleAddBooking()
         $original_pickup = $_POST['original_pickup'] ?? '';
         $original_destination = $_POST['original_destination'] ?? '';
         $cost = $_POST['cost'] ?? '';
-        $payment_method = $_POST['payment_method'] ?? 'cash';
+        $payment_method = normalizePaymentMethod($_POST['payment_method'] ?? 'cash');
         $payment_received = isset($_POST['payment_received']) && $_POST['payment_received'] == '1' ? 1 : 0;
         $was_swapped = isset($_POST['swap_locations']) ? 1 : 0;
 
@@ -482,7 +482,7 @@ function handleUpdateBooking()
             $booking_id = intval($_REQUEST['id'] ?? 0);
             $payment_method = $_REQUEST['payment_method'] ?? 'cash';
 
-            if ($booking_id <= 0 || !in_array($payment_method, ['cash', 'eft'])) {
+            if ($booking_id <= 0 || !isset(PAYMENT_METHODS[$payment_method])) {
                 throw new Exception('Invalid booking ID or payment method.');
             }
 
@@ -535,7 +535,7 @@ function handleUpdateBooking()
             $passenger_name = trim($_REQUEST['passenger_name'] ?? '') ?: null;
             $passenger_phone = trim($_REQUEST['passenger_phone'] ?? '') ?: null;
             $description_input = trim($_REQUEST['description'] ?? '');
-            $payment_method = trim($_REQUEST['payment_method'] ?? 'cash');
+            $payment_method = normalizePaymentMethod($_REQUEST['payment_method'] ?? 'cash');
             $payment_received = isset($_REQUEST['payment_received']) && $_REQUEST['payment_received'] == '1' ? 1 : 0;
             $swap_locations = isset($_REQUEST['swap_locations']);
             $driver_id = intval($_REQUEST['driver_id'] ?? 0) ?: null;
