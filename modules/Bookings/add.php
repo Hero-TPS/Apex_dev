@@ -225,7 +225,7 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
             <div id="passenger-section" class="section-body<?= $pickupPersonOpen ? '' : ' hidden' ?>">
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="passengerName" class="manage-driver-label">Passenger</label>
+                        <label for="passengerName" class="manage-driver-label">Passenger Name</label>
                         <input type="text" id="passengerName" name="passenger_name"
                             value="<?= $prefill_passenger_name ?>">
                     </div>
