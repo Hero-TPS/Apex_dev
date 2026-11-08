@@ -111,12 +111,10 @@ function handleGetBookings()
         if ($show === 'all') {
             $sql = "
                 SELECT 
-                    b.id, b.contact_id, b.trip_date, b.start_time, b.end_time, b.status,
-                    b.original_pickup, b.original_destination, b.was_swapped, b.cost,
-                    b.payment_received,
-                    b.driver_id, b.booking_fee, b.distance_km, b.is_round_trip,
+                    b.*,
                     c.name AS client_name, c.phone AS client_phone,
-                    d.name AS driver_name
+                    c.pickup_lat AS client_pickup_lat, c.pickup_lng AS client_pickup_lng,
+                    d.name AS driver_name, d.phone AS driver_phone
                 FROM bookings b
                 JOIN contacts c ON b.contact_id = c.id
                 LEFT JOIN drivers d ON b.driver_id = d.id
@@ -130,12 +128,10 @@ function handleGetBookings()
             $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
             $sql = "
                 SELECT 
-                    b.id, b.contact_id, b.trip_date, b.start_time, b.end_time, b.status,
-                    b.original_pickup, b.original_destination, b.was_swapped, b.cost,
-                    b.payment_received,
-                    b.driver_id, b.booking_fee, b.distance_km, b.is_round_trip,
+                    b.*,
                     c.name AS client_name, c.phone AS client_phone,
-                    d.name AS driver_name
+                    c.pickup_lat AS client_pickup_lat, c.pickup_lng AS client_pickup_lng,
+                    d.name AS driver_name, d.phone AS driver_phone
                 FROM bookings b
                 JOIN contacts c ON b.contact_id = c.id
                 LEFT JOIN drivers d ON b.driver_id = d.id
@@ -157,9 +153,13 @@ function handleGetBookings()
         // can still overlap with an upcoming one).
         $overlapMap = getBookingOverlapsForDates($pdo, array_column($bookings, 'trip_date'));
 
+        // WhatsApp dropdown messages: templates loaded once, filled in per booking below
+        $waTemplates = getWhatsAppMenuTemplates($pdo);
+
         foreach ($bookings as $row) {
             $pickup = $row['was_swapped'] ? $row['original_destination'] : $row['original_pickup'];
             $destination = $row['was_swapped'] ? $row['original_pickup'] : $row['original_destination'];
+            $waPhone = formatPhoneNumberForWhatsApp($row['client_phone'] ?? '');
 
             $tripDate = new DateTime($row['trip_date']);
             $isToday = ($row['trip_date'] === $today_str);
@@ -190,9 +190,13 @@ function handleGetBookings()
                     : null,
                 'calculated_cost' => $calculatedCost !== null ? 'R' . number_format($calculatedCost, 2) : null,
                 'client_name' => $row['client_name'],
-                'client_phone' => formatPhoneNumberForWhatsApp($row['client_phone'] ?? ''),
+                'client_phone' => $waPhone,
                 'driver_name' => $row['driver_name'] ?? null,
                 'overlaps' => $overlapMap[(int) $row['id']] ?? [],
+                // Same messages as the WhatsApp dropdown on the booking page
+                'wa_messages' => $waPhone !== ''
+                    ? getWhatsAppBookingMessages($pdo, $row + ['pickup_location' => $pickup, 'destination' => $destination], $waTemplates)
+                    : [],
             ];
         }
 

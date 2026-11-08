@@ -392,18 +392,20 @@ function getWhatsAppMenuTemplates(PDO $pdo): array
 /**
  * Every booking-menu message filled in for one booking, in the booking's language, ready for
  * renderWhatsAppMenu(). Includes the client-level ones (bank details, pickup message, ...).
- * Used by: modules/Bookings/view.php, modules/Clients/bookings.php
+ * Used by: modules/Bookings/view.php, modules/Bookings/api/index.php (bookings list), modules/Clients/bookings.php
  *
- * @param array $booking  Booking row (bookings.language) with client_name, client_phone,
- *                        pickup_location, destination and, if allocated, driver_name / driver_phone
+ * @param array      $booking   Booking row (bookings.language) with client_name, client_phone,
+ *                              pickup_location, destination and, if allocated, driver_name / driver_phone
+ * @param array|null $templates Already-loaded getWhatsAppMenuTemplates() result, so a list of
+ *                              bookings loads the templates once instead of once per booking
  * @return array<int,array{key:string,label:string,text:string}>
  */
-function getWhatsAppBookingMessages(PDO $pdo, array $booking): array
+function getWhatsAppBookingMessages(PDO $pdo, array $booking, ?array $templates = null): array
 {
     $vars = buildBookingMessageVars($pdo, $booking);
     $language = normalizeWhatsAppLanguage($booking['language'] ?? 'en');
     $messages = [];
-    foreach (getWhatsAppMenuTemplates($pdo) as $template) {
+    foreach ($templates ?? getWhatsAppMenuTemplates($pdo) as $template) {
         $messages[] = [
             'key'   => $template['template_key'],
             'label' => $template['label'],
