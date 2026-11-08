@@ -306,3 +306,12 @@
     border-bottom: 1px solid #eee;
     cursor: pointer;
 }
+
+/* Bookings index: flight number + Track Flight link under the pickup */
+.at-flight-line {
+    margin-top: 4px;
+    font-size: 0.9em;
+}
+.at-flight-line .map-link {
+    margin-left: 6px;
+}

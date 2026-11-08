@@ -183,6 +183,10 @@ function handleGetBookings()
                 'is_past' => $isPast,
                 'pickup_location' => $pickup,
                 'destination' => $destination,
+                'flight_number' => trim((string) ($row['flight_number'] ?? '')),
+                'flightradar_url' => trim((string) ($row['flight_number'] ?? '')) !== ''
+                    ? buildFlightradarUrl($row['flight_number'])
+                    : '',
                 'cost' => 'R' . number_format((float) $row['cost'], 2),
                 'payment_received' => (bool) $row['payment_received'],
                 'distance' => $distanceKm !== null

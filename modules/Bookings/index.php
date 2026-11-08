@@ -77,6 +77,13 @@ include ROOT_DIR . '/includes/header.php';
             return ' <span class="at-overlap-badge" data-booking-id="' + booking.id + '" title="Overlaps with another booking — tap for details">⚠️</span>';
         }
 
+        // Flight number with its Flightradar24 link, under the pickup (same link as "Track Flight" on the booking page)
+        function renderFlight(booking) {
+            if (!booking.flight_number) return '';
+            return '<div class="at-flight-line">✈️ ' + escapeHtml(booking.flight_number) +
+                ' <a href="' + escapeHtmlAttr(booking.flightradar_url) + '" target="_blank" rel="noopener" class="map-link">Track Flight</a></div>';
+        }
+
         // WhatsApp dropdown for a booking row. Same markup as renderWhatsAppMenu() in
         // modules/WhatsApp/helpers.php (the booking page); behaviour and logging live in assets/js/whatsapp-menu.js.
         function buildWaMenu(booking) {
@@ -116,7 +123,7 @@ include ROOT_DIR . '/includes/header.php';
                                 '<td data-label="Date">' + escapeHtml(booking.trip_date) + '</td>' +
                                 '<td data-label="Time">' + escapeHtml(booking.start_time) + renderOverlapBadge(booking) + '</td>' +
                                 '<td data-label="Client">' + escapeHtml(booking.client_name) + '</td>' +
-                                '<td data-label="Pickup">' + escapeHtml(booking.pickup_location) + '</td>' +
+                                '<td data-label="Pickup">' + escapeHtml(booking.pickup_location) + renderFlight(booking) + '</td>' +
                                 '<td data-label="Destination">' + escapeHtml(booking.destination) + '</td>' +
                                 '<td data-label="Cost">' + escapeHtml(booking.cost) + (booking.payment_received ? ' <span title="Payment received">✅</span>' : '') + '</td>' +
                                 '<td data-label="Distance">' + (booking.distance ? escapeHtml(booking.distance) : '<span style="color:#aaa;">—</span>') + '</td>' +
