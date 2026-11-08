@@ -237,8 +237,8 @@ if (isset($_GET['id'])) {
                 <div id="passenger-section" class="section-body<?= $pickupPersonOpen ? '' : ' hidden' ?>">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="passengerName" class="manage-driver-label">Picking Up (if not the client)</label>
-                            <input type="text" id="passengerName" name="passenger_name" placeholder="Name of person being collected"
+                            <label for="passengerName" class="manage-driver-label">Passenger Name</label>
+                            <input type="text" id="passengerName" name="passenger_name" 
                                 value="<?php echo htmlspecialchars($booking['passenger_name'] ?? ''); ?>">
                         </div>
                         <div class="form-group">
