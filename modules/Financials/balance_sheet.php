@@ -323,7 +323,7 @@ include ROOT_DIR . '/includes/header.php';
                 <tr>
                     <td><?= htmlspecialchars(date('d M Y', strtotime($b['trip_date']))) ?></td>
                     <td><?= htmlspecialchars($desc) ?></td>
-                    <td class="bs-method <?= $method === 'EFT' ? 'bs-eft' : 'bs-cash' ?>"><?= $method ?></td>
+                    <td class="bs-method <?= ['EFT' => 'bs-eft', 'CARD' => 'bs-card'][$method] ?? 'bs-cash' ?>"><?= $method ?></td>
                     <td class="bs-amt"><?= number_format($amount, 2) ?></td>
                 </tr>
                 <?php endforeach; ?>
