@@ -271,8 +271,9 @@ if (isset($_GET['id'])) {
     // Book Again URLs. Values are double-encoded on purpose: add.php runs urldecode()
     // on values PHP has already decoded, which would turn a "+27..." phone into " 27...".
     // Cost is the base fare (after-hours surcharge excluded), same as edit.php, so the
-    // surcharge prompt on add.php doesn't charge it twice. Date, time, flight number,
-    // notes, driver and the round-trip flag are never copied.
+    // surcharge prompt on add.php doesn't charge it twice. The payment method is copied on
+    // all three choices; "Payment Received" never is (a new trip hasn't been paid yet).
+    // Date, time, flight number, notes, driver and the round-trip flag are never copied.
     $bookAgainUrl = function (array $params): string {
         $parts = [];
         foreach ($params as $key => $value) {
@@ -289,6 +290,9 @@ if (isset($_GET['id'])) {
         'contact_id'   => (int) $booking['contact_id'],
         'contact_name' => $booking['client_name'],
     ];
+    $bookAgainPayment = [
+        'payment_method' => $booking['payment_method'] ?? '',
+    ];
     $bookAgainTrip = [
         'pickup'          => $booking['original_pickup'] ?? '',
         'destination'     => $booking['original_destination'] ?? '',
@@ -297,11 +301,11 @@ if (isset($_GET['id'])) {
         'passenger_phone' => trim($booking['passenger_phone'] ?? ''),
     ];
 
-    $bookAgainNewUrl    = $bookAgainUrl($bookAgainClient);
-    $bookAgainRepeatUrl = $bookAgainUrl($bookAgainClient + $bookAgainTrip + [
+    $bookAgainNewUrl    = $bookAgainUrl($bookAgainClient + $bookAgainPayment);
+    $bookAgainRepeatUrl = $bookAgainUrl($bookAgainClient + $bookAgainPayment + $bookAgainTrip + [
         'swap_locations' => !empty($booking['was_swapped']) ? '1' : '',
     ]);
-    $bookAgainReturnUrl = $bookAgainUrl($bookAgainClient + $bookAgainTrip + [
+    $bookAgainReturnUrl = $bookAgainUrl($bookAgainClient + $bookAgainPayment + $bookAgainTrip + [
         'swap_locations' => !empty($booking['was_swapped']) ? '' : '1',
     ]);
     ?>
@@ -314,11 +318,11 @@ if (isset($_GET['id'])) {
             <div class="at-bookagain-choices">
                 <a href="<?= htmlspecialchars($bookAgainNewUrl) ?>" class="page-action-btn rebook">
                     🆕 New booking
-                    <span class="at-bookagain-hint">Same client, everything else blank</span>
+                    <span class="at-bookagain-hint">Same client and payment method, everything else blank</span>
                 </a>
                 <a href="<?= htmlspecialchars($bookAgainRepeatUrl) ?>" class="page-action-btn rebook">
                     🔁 Repeat this trip
-                    <span class="at-bookagain-hint">Same route, cost and pickup person</span>
+                    <span class="at-bookagain-hint">Same route, cost, payment method and pickup person</span>
                 </a>
                 <a href="<?= htmlspecialchars($bookAgainReturnUrl) ?>" class="page-action-btn rebook">
                     ↩️ Return trip
