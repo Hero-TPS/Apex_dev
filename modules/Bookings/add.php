@@ -53,6 +53,12 @@ $prefill_passenger_name  = isset($_GET['passenger_name'])  ? htmlspecialchars(ur
 $prefill_passenger_phone = isset($_GET['passenger_phone']) ? htmlspecialchars(urldecode($_GET['passenger_phone'])) : '';
 $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_prebooking'] : 0;
 
+// Payment method passed in by Book Again; anything that isn't a known method is ignored
+$prefill_payment_method = isset($_GET['payment_method']) ? urldecode($_GET['payment_method']) : '';
+if (!isset(PAYMENT_METHODS[$prefill_payment_method])) {
+    $prefill_payment_method = '';
+}
+
 // Pickup person section opens by itself when Book Again / prebooking passes one in
 $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone !== '');
 ?>
@@ -190,7 +196,7 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
             <label for="payment_method">Payment Method</label>
             <select id="payment_method" name="payment_method">
                 <?php foreach (PAYMENT_METHODS as $methodKey => $methodLabel): ?>
-                    <option value="<?= $methodKey ?>"><?= htmlspecialchars($methodLabel) ?></option>
+                    <option value="<?= $methodKey ?>"<?= $methodKey === $prefill_payment_method ? ' selected' : '' ?>><?= htmlspecialchars($methodLabel) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
