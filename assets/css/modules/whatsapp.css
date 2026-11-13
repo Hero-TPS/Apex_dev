@@ -44,6 +44,17 @@
   background: #dff6e8;
 }
 
+/* Heading above a group of messages sent to someone else (e.g. "To passenger") */
+.at-wa-menu-heading {
+  margin-top: 6px;
+  padding: 2px 4px 0;
+  color: #666;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* On the booking page the list floats over the content below the button.
    In table rows it stays in the flow, so the page container can never clip it. */
 .invoice-actions .at-wa-menu-list {

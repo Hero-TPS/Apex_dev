@@ -377,19 +377,79 @@ function getWhatsAppTemplates(PDO $pdo): array
 }
 
 /**
- * Active templates that appear in the WhatsApp menu. Returns [] (and logs) when the
- * table is missing, so pages still load before the migration has been run.
- * Used by: modules/Bookings/view.php, modules/Clients/*
+ * Active templates that appear in the WhatsApp menu and are sent to the client (recipient 'client').
+ * Passenger templates are not included: see getWhatsAppPassengerTemplates(). Returns [] (and logs)
+ * when the table is missing, so pages still load before the migration has been run. Before the
+ * recipient column exists (migration 20261112_1640) every template is a client template.
+ * Used by: modules/Bookings/view.php, modules/Bookings/api/index.php, modules/Clients/*
  */
 function getWhatsAppMenuTemplates(PDO $pdo): array
 {
     try {
-        $stmt = $pdo->query("SELECT * FROM whatsapp_templates WHERE placement = 'booking_menu' AND active = 1 ORDER BY sort_order ASC, label ASC");
+        $stmt = $pdo->query("SELECT * FROM whatsapp_templates WHERE placement = 'booking_menu' AND recipient = 'client' AND active = 1 ORDER BY sort_order ASC, label ASC");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
-        logError('WHATSAPP', 'Failed to load WhatsApp menu templates', ['error' => $e->getMessage()]);
+        try {
+            $stmt = $pdo->query("SELECT * FROM whatsapp_templates WHERE placement = 'booking_menu' AND active = 1 ORDER BY sort_order ASC, label ASC");
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e2) {
+            logError('WHATSAPP', 'Failed to load WhatsApp menu templates', ['error' => $e2->getMessage()]);
+            return [];
+        }
+    }
+}
+
+/**
+ * Active templates that are sent to a booking's passenger (recipient 'passenger'). Returns []
+ * before the recipient column exists (migration 20261112_1640), which is a normal state, so
+ * nothing is logged.
+ * Used by: getWhatsAppPassengerMessages()
+ */
+function getWhatsAppPassengerTemplates(PDO $pdo): array
+{
+    try {
+        $stmt = $pdo->query("SELECT * FROM whatsapp_templates WHERE placement = 'booking_menu' AND recipient = 'passenger' AND active = 1 ORDER BY sort_order ASC, label ASC");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
         return [];
     }
+}
+
+/**
+ * The passenger messages for one booking, filled in and ready for renderWhatsAppMenu(). Always
+ * English (passenger messages have no Afrikaans version yet, and the booking language is the
+ * client's). Returns [] when the booking has no separate passenger (none given, or the passenger
+ * is the client) or the passenger has no usable WhatsApp number, so the menu never offers a
+ * message it cannot send.
+ * Each message carries its own 'phone' (the passenger's WhatsApp number) and a 'section' heading.
+ * Used by: modules/Bookings/view.php
+ *
+ * @param array $booking  Booking row with client_name, passenger_name / passenger_phone and the
+ *                        fields buildBookingMessageVars() reads
+ * @return array<int,array{key:string,label:string,text:string,phone:string,section:string}>
+ */
+function getWhatsAppPassengerMessages(PDO $pdo, array $booking, ?array $templates = null): array
+{
+    $vars = buildBookingMessageVars($pdo, array_merge($booking, ['language' => 'en']));
+    if ($vars['passenger_name'] === '') {
+        return [];
+    }
+    $waPhone = formatPhoneNumberForWhatsApp($vars['passenger_phone']);
+    if ($waPhone === '') {
+        return [];
+    }
+
+    $messages = [];
+    foreach ($templates ?? getWhatsAppPassengerTemplates($pdo) as $template) {
+        $messages[] = [
+            'key'     => $template['template_key'],
+            'label'   => $template['label'],
+            'text'    => renderWhatsAppTemplate(getWhatsAppTemplateBody($template, 'en'), $vars),
+            'phone'   => $waPhone,
+            'section' => 'To passenger',
+        ];
+    }
+    return $messages;
 }
 
 /**
@@ -988,38 +1048,74 @@ function createDriverBookingMessage(PDO $pdo, array $bookingDetails): string
 
 /**
  * HTML for the "💬 WhatsApp ▾" dropdown: one item per message plus a blank message.
+ * Messages with a 'section' (the passenger messages) are listed after the blank message under a
+ * heading and are sent to their own 'phone' instead of $waPhone.
  * Opening / closing and logging are handled by assets/js/whatsapp-menu.js, which the page must load.
  * Used by: modules/Bookings/view.php, modules/Clients/bookings.php
  *
- * @param string $waPhone     Digits-only number from formatPhoneNumberForWhatsApp()
- * @param array  $messages    Each: key, label, text
+ * @param string $waPhone     Digits-only number from formatPhoneNumberForWhatsApp() (the client's)
+ * @param array  $messages    Each: key, label, text. Optional: phone (digits-only, overrides $waPhone), section (heading)
  * @param string $buttonClass CSS classes for the button (page-level or table-level style)
  * @param string $buttonLabel Text on the button
  */
 function renderWhatsAppMenu(string $waPhone, array $messages, ?int $bookingId, ?int $contactId, string $buttonClass = 'page-action-btn whatsapp', string $buttonLabel = '💬 WhatsApp ▾'): string
 {
-    if ($waPhone === '') {
+    // The button works when the client has a number, or when a message brings its own (a passenger's)
+    $hasOwnPhone = false;
+    foreach ($messages as $m) {
+        if (!empty($m['phone'])) {
+            $hasOwnPhone = true;
+            break;
+        }
+    }
+    if ($waPhone === '' && !$hasOwnPhone) {
         return '<button type="button" class="' . e($buttonClass) . '" disabled title="No valid WhatsApp number on file">' . e($buttonLabel) . '</button>';
     }
 
     $ids = ($bookingId !== null ? ' data-booking-id="' . (int) $bookingId . '"' : '')
         . ($contactId !== null ? ' data-contact-id="' . (int) $contactId . '"' : '');
 
+    $renderItem = function (array $m) use ($waPhone, $ids): string {
+        $phone = !empty($m['phone']) ? $m['phone'] : $waPhone;
+        if ($phone === '' || trim($m['text']) === '') {
+            return ''; // no number to send to, or e.g. bank details not filled in yet — nothing to send
+        }
+        return '<a class="at-wa-menu-item" target="_blank" rel="noopener"'
+            . ' href="https://wa.me/' . e($phone) . '?text=' . e(urlencode($m['text'])) . '"'
+            . ' data-wa-key="' . e($m['key']) . '" data-wa-msg="' . e($m['text']) . '"' . $ids . '>'
+            . e($m['label']) . '</a>';
+    };
+
+    $clientMessages = [];
+    $sections = [];
+    foreach ($messages as $m) {
+        if (!empty($m['section'])) {
+            $sections[$m['section']][] = $m;
+        } else {
+            $clientMessages[] = $m;
+        }
+    }
+
     $html = '<div class="at-wa-menu">';
     $html .= '<button type="button" class="' . e($buttonClass) . ' at-wa-menu-toggle" aria-haspopup="true" aria-expanded="false">' . e($buttonLabel) . '</button>';
     $html .= '<div class="at-wa-menu-list" hidden>';
-    foreach ($messages as $m) {
-        if (trim($m['text']) === '') {
-            continue; // e.g. bank details not filled in yet — nothing to send
-        }
-        $html .= '<a class="at-wa-menu-item" target="_blank" rel="noopener"'
-            . ' href="https://wa.me/' . e($waPhone) . '?text=' . e(urlencode($m['text'])) . '"'
-            . ' data-wa-key="' . e($m['key']) . '" data-wa-msg="' . e($m['text']) . '"' . $ids . '>'
-            . e($m['label']) . '</a>';
+    foreach ($clientMessages as $m) {
+        $html .= $renderItem($m);
     }
-    $html .= '<a class="at-wa-menu-item" target="_blank" rel="noopener"'
-        . ' href="https://wa.me/' . e($waPhone) . '"'
-        . ' data-wa-key="message" data-wa-msg=""' . $ids . '>Blank message</a>';
+    if ($waPhone !== '') {
+        $html .= '<a class="at-wa-menu-item" target="_blank" rel="noopener"'
+            . ' href="https://wa.me/' . e($waPhone) . '"'
+            . ' data-wa-key="message" data-wa-msg=""' . $ids . '>Blank message</a>';
+    }
+    foreach ($sections as $heading => $sectionMessages) {
+        $items = '';
+        foreach ($sectionMessages as $m) {
+            $items .= $renderItem($m);
+        }
+        if ($items !== '') {
+            $html .= '<div class="at-wa-menu-heading">' . e($heading) . '</div>' . $items;
+        }
+    }
     $html .= '</div></div>';
 
     return $html;

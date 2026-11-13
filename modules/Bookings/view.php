@@ -235,10 +235,12 @@ if (isset($_GET['id'])) {
             </button>
         <?php endif; ?>
         <?php
-        // WhatsApp dropdown: every message set up under WhatsApp Messages, filled in for this booking
+        // WhatsApp dropdown: every message set up under WhatsApp Messages, filled in for this booking.
+        // The passenger messages (sent to the passenger's number) follow under their own heading,
+        // only when the booking has a separate passenger with a usable number.
         echo renderWhatsAppMenu(
             formatPhoneNumberForWhatsApp($booking['client_phone']),
-            getWhatsAppBookingMessages($pdo, $booking),
+            array_merge(getWhatsAppBookingMessages($pdo, $booking), getWhatsAppPassengerMessages($pdo, $booking)),
             (int) $booking['id'],
             (int) $booking['contact_id']
         );
