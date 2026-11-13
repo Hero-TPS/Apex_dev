@@ -28,7 +28,8 @@ include ROOT_DIR . '/includes/header.php';
 
 <p class="at-wa-list-intro">
     Messages in the WhatsApp menu on a booking. A message that only uses client details (like bank details)
-    also shows on the Clients pages. Built-in messages can be edited but not deleted.
+    also shows on the Clients pages. A message set to go to the passenger shows under "To passenger" on a
+    booking that has one. Built-in messages can be edited but not deleted.
 </p>
 
 <a href="<?= BASE_URL ?>/modules/WhatsApp/add.php" class="page-action-btn save">➕ Add Message</a>
@@ -58,7 +59,11 @@ include ROOT_DIR . '/includes/header.php';
                 <?php
                 $inMenu = $tpl['placement'] === 'booking_menu';
                 if ($inMenu) {
-                    $usedFor = isClientLevelWhatsAppBody($tpl['body']) ? 'Booking and Clients pages' : 'Booking page';
+                    if (($tpl['recipient'] ?? 'client') === 'passenger') {
+                        $usedFor = 'Booking page (to passenger)';
+                    } else {
+                        $usedFor = isClientLevelWhatsAppBody($tpl['body']) ? 'Booking and Clients pages' : 'Booking page';
+                    }
                 } else {
                     $usedFor = WHATSAPP_PLACEMENTS[$tpl['placement']] ?? $tpl['placement'];
                 }

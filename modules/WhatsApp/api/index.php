@@ -36,7 +36,9 @@ try {
 /**
  * Add a new message (no id posted) or update an existing one (id posted).
  * A new message always goes in the booking WhatsApp menu. Built-in messages keep their
- * key and placement; only the name, text and (for menu messages) visibility change.
+ * key, placement and recipient; only the name, text and (for menu messages) visibility change.
+ * Your own menu messages can be sent to the client or to the booking's passenger.
+ * Needs migration 20261112_1640_whatsapp_templates_recipient.sql (the recipient column).
  */
 function handleSaveTemplate(): void
 {
@@ -47,6 +49,7 @@ function handleSaveTemplate(): void
     $body = trim(str_replace(["\r\n", "\r"], "\n", (string) ($_POST['body'] ?? '')));
     $bodyAf = trim(str_replace(["\r\n", "\r"], "\n", (string) ($_POST['body_af'] ?? '')));
     $active = !empty($_POST['active']) ? 1 : 0;
+    $recipient = (string) ($_POST['recipient'] ?? 'client');
 
     if ($label === '') {
         jsonResponse(['success' => false, 'message' => 'Please give the message a name.'], 400);
@@ -74,6 +77,21 @@ function handleSaveTemplate(): void
     }
 
     $placement = $existing['placement'] ?? 'booking_menu';
+
+    // Who the message is sent to. Only your own booking-menu messages can choose; built-in
+    // messages keep their recipient. A passenger message has no Afrikaans text (always English).
+    $canChooseRecipient = $placement === 'booking_menu' && empty($existing['is_builtin']);
+    if ($canChooseRecipient) {
+        if (!in_array($recipient, ['client', 'passenger'], true)) {
+            jsonResponse(['success' => false, 'message' => 'Please choose who the message is sent to.'], 400);
+        }
+    } else {
+        $recipient = $existing['recipient'] ?? 'client';
+    }
+    if ($recipient === 'passenger') {
+        $bodyAf = '';
+    }
+
     $error = validateWhatsAppTemplateBody($body, $placement);
     if ($error !== null) {
         jsonResponse(['success' => false, 'message' => $error], 400);
@@ -90,24 +108,25 @@ function handleSaveTemplate(): void
     if ($existing) {
         // Only booking-menu messages can be hidden; the system messages are always in use.
         $newActive = $placement === 'booking_menu' ? $active : 1;
-        $stmt = $pdo->prepare("UPDATE whatsapp_templates SET label = ?, body = ?, body_af = ?, active = ? WHERE id = ?");
-        $stmt->execute([$label, $body, $bodyAfValue, $newActive, $id]);
+        $stmt = $pdo->prepare("UPDATE whatsapp_templates SET label = ?, recipient = ?, body = ?, body_af = ?, active = ? WHERE id = ?");
+        $stmt->execute([$label, $recipient, $body, $bodyAfValue, $newActive, $id]);
 
         logInfo('WHATSAPP', 'WhatsApp message updated', [
             'id' => $id,
             'template_key' => $existing['template_key'],
+            'recipient' => $recipient,
         ]);
     } else {
         $key = generateWhatsAppTemplateKey($pdo, $label);
         $sortOrder = (int) $pdo->query("SELECT COALESCE(MAX(sort_order), 0) FROM whatsapp_templates WHERE placement = 'booking_menu'")->fetchColumn() + 10;
 
         $stmt = $pdo->prepare("
-            INSERT INTO whatsapp_templates (template_key, label, placement, body, body_af, active, sort_order, is_builtin)
-            VALUES (?, ?, 'booking_menu', ?, ?, ?, ?, 0)
+            INSERT INTO whatsapp_templates (template_key, label, placement, recipient, body, body_af, active, sort_order, is_builtin)
+            VALUES (?, ?, 'booking_menu', ?, ?, ?, ?, ?, 0)
         ");
-        $stmt->execute([$key, $label, $body, $bodyAfValue, $active, $sortOrder]);
+        $stmt->execute([$key, $label, $recipient, $body, $bodyAfValue, $active, $sortOrder]);
 
-        logInfo('WHATSAPP', 'WhatsApp message added', ['template_key' => $key]);
+        logInfo('WHATSAPP', 'WhatsApp message added', ['template_key' => $key, 'recipient' => $recipient]);
     }
 
     jsonResponse([

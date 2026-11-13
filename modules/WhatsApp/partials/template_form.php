@@ -9,6 +9,13 @@ $placement = $isNew ? 'booking_menu' : $template['placement'];
 $isMenuMessage = $placement === 'booking_menu';
 $variables = getWhatsAppVariables($placement);
 $clientVariables = getWhatsAppClientVariables();
+
+// Who the message is sent to. Only your own booking-menu messages can choose; built-in
+// messages and the system messages (driver, etc.) keep what they have.
+$recipient = $isNew ? 'client' : ($template['recipient'] ?? 'client');
+$isBuiltin = !$isNew && !empty($template['is_builtin']);
+$canChooseRecipient = $isMenuMessage && !$isBuiltin;
+$isPassenger = $recipient === 'passenger';
 ?>
 
 <div id="notification-area"></div>
@@ -32,13 +39,24 @@ $clientVariables = getWhatsAppClientVariables();
             value="<?= $isNew ? '' : e($template['label']) ?>">
     </div>
 
+    <?php if ($canChooseRecipient): ?>
+        <div class="form-group">
+            <label for="recipient">Send to</label>
+            <select id="recipient" name="recipient">
+                <option value="client"<?= $isPassenger ? '' : ' selected' ?>>The client</option>
+                <option value="passenger"<?= $isPassenger ? ' selected' : '' ?>>The passenger on the booking</option>
+            </select>
+            <span class="client-subline">A passenger message goes to the passenger's WhatsApp number, in its own "To passenger" section of the booking menu. It always sends in English, and only shows on a booking that has a different passenger with a phone number.</span>
+        </div>
+    <?php endif; ?>
+
     <div class="form-group">
         <label for="body">Message</label>
         <textarea id="body" name="body" class="at-wa-body-input" maxlength="2000" required><?= $isNew ? '' : e($template['body']) ?></textarea>
     </div>
 
     <?php if ($placement !== 'driver'): ?>
-        <div class="form-group">
+        <div class="form-group at-wa-af-group"<?= $isPassenger ? ' style="display:none"' : '' ?>>
             <label for="body_af">Afrikaans message (optional)</label>
             <textarea id="body_af" name="body_af" class="at-wa-body-input" maxlength="2000"><?= $isNew ? '' : e($template['body_af'] ?? '') ?></textarea>
             <span class="client-subline">Sent to clients and bookings set to Afrikaans. Leave empty to send the English message. Uses the same placeholders.</span>
@@ -77,7 +95,7 @@ Driver still to be confirmed
     <details class="at-wa-help">
         <summary>Available placeholders</summary>
         <?php if ($isMenuMessage): ?>
-            <p>
+            <p class="at-wa-client-only"<?= $isPassenger ? ' style="display:none"' : '' ?>>
                 Messages that only use the ones marked <span class="at-wa-clientmark">Clients pages</span>
                 also appear in the WhatsApp menu on the Clients pages. Anything else needs a booking, so those
                 messages only appear on the booking page.
@@ -90,7 +108,7 @@ Driver still to be confirmed
                     <td>
                         <?= e($description) ?>
                         <?php if ($isMenuMessage && isset($clientVariables[$name])): ?>
-                            <span class="at-wa-clientmark">Clients pages</span>
+                            <span class="at-wa-clientmark at-wa-client-only"<?= $isPassenger ? ' style="display:none"' : '' ?>>Clients pages</span>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -107,6 +125,13 @@ Driver still to be confirmed
         var form = $('#templateForm');
         var saveBtn = $('#saveTemplateBtn');
         var notificationArea = $('#notification-area');
+
+        // A passenger message has no Afrikaans version and never shows on the Clients pages
+        function applyRecipient() {
+            var isPassenger = $('#recipient').val() === 'passenger';
+            $('.at-wa-af-group, .at-wa-client-only').toggle(!isPassenger);
+        }
+        $('#recipient').on('change', applyRecipient);
 
         function showError(text) {
             notificationArea.html($('<div>').addClass('error-message').text(text));
