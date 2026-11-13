@@ -102,8 +102,8 @@
     min-width: 180px;
 }
 
-#booking-fee-input {
-    width: 110px;
+#booking-fee-pct-select {
+    min-width: 150px;
 }
 
 #driver-notes-input {
@@ -129,10 +129,9 @@
     vertical-align: middle;
 }
 
-/* Booking fee display (add / edit pages) */
+/* Booking fee preview line (Allocate Driver panel on add / edit, Manage Driver on view) */
 #bookingFeeDisplay {
-    font-weight: bold;
-    padding: 6px 0;
+    color: #555;
 }
 
 /* More Actions button row */
@@ -268,25 +267,6 @@
     }
 }
 
-/* Add/Edit Booking: collapsible "Picking up someone else?" section.
-   Link-style toggle so the rarely used pickup person fields stay out of the way. */
-.at-toggle-link {
-    background: none;
-    border: none;
-    padding: 4px 0;
-    color: #2980b9;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    text-align: left;
-}
-.at-toggle-link:hover {
-    text-decoration: underline;
-}
-.at-pickup-person {
-    margin-top: 10px;
-}
-
 /* Booking view: "Book Again" choice modal — three stacked choices with a hint line each */
 .at-bookagain-choices {
     display: flex;
@@ -350,3 +330,12 @@
     border-radius: 4px;
 }
 .detail-item .at-bk-distance-note { margin: 6px 0 0; }
+
+/* Bookings index: flight number + Track Flight link under the pickup */
+.at-flight-line {
+    margin-top: 4px;
+    font-size: 0.9em;
+}
+.at-flight-line .map-link {
+    margin-left: 6px;
+}

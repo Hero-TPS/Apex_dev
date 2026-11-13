@@ -118,12 +118,10 @@ function handleGetBookings()
         if ($show === 'all') {
             $sql = "
                 SELECT 
-                    b.id, b.contact_id, b.trip_date, b.start_time, b.end_time, b.status,
-                    b.original_pickup, b.original_destination, b.was_swapped, b.cost,
-                    b.payment_received,
-                    b.driver_id, b.booking_fee, b.distance_km, b.is_round_trip,
+                    b.*,
                     c.name AS client_name, c.phone AS client_phone,
-                    d.name AS driver_name
+                    c.pickup_lat AS client_pickup_lat, c.pickup_lng AS client_pickup_lng,
+                    d.name AS driver_name, d.phone AS driver_phone
                 FROM bookings b
                 JOIN contacts c ON b.contact_id = c.id
                 LEFT JOIN drivers d ON b.driver_id = d.id
@@ -137,12 +135,10 @@ function handleGetBookings()
             $today = (new DateTime('now', new DateTimeZone(TIME_ZONE)))->format('Y-m-d');
             $sql = "
                 SELECT 
-                    b.id, b.contact_id, b.trip_date, b.start_time, b.end_time, b.status,
-                    b.original_pickup, b.original_destination, b.was_swapped, b.cost,
-                    b.payment_received,
-                    b.driver_id, b.booking_fee, b.distance_km, b.is_round_trip,
+                    b.*,
                     c.name AS client_name, c.phone AS client_phone,
-                    d.name AS driver_name
+                    c.pickup_lat AS client_pickup_lat, c.pickup_lng AS client_pickup_lng,
+                    d.name AS driver_name, d.phone AS driver_phone
                 FROM bookings b
                 JOIN contacts c ON b.contact_id = c.id
                 LEFT JOIN drivers d ON b.driver_id = d.id
@@ -164,9 +160,13 @@ function handleGetBookings()
         // can still overlap with an upcoming one).
         $overlapMap = getBookingOverlapsForDates($pdo, array_column($bookings, 'trip_date'));
 
+        // WhatsApp dropdown messages: templates loaded once, filled in per booking below
+        $waTemplates = getWhatsAppMenuTemplates($pdo);
+
         foreach ($bookings as $row) {
             $pickup = $row['was_swapped'] ? $row['original_destination'] : $row['original_pickup'];
             $destination = $row['was_swapped'] ? $row['original_pickup'] : $row['original_destination'];
+            $waPhone = formatPhoneNumberForWhatsApp($row['client_phone'] ?? '');
 
             $tripDate = new DateTime($row['trip_date']);
             $isToday = ($row['trip_date'] === $today_str);
@@ -190,6 +190,10 @@ function handleGetBookings()
                 'is_past' => $isPast,
                 'pickup_location' => $pickup,
                 'destination' => $destination,
+                'flight_number' => trim((string) ($row['flight_number'] ?? '')),
+                'flightradar_url' => trim((string) ($row['flight_number'] ?? '')) !== ''
+                    ? buildFlightradarUrl($row['flight_number'])
+                    : '',
                 'cost' => 'R' . number_format((float) $row['cost'], 2),
                 'payment_received' => (bool) $row['payment_received'],
                 'distance' => $distanceKm !== null
@@ -197,9 +201,13 @@ function handleGetBookings()
                     : null,
                 'calculated_cost' => $calculatedCost !== null ? 'R' . number_format($calculatedCost, 2) : null,
                 'client_name' => $row['client_name'],
-                'client_phone' => formatPhoneNumberForWhatsApp($row['client_phone'] ?? ''),
+                'client_phone' => $waPhone,
                 'driver_name' => $row['driver_name'] ?? null,
                 'overlaps' => $overlapMap[(int) $row['id']] ?? [],
+                // Same messages as the WhatsApp dropdown on the booking page
+                'wa_messages' => $waPhone !== ''
+                    ? getWhatsAppBookingMessages($pdo, $row + ['pickup_location' => $pickup, 'destination' => $destination], $waTemplates)
+                    : [],
             ];
         }
 
@@ -245,7 +253,7 @@ function handleAddBooking()
         $original_pickup = $_POST['original_pickup'] ?? '';
         $original_destination = $_POST['original_destination'] ?? '';
         $cost = $_POST['cost'] ?? '';
-        $payment_method = $_POST['payment_method'] ?? 'cash';
+        $payment_method = normalizePaymentMethod($_POST['payment_method'] ?? 'cash');
         $payment_received = isset($_POST['payment_received']) && $_POST['payment_received'] == '1' ? 1 : 0;
         $was_swapped = isset($_POST['swap_locations']) ? 1 : 0;
 
@@ -268,7 +276,7 @@ function handleAddBooking()
         $passenger_phone = trim($_POST['passenger_phone'] ?? '') ?: null;
         $description = $_POST['description'] ?? '';
         $driver_id = intval($_POST['driver_id'] ?? 0) ?: null;
-        $no_booking_fee = isset($_POST['no_booking_fee']) ? 1 : 0;
+        $booking_fee_pct_input = parseBookingFeePct($_POST['booking_fee_pct'] ?? null, getDefaultBookingFeePct($pdo));
         $driver_notes = trim($_POST['driver_notes'] ?? '') ?: null;
         $language = normalizeWhatsAppLanguage($_POST['language'] ?? 'en');
 
@@ -317,15 +325,11 @@ function handleAddBooking()
             }
         }
 
-        // Calculate booking fee if driver is allocated (waived if no_booking_fee is set)
-        $booking_fee = null;
-        if ($driver_id !== null && !$no_booking_fee) {
-            $pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
-            $fee = calculateBookingFee((float) $cost, $pct);
-            if ($fee > 0) {
-                $booking_fee = $fee;
-            }
-        }
+        // Booking fee from the chosen percentage (0% = no booking fee); nothing stored without a driver
+        $feeFields = resolveBookingFeeFields($driver_id, (float) $cost, $booking_fee_pct_input);
+        $booking_fee = $feeFields['fee'];
+        $booking_fee_pct = $feeFields['pct'];
+        $no_booking_fee = $feeFields['no_booking_fee'];
 
         // Calculate trip distance (null on failure — never guessed)
         $is_round_trip = isset($_POST['round_trip']) ? 1 : 0;
@@ -339,10 +343,10 @@ function handleAddBooking()
             INSERT INTO bookings (
                 contact_id, trip_date, start_time, end_time,
                 original_pickup, original_destination, was_swapped, cost, payment_method, payment_received,
-                flight_number, description, driver_id, booking_fee, no_booking_fee, driver_notes,
+                flight_number, description, driver_id, booking_fee, booking_fee_pct, no_booking_fee, driver_notes,
                 pickup_is_custom, distance_km, is_round_trip, after_hours_charge,
                 passenger_name, passenger_phone, language
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -360,6 +364,7 @@ function handleAddBooking()
             $description,
             $driver_id,
             $booking_fee,
+            $booking_fee_pct,
             $no_booking_fee,
             $driver_notes,
             $pickup_is_custom,
@@ -431,7 +436,7 @@ function handleAddBooking()
             'contact_id' => $contact_id ?? null,
             'trip_date' => $trip_date ?? null
         ]);
-        jsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
+        jsonResponse(['success' => false, 'message' => bookingFeePctMigrationHint($e) ?? $e->getMessage()], 400);
     }
 }
 
@@ -491,7 +496,7 @@ function handleUpdateBooking()
             $booking_id = intval($_REQUEST['id'] ?? 0);
             $payment_method = $_REQUEST['payment_method'] ?? 'cash';
 
-            if ($booking_id <= 0 || !in_array($payment_method, ['cash', 'eft'])) {
+            if ($booking_id <= 0 || !isset(PAYMENT_METHODS[$payment_method])) {
                 throw new Exception('Invalid booking ID or payment method.');
             }
 
@@ -544,11 +549,11 @@ function handleUpdateBooking()
             $passenger_name = trim($_REQUEST['passenger_name'] ?? '') ?: null;
             $passenger_phone = trim($_REQUEST['passenger_phone'] ?? '') ?: null;
             $description_input = trim($_REQUEST['description'] ?? '');
-            $payment_method = trim($_REQUEST['payment_method'] ?? 'cash');
+            $payment_method = normalizePaymentMethod($_REQUEST['payment_method'] ?? 'cash');
             $payment_received = isset($_REQUEST['payment_received']) && $_REQUEST['payment_received'] == '1' ? 1 : 0;
             $swap_locations = isset($_REQUEST['swap_locations']);
             $driver_id = intval($_REQUEST['driver_id'] ?? 0) ?: null;
-            $no_booking_fee = isset($_REQUEST['no_booking_fee']) ? 1 : 0;
+            $booking_fee_pct_input = parseBookingFeePct($_REQUEST['booking_fee_pct'] ?? null, getDefaultBookingFeePct($pdo));
             $driver_notes = trim($_REQUEST['driver_notes'] ?? '');
             $language = normalizeWhatsAppLanguage($_REQUEST['language'] ?? 'en');
 
@@ -588,21 +593,14 @@ function handleUpdateBooking()
                 $final_cost += $after_hours_charge;
             }
 
-            // Recalculate booking fee (waived if no_booking_fee is set)
+            // Recalculate the booking fee from the chosen percentage (0% = no booking fee)
             // Null out all driver fields when no driver is selected
+            $feeFields = resolveBookingFeeFields($driver_id, $final_cost, $booking_fee_pct_input);
+            $booking_fee = $feeFields['fee'];
+            $booking_fee_pct = $feeFields['pct'];
+            $no_booking_fee = $feeFields['no_booking_fee'];
             if ($driver_id === null) {
-                $booking_fee = null;
-                $no_booking_fee = 0;
                 $driver_notes = null;
-            } else {
-                $booking_fee = null;
-                if (!$no_booking_fee) {
-                    $pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
-                    $fee = calculateBookingFee($final_cost, $pct);
-                    if ($fee > 0) {
-                        $booking_fee = $fee;
-                    }
-                }
             }
 
             $start_datetime = new DateTime($trip_date . ' ' . $start_time, new DateTimeZone(TIME_ZONE));
@@ -647,7 +645,7 @@ function handleUpdateBooking()
                 contact_id = ?, trip_date = ?, start_time = ?, end_time = ?,
                 original_pickup = ?, original_destination = ?, was_swapped = ?,
                 cost = ?, flight_number = ?, description = ?, payment_method = ?, payment_received = ?,
-                driver_id = ?, booking_fee = ?, no_booking_fee = ?, driver_notes = ?,
+                driver_id = ?, booking_fee = ?, booking_fee_pct = ?, no_booking_fee = ?, driver_notes = ?,
                 pickup_is_custom = ?, distance_km = ?, is_round_trip = ?, after_hours_charge = ?,
                 passenger_name = ?, passenger_phone = ?, language = ?,
                 last_confirmed_at = NULL,
@@ -670,6 +668,7 @@ function handleUpdateBooking()
                 $payment_received,
                 $driver_id,
                 $booking_fee,
+                $booking_fee_pct,
                 $no_booking_fee,
                 $driver_notes ?: null,
                 $pickup_is_custom,
@@ -728,7 +727,7 @@ function handleUpdateBooking()
             'error' => $e->getMessage(),
             'booking_id' => $booking_id ?? null
         ]);
-        jsonResponse(['success' => false, 'message' => 'Update failed.'], 400);
+        jsonResponse(['success' => false, 'message' => bookingFeePctMigrationHint($e) ?? 'Update failed.'], 400);
     }
 }
 
@@ -1288,9 +1287,7 @@ function handleAssignDriver()
     $driverIdRaw = trim($_POST['driver_id'] ?? '');
     $driverIdInt  = intval($driverIdRaw);
     $driver_id    = ($driverIdRaw !== '' && $driverIdInt > 0) ? $driverIdInt : null;
-    $no_booking_fee = !empty($_POST['no_booking_fee']) ? 1 : 0;
     $driver_notes   = trim($_POST['driver_notes'] ?? '') ?: null;
-    $booking_fee    = ($driver_id !== null && !$no_booking_fee) ? (float) ($_POST['booking_fee'] ?? 0) : null;
 
     if ($bookingId <= 0) {
         jsonResponse(['success' => false, 'message' => 'Invalid booking ID.'], 400);
@@ -1298,20 +1295,31 @@ function handleAssignDriver()
     }
 
     try {
-        $stmt = $pdo->prepare(
-            "UPDATE bookings SET driver_id = ?, booking_fee = ?, no_booking_fee = ?, driver_notes = ?, updated_at = NOW() WHERE id = ?"
-        );
-        $stmt->execute([$driver_id, $booking_fee, $no_booking_fee, $driver_notes, $bookingId]);
-
-        if ($stmt->rowCount() === 0) {
+        // The fee is worked out here from the booking's stored cost and the chosen percentage
+        $costStmt = $pdo->prepare("SELECT cost FROM bookings WHERE id = ?");
+        $costStmt->execute([$bookingId]);
+        $storedCost = $costStmt->fetchColumn();
+        if ($storedCost === false) {
             jsonResponse(['success' => false, 'message' => 'Booking not found.'], 404);
             return;
         }
+
+        $pctInput = parseBookingFeePct($_POST['booking_fee_pct'] ?? null, getDefaultBookingFeePct($pdo));
+        $feeFields = resolveBookingFeeFields($driver_id, (float) $storedCost, $pctInput);
+        $booking_fee = $feeFields['fee'];
+        $booking_fee_pct = $feeFields['pct'];
+        $no_booking_fee = $feeFields['no_booking_fee'];
+
+        $stmt = $pdo->prepare(
+            "UPDATE bookings SET driver_id = ?, booking_fee = ?, booking_fee_pct = ?, no_booking_fee = ?, driver_notes = ?, updated_at = NOW() WHERE id = ?"
+        );
+        $stmt->execute([$driver_id, $booking_fee, $booking_fee_pct, $no_booking_fee, $driver_notes, $bookingId]);
 
         logInfo('BOOKING_API', 'Driver assigned to booking', [
             'booking_id'     => $bookingId,
             'driver_id'      => $driver_id,
             'fee'            => $booking_fee,
+            'fee_pct'        => $booking_fee_pct,
             'no_booking_fee' => $no_booking_fee,
         ]);
 
@@ -1339,7 +1347,7 @@ function handleAssignDriver()
             'error'      => $e->getMessage(),
             'booking_id' => $bookingId,
         ]);
-        jsonResponse(['success' => false, 'message' => 'Database error occurred.'], 500);
+        jsonResponse(['success' => false, 'message' => bookingFeePctMigrationHint($e) ?? 'Database error occurred.'], 500);
     }
 }
 

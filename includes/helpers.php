@@ -197,26 +197,71 @@ function buildFlightradarUrl(string $flightNumber): string
     return 'https://www.flightradar24.com/data/flights/' . strtolower($clean);
 }
 
+// --- PAYMENT METHODS ---
+
+/** Booking payment methods: stored value => label. Cash is the default. */
+const PAYMENT_METHODS = [
+    'cash' => 'Cash',
+    'eft'  => 'EFT',
+    'card' => 'Card',
+];
+
+/**
+ * A submitted payment method, or 'cash' when it isn't one of PAYMENT_METHODS.
+ * Used by: modules/Bookings/api/index.php
+ *
+ * @param mixed $value
+ */
+function normalizePaymentMethod($value): string
+{
+    $value = strtolower(trim((string) $value));
+    return isset(PAYMENT_METHODS[$value]) ? $value : 'cash';
+}
+
+/**
+ * Display label for a stored payment method ('cash' / 'eft' / 'card'); anything else shows as Cash.
+ * Used by: modules/Bookings/view.php, modules/Bookings/helpers.php, modules/Clients/bookings.php
+ */
+function paymentMethodLabel(?string $method): string
+{
+    return PAYMENT_METHODS[normalizePaymentMethod($method)];
+}
+
+/**
+ * True when the client's money lands in Apex's bank account (EFT and card, which go to the
+ * same account) rather than being handed to the driver as cash.
+ * Used by: calculateDriverSettlement()
+ */
+function isPaidToApexAccount(?string $method): bool
+{
+    return in_array(normalizePaymentMethod($method), ['eft', 'card'], true);
+}
+
 /**
  * Work out who owes whom between Apex Transit and the allocated driver for a booking.
  * Single source of truth for the driver WhatsApp message and the booking view,
  * so the two can never disagree.
  *   - Cash + booking fee:    driver pays Apex the fee.
- *   - EFT  + booking fee:    Apex pays the driver cost minus fee, once the client has paid.
- *   - No booking fee + EFT:  Apex pays the driver the full cost, once the client has paid.
+ *   - EFT or card + booking fee: Apex pays the driver cost minus fee, once the client has paid.
+ *   - No booking fee + EFT or card: Apex pays the driver the full cost, once the client has paid.
  *   - No booking fee + cash: nothing due.
+ * (Card payments go into the same bank account as EFT, so card behaves exactly like EFT here.)
  *   - No fee recorded:       nothing stated (matches the driver message).
  * Used by: modules/WhatsApp/helpers.php (buildBookingMessageVars), modules/Bookings/view.php
  *
  * @param array $bookingDetails  Needs: cost, payment_method. Optional: booking_fee, no_booking_fee.
- * @return array{direction: string, amount: float, fee: ?float, no_booking_fee: bool, is_eft: bool}
+ * @return array{direction: string, amount: float, fee: ?float, no_booking_fee: bool, is_eft: bool, is_card: bool, paid_to_apex: bool}
+ *               is_eft / is_card are true only for that exact method; paid_to_apex is true for either.
  *               direction is 'driver_pays_apex', 'apex_pays_driver' or 'none'.
  *               fee is null when waived or not recorded.
  */
 function calculateDriverSettlement(array $bookingDetails): array
 {
     $cost = (float) ($bookingDetails['cost'] ?? 0);
-    $isEft = (($bookingDetails['payment_method'] ?? '') === 'eft');
+    $method = normalizePaymentMethod($bookingDetails['payment_method'] ?? '');
+    $isEft = ($method === 'eft');
+    $isCard = ($method === 'card');
+    $paidToApex = isPaidToApexAccount($method);
     $noBookingFee = !empty($bookingDetails['no_booking_fee']);
     $fee = (!$noBookingFee && isset($bookingDetails['booking_fee']))
         ? (float) $bookingDetails['booking_fee']
@@ -226,12 +271,12 @@ function calculateDriverSettlement(array $bookingDetails): array
     $amount = 0.0;
 
     if ($noBookingFee) {
-        if ($isEft) {
+        if ($paidToApex) {
             $direction = 'apex_pays_driver';
             $amount = $cost;
         }
     } elseif ($fee !== null && $fee > 0) {
-        if ($isEft) {
+        if ($paidToApex) {
             $direction = 'apex_pays_driver';
             $amount = $cost - $fee;
         } else {
@@ -246,6 +291,8 @@ function calculateDriverSettlement(array $bookingDetails): array
         'fee'            => $fee,
         'no_booking_fee' => $noBookingFee,
         'is_eft'         => $isEft,
+        'is_card'        => $isCard,
+        'paid_to_apex'   => $paidToApex,
     ];
 }
 

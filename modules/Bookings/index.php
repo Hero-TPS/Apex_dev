@@ -81,6 +81,31 @@ include ROOT_DIR . '/includes/header.php';
             return ' <span class="at-overlap-badge" data-booking-id="' + booking.id + '" title="Overlaps with another booking — tap for details">⚠️</span>';
         }
 
+        // Flight number with its Flightradar24 link, under the pickup (same link as "Track Flight" on the booking page)
+        function renderFlight(booking) {
+            if (!booking.flight_number) return '';
+            return '<div class="at-flight-line">✈️ ' + escapeHtml(booking.flight_number) +
+                ' <a href="' + escapeHtmlAttr(booking.flightradar_url) + '" target="_blank" rel="noopener" class="map-link">Track Flight</a></div>';
+        }
+
+        // WhatsApp dropdown for a booking row. Same markup as renderWhatsAppMenu() in
+        // modules/WhatsApp/helpers.php (the booking page); behaviour and logging live in assets/js/whatsapp-menu.js.
+        function buildWaMenu(booking) {
+            var waUrl = 'https://wa.me/' + booking.client_phone;
+            var ids = ' data-booking-id="' + booking.id + '" data-contact-id="' + booking.contact_id + '"';
+            var items = '';
+            (booking.wa_messages || []).forEach(function (m) {
+                if (!m.text) { return; }
+                items += '<a class="at-wa-menu-item" target="_blank" rel="noopener" href="' + waUrl + '?text=' + encodeURIComponent(m.text) + '"' +
+                    ' data-wa-key="' + escapeHtmlAttr(m.key) + '" data-wa-msg="' + escapeHtmlAttr(m.text) + '"' + ids + '>' + escapeHtml(m.label) + '</a>';
+            });
+            items += '<a class="at-wa-menu-item" target="_blank" rel="noopener" href="' + waUrl + '"' +
+                ' data-wa-key="message" data-wa-msg=""' + ids + '>Blank message</a>';
+            return '<div class="at-wa-menu"><button type="button" class="action-btn whatsapp-btn at-wa-menu-toggle"' +
+                ' aria-haspopup="true" aria-expanded="false">WhatsApp ▾</button>' +
+                '<div class="at-wa-menu-list" hidden>' + items + '</div></div>';
+        }
+
         function loadBookings() {
             tableBody.html('<tr><td colspan="10" style="text-align:center;">Loading bookings...</td></tr>');
             $.ajax({
@@ -94,7 +119,6 @@ include ROOT_DIR . '/includes/header.php';
                     if (response.success && response.bookings.length > 0) {
                         $.each(response.bookings, function (index, booking) {
                             var rowClass = booking.is_overdue ? 'booking-overdue' : '';
-                            var waGreeting = 'Hi ' + booking.client_name;
                             var row =
                                 '<tr id="booking-row-' + booking.id + '" ' +
                                 'class="' + rowClass + '" ' +
@@ -103,7 +127,7 @@ include ROOT_DIR . '/includes/header.php';
                                 '<td data-label="Date">' + escapeHtml(booking.trip_date) + '</td>' +
                                 '<td data-label="Time">' + escapeHtml(booking.start_time) + renderOverlapBadge(booking) + '</td>' +
                                 '<td data-label="Client">' + escapeHtml(booking.client_name) + '</td>' +
-                                '<td data-label="Pickup">' + escapeHtml(booking.pickup_location) + '</td>' +
+                                '<td data-label="Pickup">' + escapeHtml(booking.pickup_location) + renderFlight(booking) + '</td>' +
                                 '<td data-label="Destination">' + escapeHtml(booking.destination) + '</td>' +
                                 '<td data-label="Cost">' + escapeHtml(booking.cost) + (booking.payment_received ? ' <span title="Payment received">✅</span>' : '') + '</td>' +
                                 '<td data-label="Distance">' + (booking.distance ? escapeHtml(booking.distance) : '<span style="color:#aaa;">—</span>') + '</td>' +
@@ -113,9 +137,7 @@ include ROOT_DIR . '/includes/header.php';
                                 '<div class="actions-container">' +
                                 '<a href="<?= BASE_URL ?>/modules/Bookings/view.php?id=' + booking.id + '" class="action-btn view-details-btn">View</a>' +
                                 '<a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=' + booking.id + '" class="action-btn edit-btn">Edit</a>' +
-                                (booking.client_phone
-                                    ? '<a href="https://wa.me/' + booking.client_phone + '?text=' + encodeURIComponent(waGreeting + '\n') + '" target="_blank" class="action-btn whatsapp-btn" onclick="logWhatsAppSend(' + booking.id + ', ' + booking.contact_id + ', ' + JSON.stringify(waGreeting) + ', \'message\')">Send Msg</a>'
-                                    : '') +
+                                (booking.client_phone ? buildWaMenu(booking) : '') +
                                 '<button class="action-btn delete-btn" data-id="' + booking.id + '">Delete</button>' 
 
                             // Status button logic
@@ -532,23 +554,15 @@ include ROOT_DIR . '/includes/header.php';
             div.appendChild(document.createTextNode(str || ''));
             return div.innerHTML;
         }
-    });
 
-    function logWhatsAppSend(bookingId, contactId, messageContent, messageType) {
-        $.ajax({
-            type: 'POST',
-            url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
-            data: {
-                action: 'log_whatsapp',
-                booking_id: bookingId,
-                contact_id: contactId,
-                message_type: messageType || 'message',
-                message_content: messageContent,
-                sent_by: 'user'
-            },
-            dataType: 'json'
-        });
-    }
+        function escapeHtmlAttr(text) {
+            return String(text === null || text === undefined ? '' : text)
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+    });
 </script>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>

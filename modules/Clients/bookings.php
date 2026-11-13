@@ -212,7 +212,7 @@ try {
                     <td data-label="Pickup"><?= htmlspecialchars($pickup) ?></td>
                     <td data-label="Destination"><?= htmlspecialchars($destination) ?></td>
                     <td data-label="Cost">R<?= number_format($booking['cost'], 2) ?></td>
-                    <td data-label="Payment"><?= $booking['payment_method'] === 'eft' ? '🏦 EFT' : '💵 Cash' ?></td>
+                    <td data-label="Payment"><?= ['eft' => '🏦 EFT', 'card' => '💳 Card'][$booking['payment_method'] ?? ''] ?? '💵 Cash' ?></td>
                     <td data-label="Status"><?= $booking['status_display'] ?></td>
                     <td data-label="Actions">
                         <div class="actions-container">

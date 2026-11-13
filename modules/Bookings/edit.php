@@ -56,8 +56,10 @@ if (isset($_GET['id'])) {
             $driversStmt = $pdo->query("SELECT id, name, phone FROM drivers WHERE active = 1 ORDER BY name ASC");
             $drivers = $driversStmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Booking fee percentage for JS calculation
-            $booking_fee_pct = (float) getSystemVariable($pdo, 'apex_booking_fee_pct');
+            // Booking fee dropdown: options (0–30), the default (apex_booking_fee_pct system variable) and this booking's current choice
+            $feePctOptions = getBookingFeePctOptions();
+            $defaultFeePct = getDefaultBookingFeePct($pdo);
+            $selectedFeePct = $booking ? getBookingFeePctForForm($booking, $defaultFeePct) : $defaultFeePct;
 
             // Cape Town Airport pickup reminder — shown as a live hint only; never saved into description
             $airport_pickup_notice = (string) getSystemVariable($pdo, 'airport_pickup_notice');
@@ -203,13 +205,14 @@ if (isset($_GET['id'])) {
                 <input type="number" id="otherCost" name="other_cost">
             </div>
 
-            <!-- Payment Method: EFT Checkbox -->
+            <!-- Payment Method -->
             <div class="form-group">
-                <label>
-                    <input type="checkbox" id="payment_method" name="payment_method" value="eft"
-                           <?= $booking['payment_method'] === 'eft' ? 'checked' : '' ?>>
-                    EFT Payment
-                </label>
+                <label for="payment_method">Payment Method</label>
+                <select id="payment_method" name="payment_method">
+                    <?php foreach (PAYMENT_METHODS as $methodKey => $methodLabel): ?>
+                        <option value="<?= $methodKey ?>" <?= ($booking['payment_method'] ?? 'cash') === $methodKey ? 'selected' : '' ?>><?= htmlspecialchars($methodLabel) ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
 
             <!-- Payment Received -->
@@ -237,21 +240,19 @@ if (isset($_GET['id'])) {
                 <small id="airportNoticeHint" class="at-help-text hidden">✈️ Airport pickup detected — this will be added to the notes automatically: "<?= htmlspecialchars($airport_pickup_notice ?? '') ?>"</small>
             </div>
 
-            <!-- Pickup person (collapsed unless the booking has one — rarely used) -->
+            <!-- Passenger details (same collapsible panel as Allocate Driver; collapsed unless the booking has one — rarely used) -->
             <?php $pickupPersonOpen = trim($booking['passenger_name'] ?? '') !== '' || trim($booking['passenger_phone'] ?? '') !== ''; ?>
-            <div class="form-group">
-                <button type="button" id="pickupPersonToggle" class="at-toggle-link" aria-expanded="<?= $pickupPersonOpen ? 'true' : 'false' ?>">
-                    👤 Picking up someone else? <span class="at-toggle-arrow"><?= $pickupPersonOpen ? '▴' : '▾' ?></span>
-                </button>
-                <div id="pickupPersonSection" class="at-pickup-person<?= $pickupPersonOpen ? '' : ' hidden' ?>">
+            <div class="menu-section">
+                <h3 class="menu-toggle" data-target="passenger-section">👤 Passenger Details</h3>
+                <div id="passenger-section" class="section-body<?= $pickupPersonOpen ? '' : ' hidden' ?>">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="passengerName">Picking Up (if not the client)</label>
-                            <input type="text" id="passengerName" name="passenger_name" placeholder="Name of person being collected"
+                            <label for="passengerName" class="manage-driver-label">Passenger Name</label>
+                            <input type="text" id="passengerName" name="passenger_name" 
                                 value="<?php echo htmlspecialchars($booking['passenger_name'] ?? ''); ?>">
                         </div>
                         <div class="form-group">
-                            <label for="passengerPhone">Passenger Phone</label>
+                            <label for="passengerPhone" class="manage-driver-label">Passenger Phone</label>
                             <input type="tel" id="passengerPhone" name="passenger_phone"
                                 value="<?php echo htmlspecialchars($booking['passenger_phone'] ?? ''); ?>">
                         </div>
@@ -259,48 +260,45 @@ if (isset($_GET['id'])) {
                 </div>
             </div>
 
-            <!-- Driver Allocation -->
-            <div class="form-group">
-                <label for="driver_id">Allocate Driver</label>
-                <select id="driver_id" name="driver_id">
-                    <option value="">— No driver —</option>
-                    <?php foreach ($drivers as $driver): ?>
-                        <option value="<?= htmlspecialchars($driver['id']) ?>"
-                            <?= ($booking['driver_id'] == $driver['id']) ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($driver['name']) ?>
-                            <?= $driver['phone'] ? ' (' . htmlspecialchars($driver['phone']) . ')' : '' ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                <small>Optional — assign a driver to this booking</small>
-            </div>
-
-            <?php if ($booking_fee_pct > 0): ?>
-            <div class="form-group<?= empty($booking['driver_id']) ? ' hidden' : '' ?>" id="bookingFeeGroup">
-                <label>Apex Booking Fee (<?= htmlspecialchars($booking_fee_pct) ?>%)</label>
-                <div id="bookingFeeDisplay">
-                    <?php
-                    $currentFee = !empty($booking['booking_fee']) ? (float) $booking['booking_fee'] : calculateBookingFee((float) $booking['cost'], $booking_fee_pct);
-                    echo 'R' . number_format($currentFee, 2);
-                    ?>
+            <!-- Driver Allocation (same panel as Manage Driver on the booking view; open when a driver is already allocated) -->
+            <?php $hasDriver = !empty($booking['driver_id']); ?>
+            <div class="menu-section">
+                <h3 class="menu-toggle" data-target="manage-driver-section">🚗 Allocate Driver<span class="driver-allocated-badge<?= $hasDriver ? '' : ' hidden' ?>" id="driverBadge"><?= htmlspecialchars($booking['driver_name'] ?? '') ?></span></h3>
+                <div id="manage-driver-section" class="section-body<?= $hasDriver ? '' : ' hidden' ?>">
+                    <div class="manage-driver-fields">
+                        <div>
+                            <label for="driver-select" class="manage-driver-label">Driver</label>
+                            <select id="driver-select" name="driver_id">
+                                <option value="">— No driver —</option>
+                                <?php foreach ($drivers as $driver): ?>
+                                    <option value="<?= htmlspecialchars($driver['id']) ?>"
+                                        <?= ((int) $booking['driver_id'] === (int) $driver['id']) ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($driver['name']) ?>
+                                        <?= $driver['phone'] ? ' (' . htmlspecialchars($driver['phone']) . ')' : '' ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div id="bookingFeePctGroup"<?= $hasDriver ? '' : ' class="hidden"' ?>>
+                            <label for="booking-fee-pct-select" class="manage-driver-label">Booking Fee</label>
+                            <select id="booking-fee-pct-select" name="booking_fee_pct">
+                                <?php foreach ($feePctOptions as $opt): ?>
+                                    <option value="<?= $opt ?>" <?= ($opt === $selectedFeePct) ? 'selected' : '' ?>>
+                                        <?= $opt === 0 ? '0% — No booking fee' : $opt . '%' ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group<?= $hasDriver ? '' : ' hidden' ?>" id="bookingFeeNote">
+                        <small id="bookingFeeDisplay"></small>
+                    </div>
+                    <div class="form-group<?= $hasDriver ? '' : ' hidden' ?>" id="driverNotesGroup">
+                        <label for="driver-notes-input" class="manage-driver-label">Driver Notes</label>
+                        <textarea id="driver-notes-input" name="driver_notes" rows="3"
+                            placeholder="Instructions for the driver..."><?= htmlspecialchars($booking['driver_notes'] ?? '') ?></textarea>
+                    </div>
                 </div>
-                <small>Recalculated from cost × <?= htmlspecialchars($booking_fee_pct) ?>% when saved</small>
-            </div>
-            <?php endif; ?>
-
-            <!-- No Booking Fee -->
-            <div class="form-group<?= empty($booking['driver_id']) ? ' hidden' : '' ?>" id="noBookingFeeGroup">
-                <label>
-                    <input type="checkbox" id="no_booking_fee" name="no_booking_fee" value="1"
-                           <?= !empty($booking['no_booking_fee']) ? 'checked' : '' ?>>
-                    No Booking Fee (full amount goes to driver)
-                </label>
-            </div>
-
-            <!-- Driver Notes -->
-            <div class="form-group<?= empty($booking['driver_id']) ? ' hidden' : '' ?>" id="driverNotesGroup">
-                <label for="driver_notes">Driver Notes</label>
-                <textarea id="driver_notes" name="driver_notes" placeholder="Instructions for the driver..."><?= htmlspecialchars($booking['driver_notes'] ?? '') ?></textarea>
             </div>
 
             <button type="submit" class="page-action-btn save" id="submitBtn">💾 Update Booking</button>
@@ -515,36 +513,45 @@ $(document).ready(function () {
         updateBookingFee();
     });
 
-    $('#driver_id').on('change', function () {
+    // Allocate Driver panel: header toggles it, like Manage Driver on the booking view
+    $('.menu-toggle[data-target="manage-driver-section"]').on('click', function () {
+        $('#manage-driver-section').slideToggle(200);
+    });
+
+    $('#driver-select').on('change', function () {
         updateBookingFee();
         updateDriverSections();
     });
 
-    $('#no_booking_fee').on('change', function () {
+    $('#booking-fee-pct-select').on('change', function () {
         updateBookingFee();
     });
 
     function updateDriverSections() {
-        var driverSelected = $('#driver_id').val() !== '';
-        $('#noBookingFeeGroup').toggle(driverSelected);
-        $('#driverNotesGroup').toggle(driverSelected);
-        if (!driverSelected) {
-            $('#driver_notes').val('');
-            $('#no_booking_fee').prop('checked', false);
+        var driverSelected = $('#driver-select').val() !== '';
+        $('#bookingFeePctGroup').toggleClass('hidden', !driverSelected);
+        $('#driverNotesGroup').toggleClass('hidden', !driverSelected);
+        $('#bookingFeeNote').toggleClass('hidden', !driverSelected);
+        var badge = $('#driverBadge');
+        if (driverSelected) {
+            badge.text($('#driver-select option:selected').text().replace(/\s*\(.*\)\s*$/, '').trim()).removeClass('hidden');
+        } else {
+            badge.addClass('hidden').text('');
+            $('#driver-notes-input').val('');
         }
     }
 
-    var bookingFeePct = <?= (float) ($booking_fee_pct ?? 0) ?>;
+    // Fee preview: cost × the chosen percentage (0% = no booking fee, full amount to driver)
     function updateBookingFee() {
-        var driverSelected = $('#driver_id').val() !== '';
-        var noFee = $('#no_booking_fee').is(':checked');
+        var pct = parseInt($('#booking-fee-pct-select').val(), 10) || 0;
         var costVal = $('#cost').val() === 'other'
             ? parseFloat($('#otherCost').val()) || 0
             : parseFloat($('#cost').val()) || 0;
-        var fee = parseFloat((costVal * bookingFeePct / 100).toFixed(2));
-        if (bookingFeePct > 0) {
-            $('#bookingFeeGroup').toggle(driverSelected && !noFee);
-            $('#bookingFeeDisplay').text('R' + fee.toFixed(2));
+        if (pct === 0) {
+            $('#bookingFeeDisplay').text('No booking fee — the full amount goes to the driver.');
+        } else {
+            var fee = parseFloat((costVal * pct / 100).toFixed(2));
+            $('#bookingFeeDisplay').text('Booking fee: R' + fee.toFixed(2) + ' (cost × ' + pct + '%), recalculated when saved.');
         }
     }
 
@@ -562,13 +569,9 @@ $(document).ready(function () {
     updateDriverSections();
     updateBookingFee();
 
-    // Pickup person section toggle (fields stay in the form and submit even when collapsed)
-    $('#pickupPersonToggle').on('click', function () {
-        var section = $('#pickupPersonSection');
-        section.toggleClass('hidden');
-        var isOpen = !section.hasClass('hidden');
-        $(this).attr('aria-expanded', isOpen ? 'true' : 'false');
-        $(this).find('.at-toggle-arrow').text(isOpen ? '▴' : '▾');
+    // Passenger Details panel: header toggles it (fields stay in the form and submit even when collapsed)
+    $('.menu-toggle[data-target="passenger-section"]').on('click', function () {
+        $('#passenger-section').slideToggle(200);
     });
 
     $('#editBookingForm').on('submit', function (e) {
@@ -590,9 +593,8 @@ $(document).ready(function () {
         loading.show();
         result.html('');
 
-        var paymentMethod = $('#payment_method').is(':checked') ? 'eft' : 'cash';
         var paymentReceived = $('#payment_received').is(':checked') ? '1' : '0';
-        var formData = $(this).serialize() + '&payment_method=' + paymentMethod + '&payment_received=' + paymentReceived +
+        var formData = $(this).serialize() + '&payment_received=' + paymentReceived +
             '&after_hours_confirmed=' + afterHoursConfirmed;
 
         $.ajax({

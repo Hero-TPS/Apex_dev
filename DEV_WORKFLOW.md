@@ -83,14 +83,14 @@ Do this whenever `main` has moved on. Commit or stash anything uncommitted first
 
 ```bash
 cd ~/Projects/Apex-Transit/Apex_dev && git fetch origin && git switch feature/itinerary && git pull
-git merge origin/main
+git merge --no-edit origin/main
 ```
 
 - Use `origin/main`, not local `main`: small fixes pasted straight onto GitHub
   mean local `main` can be behind.
 - If the branch has no commits of its own yet, `git merge --ff-only origin/main`
   is safer — it refuses rather than creating a merge commit.
-- If git reports conflicts, fix them, then `git add <file> && git commit`.
+- If git reports conflicts, fix them, then `git add <file> && git commit --no-edit`.
 - Then `git push` — this deploys the merged result to the itinerary server.
 
 **Database:** the itinerary server's database does not pick up `main`'s
