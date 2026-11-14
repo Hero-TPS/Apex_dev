@@ -280,6 +280,15 @@
     border-bottom: 0;
 }
 
+/* Outstanding-repairs box at the top of the Uber Reports page (modules/Uber/index.php) */
+.at-repair-summary .at-repair-payments-list {
+    margin-top: 6px;
+}
+.at-repair-summary-link {
+    display: inline-block;
+    margin-top: 6px;
+}
+
 /* Repair picker on a "Vehicle Repairs" cost row in the weekly Add/Edit forms
    (modules/Uber/add.php, edit.php). Sits on its own line under the row. */
 .at-cost-repair-select {

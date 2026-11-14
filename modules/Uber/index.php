@@ -54,6 +54,19 @@ $carRentalPrice = (float) getSystemVariable($pdo, 'car_rental_price');
 // up its own entry from this rather than recomputing.
 $balanceWalk = calculateUberBalanceWalk($pdo);
 
+// Vehicle repairs still being paid off. Empty (and logged) if the repairs
+// migration has not been run yet, so the rest of the page keeps working.
+$openRepairs = [];
+$repairsOwing = 0.0;
+try {
+    $openRepairs = getUberRepairs($pdo, true);
+    foreach ($openRepairs as $openRepair) {
+        $repairsOwing += $openRepair['remaining'];
+    }
+} catch (PDOException $e) {
+    logError('UBER', 'Could not load vehicle repairs for the reports page', ['error' => $e->getMessage()]);
+}
+
 // === EXPORT SINCE LAST CORRECTION ===
 // Finds the most recent week with a correction set, then gathers every
 // week from that point forward (inclusive) for the PDF and CSV export buttons.
@@ -117,6 +130,21 @@ if ($lastOverrideId !== null) {
             <button type="button" id="exportSinceCorrectionBtn" class="action-btn export-since-correction-btn">📄 Export to PDF</button>
             <button type="button" id="exportSinceCorrectionCsvBtn" class="action-btn export-since-correction-btn">📊 Export to CSV</button>
             <div id="sinceCorrectionTable"></div>
+        </div>
+    <?php endif; ?>
+
+    <?php if (!empty($openRepairs)): ?>
+        <div class="at-repair-summary">
+            <strong>🔧 Vehicle repairs still owing:</strong> R<?= number_format($repairsOwing, 2) ?>
+            <ul class="at-repair-payments-list">
+                <?php foreach ($openRepairs as $openRepair): ?>
+                    <li>
+                        <span><?= htmlspecialchars($openRepair['description']) ?></span>
+                        <strong>R<?= number_format($openRepair['remaining'], 2) ?></strong>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+            <a class="at-repair-summary-link" href="<?= BASE_URL ?>/modules/Uber/repairs.php">Manage repairs →</a>
         </div>
     <?php endif; ?>
 
@@ -349,8 +377,9 @@ if ($lastOverrideId !== null) {
     function buildWeekBlock(log) {
         let costsHtml = '—';
         if (log.additional_costs && log.additional_costs.length > 0) {
+            // A payment towards a vehicle repair also shows which repair it was for
             costsHtml = log.additional_costs.map(c =>
-                `${c.reason}: R ${parseFloat(c.amount).toFixed(2)}`
+                `${c.reason}${c.repair_description ? ' (' + escapeHtml(c.repair_description) + ')' : ''}: R ${parseFloat(c.amount).toFixed(2)}`
             ).join('<br>');
         }
         const cardIncome = (parseFloat(log.total_income) - parseFloat(log.cash_received)).toFixed(2);

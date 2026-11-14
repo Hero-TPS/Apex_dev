@@ -524,8 +524,13 @@ function handleGetByMonth()
 
             $record['in_progress'] = isset($record['week_end']) && ((int) $record['week_end'] > $todayTs);
 
+            // repair_description: which vehicle repair a payment was towards, if any
             $costStmt = $pdo->prepare(
-                "SELECT id, reason, amount FROM uber_additional_costs WHERE uber_income_id = ? ORDER BY id ASC"
+                "SELECT uac.id, uac.reason, uac.amount, uac.repair_id, r.description AS repair_description
+                 FROM uber_additional_costs uac
+                 LEFT JOIN uber_vehicle_repairs r ON r.id = uac.repair_id
+                 WHERE uac.uber_income_id = ?
+                 ORDER BY uac.id ASC"
             );
             $costStmt->execute([$record['id']]);
             $record['additional_costs'] = $costStmt->fetchAll(PDO::FETCH_ASSOC);
