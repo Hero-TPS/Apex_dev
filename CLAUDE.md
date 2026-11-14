@@ -2,6 +2,7 @@
 
 ## Display & Workflow
 - **"show"** = display full file content, never a summary or table.
+- Files must always be delivered as a downloadable zip (files at their repo paths). He uses the instructions in `GIT_COMMANDS.md` to unzip and commit — no need to tell him how.
 - PHP files are always delivered as complete, drop-in files via Artifacts — not diffs or patches, and not pasted as plain chat text. SQL is the exception: always as a new file in `migrations/` named `YYYYMMDD_HHMM_description.sql`, never inline-only in chat or embedded in PHP.
 - A new migration is delivered as its own file in `migrations/` (shown in full, with its exact path). He runs it himself from Services → Database Updates — never mark anything applied for him. `schema_migrations` in each database is the record of what has run; there is no checklist file.
 - Migration rules: never edit a migration that has run anywhere (add a new file); write it safe to run twice (`IF NOT EXISTS`, `INSERT IGNORE`); plain DDL/DML only (no triggers, stored procedures or `DELIMITER`); data fixes must not depend on one database's data. On `feature/*` branches keep changes additive (new tables/columns) and flag — before writing it — anything that renames, drops or redefines an existing column.

@@ -92,6 +92,101 @@ function calculateUberWeekFinancials(PDO $pdo, array $record): array
 }
 
 /**
+ * List vehicle repairs with how much has been paid off so far.
+ *
+ * Paid = the sum of Additional Cost rows linked to the repair through
+ * uber_additional_costs.repair_id. It is calculated every time and never
+ * stored, so editing or deleting a week corrects the balance by itself.
+ *
+ * Status: 'closed' (closed by hand), 'paid_off' (nothing left owing) or
+ * 'open'. Payments above the total are allowed — remaining never goes
+ * below zero.
+ *
+ * Needs migrations/20261114_1130_uber_vehicle_repairs.sql — throws a
+ * PDOException if it has not been run yet.
+ *
+ * @param PDO  $pdo
+ * @param bool $openOnly  Only repairs that are still open (not closed, still owing)
+ * @return array<int, array<string, mixed>>  Oldest repair first. Each row has
+ *     the table columns plus paid_amount, payment_count, remaining and status.
+ */
+function getUberRepairs(PDO $pdo, bool $openOnly = false): array
+{
+    $rows = $pdo->query("
+        SELECT r.id, r.description, r.repair_date, r.total_amount,
+               r.weekly_amount, r.is_closed, r.notes,
+               (SELECT COALESCE(SUM(uac.amount), 0)
+                  FROM uber_additional_costs uac
+                 WHERE uac.repair_id = r.id) AS paid_amount,
+               (SELECT COUNT(*)
+                  FROM uber_additional_costs uac
+                 WHERE uac.repair_id = r.id) AS payment_count
+        FROM uber_vehicle_repairs r
+        ORDER BY r.repair_date ASC, r.id ASC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    $result = [];
+    foreach ($rows as $row) {
+        $row['paid_amount']    = (float) $row['paid_amount'];
+        $row['payment_count']  = (int) $row['payment_count'];
+        $row['total_amount']   = (float) $row['total_amount'];
+        $row['weekly_amount']  = $row['weekly_amount'] !== null ? (float) $row['weekly_amount'] : null;
+        $row['remaining']      = max(0.0, round($row['total_amount'] - $row['paid_amount'], 2));
+
+        if ((int) $row['is_closed'] === 1) {
+            $row['status'] = 'closed';
+        } elseif ($row['remaining'] <= 0.004) {
+            $row['status'] = 'paid_off';
+        } else {
+            $row['status'] = 'open';
+        }
+
+        if ($openOnly && $row['status'] !== 'open') {
+            continue;
+        }
+        $result[] = $row;
+    }
+
+    return $result;
+}
+
+/**
+ * Every payment made towards a vehicle repair, grouped by repair.
+ *
+ * @param PDO $pdo
+ * @return array<int, array<int, array{id: int, amount: float, week_display: string}>>
+ *     Keyed by repair id, each list in week order.
+ */
+function getUberRepairPayments(PDO $pdo): array
+{
+    $rows = $pdo->query("
+        SELECT uac.id, uac.repair_id, uac.amount, ui.week_start
+        FROM uber_additional_costs uac
+        JOIN uber_income ui ON uac.uber_income_id = ui.id
+        WHERE uac.repair_id IS NOT NULL
+        ORDER BY ui.week_start ASC, uac.id ASC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    $tz     = new DateTimeZone(TIME_ZONE);
+    $result = [];
+    foreach ($rows as $row) {
+        $start = new DateTime();
+        $start->setTimestamp((int) $row['week_start']);
+        $start->setTimezone($tz);
+        $end = clone $start;
+        $end->modify('+6 days');
+
+        $result[(int) $row['repair_id']][] = [
+            'id'           => (int) $row['id'],
+            'amount'       => (float) $row['amount'],
+            'week_display' => $start->format('d M Y') . ' – ' . $end->format('d M Y'),
+        ];
+    }
+
+    return $result;
+}
+
+/**
  * Walk every week in order and resolve the Balance shown for each one.
  *
  * Sign convention: POSITIVE = you're ahead (in credit with the rental

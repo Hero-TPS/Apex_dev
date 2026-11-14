@@ -82,6 +82,7 @@ include ROOT_DIR . '/includes/header.php';
         <div id="uber-section" class="menu-content">
             <a href="<?= BASE_URL ?>/modules/Uber/add.php" class="dashboard-button db-uber">Log Uber Income</a>
             <a href="<?= BASE_URL ?>/modules/Uber/" class="dashboard-button db-uber-reports">Uber Reports</a>
+            <a href="<?= BASE_URL ?>/modules/Uber/repairs.php" class="dashboard-button db-uber-reports">Vehicle Repairs</a>
         </div>
     </div>
 

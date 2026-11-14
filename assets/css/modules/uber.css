@@ -233,3 +233,49 @@
         justify-content: flex-start;
     }
 }
+
+/* ========================
+   Vehicle repairs (modules/Uber/repairs.php)
+======================== */
+.at-repair-summary {
+    margin: 16px 0;
+    padding: 10px 14px;
+    background: #f4f7f9;
+    border-left: 4px solid #e67e22;
+    border-radius: 0 4px 4px 0;
+}
+
+.at-repair-status {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.at-repair-status--open { background: #fef3e2; color: #b9770e; }
+.at-repair-status--paid_off { background: #e6f6ec; color: #1e8449; }
+.at-repair-status--closed { background: #ecf0f1; color: #5f6a6a; }
+
+/* Needs the extra class: on phones the base .bookings-table tr rule sets
+   display:block, which would otherwise beat .hidden and show every list. */
+.at-repair-payments-row.hidden {
+    display: none;
+}
+
+.at-repair-payments-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+.at-repair-payments-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 0;
+    border-bottom: 1px solid #f0f3f5;
+}
+.at-repair-payments-list li:last-child {
+    border-bottom: 0;
+}
