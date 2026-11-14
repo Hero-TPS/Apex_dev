@@ -187,6 +187,39 @@ function getUberRepairPayments(PDO $pdo): array
 }
 
 /**
+ * Repairs in the shape the weekly Add/Edit forms need for their repair
+ * dropdown (all statuses — the forms decide which ones to offer).
+ *
+ * Returns an empty list, and logs, when the vehicle repairs table does not
+ * exist yet, so the weekly forms keep working before the migration has run.
+ *
+ * @param PDO $pdo
+ * @return array<int, array{id: int, description: string, status: string,
+ *     total: float, paid: float, remaining: float, weekly: ?float}>
+ */
+function getUberRepairOptions(PDO $pdo): array
+{
+    try {
+        $options = [];
+        foreach (getUberRepairs($pdo) as $repair) {
+            $options[] = [
+                'id'          => (int) $repair['id'],
+                'description' => $repair['description'],
+                'status'      => $repair['status'],
+                'total'       => $repair['total_amount'],
+                'paid'        => $repair['paid_amount'],
+                'remaining'   => $repair['remaining'],
+                'weekly'      => $repair['weekly_amount'],
+            ];
+        }
+        return $options;
+    } catch (PDOException $e) {
+        logError('UBER', 'Could not load vehicle repairs for the weekly form', ['error' => $e->getMessage()]);
+        return [];
+    }
+}
+
+/**
  * Walk every week in order and resolve the Balance shown for each one.
  *
  * Sign convention: POSITIVE = you're ahead (in credit with the rental

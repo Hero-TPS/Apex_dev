@@ -116,8 +116,8 @@ function handleGetSingle()
             jsonResponse(['success' => false, 'message' => 'Record not found'], 404);
         }
 
-        // Fetch additional costs
-        $costStmt = $pdo->prepare("SELECT id, reason, amount FROM uber_additional_costs WHERE uber_income_id = ? ORDER BY id ASC");
+        // Fetch additional costs (repair_id lets the Edit form show which repair a payment is towards)
+        $costStmt = $pdo->prepare("SELECT id, reason, amount, repair_id FROM uber_additional_costs WHERE uber_income_id = ? ORDER BY id ASC");
         $costStmt->execute([$id]);
         $record['additional_costs'] = $costStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -170,6 +170,7 @@ function handleAdd()
         // Additional costs come in as two parallel arrays: reasons[] and amounts[]
         $reasons = $_POST['cost_reasons'] ?? [];
         $amounts = $_POST['cost_amounts'] ?? [];
+        $repairIds = $_POST['cost_repair_ids'] ?? [];
 
         if (empty($weekMonday)) {
             jsonResponse(['success' => false, 'message' => 'Week start date is required'], 400);
@@ -188,6 +189,8 @@ function handleAdd()
         $endDt->modify('+6 days')->setTime(23, 59, 59);
         $weekEnd = $endDt->getTimestamp();
 
+        $pdo->beginTransaction();
+
         // Insert uber_income record
         $stmt = $pdo->prepare("
             INSERT INTO uber_income 
@@ -199,7 +202,9 @@ function handleAdd()
         $uberIncomeId = $pdo->lastInsertId();
 
         // Insert additional costs
-        saveAdditionalCosts($pdo, $uberIncomeId, $reasons, $amounts);
+        saveAdditionalCosts($pdo, $uberIncomeId, $reasons, $amounts, $repairIds);
+
+        $pdo->commit();
 
         logInfo('UBER', 'Uber income created', [
             'record_id'  => $uberIncomeId,
@@ -210,6 +215,9 @@ function handleAdd()
         jsonResponse(['success' => true, 'message' => 'Uber income saved successfully']);
 
     } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         logError('UBER', 'Failed to create Uber income', ['error' => $e->getMessage()]);
         jsonResponse(['success' => false, 'message' => 'Failed to save Uber income'], 500);
     }
@@ -231,10 +239,13 @@ function handleUpdate()
         // Additional costs come in as two parallel arrays: reasons[] and amounts[]
         $reasons = $_POST['cost_reasons'] ?? [];
         $amounts = $_POST['cost_amounts'] ?? [];
+        $repairIds = $_POST['cost_repair_ids'] ?? [];
 
         if ($id <= 0 || $totalIncome <= 0) {
             jsonResponse(['success' => false, 'message' => 'Invalid data'], 400);
         }
+
+        $pdo->beginTransaction();
 
         $stmt = $pdo->prepare("
             UPDATE uber_income 
@@ -245,13 +256,18 @@ function handleUpdate()
 
         // Delete existing additional costs and re-save
         $pdo->prepare("DELETE FROM uber_additional_costs WHERE uber_income_id = ?")->execute([$id]);
-        saveAdditionalCosts($pdo, $id, $reasons, $amounts);
+        saveAdditionalCosts($pdo, $id, $reasons, $amounts, $repairIds);
+
+        $pdo->commit();
 
         logInfo('UBER', 'Uber income updated', ['record_id' => $id]);
 
         jsonResponse(['success' => true, 'message' => 'Uber income updated successfully']);
 
     } catch (PDOException $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         logError('UBER', 'Failed to update Uber income', ['error' => $e->getMessage(), 'record_id' => $id ?? null]);
         jsonResponse(['success' => false, 'message' => 'Failed to update Uber income'], 500);
     }
@@ -416,13 +432,47 @@ function handleSetRentalOverride()
 
 // ========== HELPERS ==========
 
-function saveAdditionalCosts(PDO $pdo, int $uberIncomeId, array $reasons, array $amounts): void
+/**
+ * Save a week's Additional Cost rows. $repairIds is a third parallel array
+ * (same index as $reasons / $amounts): the vehicle repair a "Vehicle Repairs"
+ * row is paying towards, or empty. Only "Vehicle Repairs" rows can be linked,
+ * and only to a repair that exists — anything else is saved unlinked.
+ */
+function saveAdditionalCosts(PDO $pdo, int $uberIncomeId, array $reasons, array $amounts, array $repairIds = []): void
 {
+    $linked = [];
+    foreach ($reasons as $i => $reason) {
+        $repairId = intval($repairIds[$i] ?? 0);
+        if (trim($reason) === 'Vehicle Repairs' && $repairId > 0) {
+            $linked[$i] = $repairId;
+        }
+    }
+
+    $validRepairIds = [];
+    if (!empty($linked)) {
+        $wanted = array_values(array_unique($linked));
+        $placeholders = implode(',', array_fill(0, count($wanted), '?'));
+        $repairStmt = $pdo->prepare("SELECT id FROM uber_vehicle_repairs WHERE id IN ($placeholders)");
+        $repairStmt->execute($wanted);
+        $validRepairIds = array_map('intval', $repairStmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
     $stmt = $pdo->prepare("INSERT INTO uber_additional_costs (uber_income_id, reason, amount) VALUES (?, ?, ?)");
+    $linkedStmt = null;
     foreach ($reasons as $i => $reason) {
         $reason = trim($reason);
         $amount = floatval($amounts[$i] ?? 0);
-        if ($reason !== '' && $amount > 0) {
+        if ($reason === '' || $amount <= 0) {
+            continue;
+        }
+
+        $repairId = $linked[$i] ?? null;
+        if ($repairId !== null && in_array($repairId, $validRepairIds, true)) {
+            $linkedStmt ??= $pdo->prepare(
+                "INSERT INTO uber_additional_costs (uber_income_id, reason, amount, repair_id) VALUES (?, ?, ?, ?)"
+            );
+            $linkedStmt->execute([$uberIncomeId, $reason, $amount, $repairId]);
+        } else {
             $stmt->execute([$uberIncomeId, $reason, $amount]);
         }
     }

@@ -44,6 +44,9 @@ while ($row = $stmt->fetch()) {
 // Fetch cost reasons for dropdown
 $cost_reasons = fetchColumn($pdo, 'uber_cost_reasons', 'reason', 'reason ASC');
 
+// Vehicle repairs a "Vehicle Repairs" cost row can be paid towards
+$repair_options = getUberRepairOptions($pdo);
+
 // Current car rental price, used for the shortfall calculation display
 $car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
 ?>
@@ -92,6 +95,7 @@ $car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
                 <!-- Cost rows added dynamically -->
             </div>
             <button type="button" class="btn" id="addCostBtn" style="margin-top: 8px; width: auto;">+ Add Cost</button>
+            <div id="repairWarning"></div>
         </div>
 
         <div class="form-group">
@@ -124,6 +128,29 @@ $car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
 <script>
     const costReasons = <?= json_encode($cost_reasons) ?>;
     const carRentalPrice = <?= json_encode($car_rental_price) ?>;
+    const repairs = <?= json_encode($repair_options, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    // Nothing is saved yet on a new week, so no payments to add back when checking what is still owing
+    const savedByRepair = {};
+
+    function escapeHtml(str) {
+        return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Open repairs, plus the one already selected on this row (it may be paid off or closed by now)
+    function buildRepairOptions(selected = '') {
+        const usable = repairs.filter(r => r.status === 'open' || String(r.id) === String(selected));
+        if (usable.length === 0) {
+            return '<option value="">No open repairs — add one under Vehicle Repairs</option>';
+        }
+        let options = '<option value="">Select repair (optional)</option>';
+        usable.forEach(r => {
+            const label = r.status === 'open'
+                ? `${r.description} — R${r.remaining.toFixed(2)} left`
+                : `${r.description} (${r.status === 'closed' ? 'closed' : 'paid off'})`;
+            options += `<option value="${r.id}" ${String(r.id) === String(selected) ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+        });
+        return options;
+    }
 
     function buildReasonOptions(selected = '') {
         let options = '<option value="">Select reason</option>';
@@ -133,18 +160,58 @@ $car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
         return options;
     }
 
-    function addCostRow(reason = '', amount = '') {
+    function addCostRow(reason = '', amount = '', repairId = '') {
+        // The repair select is always in the row (so the three cost_*[] lists stay
+        // aligned when posted) but only shown for the "Vehicle Repairs" reason.
         const row = $(`
-            <div class="cost-row" style="display: flex; gap: 8px; margin-bottom: 6px; align-items: center;">
+            <div class="cost-row" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; align-items: center;">
                 <select name="cost_reasons[]" style="flex: 2;">
                     ${buildReasonOptions(reason)}
                 </select>
                 <input type="number" name="cost_amounts[]" step="0.01" min="0" placeholder="Amount (R)"
                     value="${amount}" style="flex: 1;">
                 <button type="button" class="remove-cost-btn action-btn delete-btn" style="width: auto;">✕</button>
+                <select name="cost_repair_ids[]" class="at-cost-repair-select ${reason === 'Vehicle Repairs' ? '' : 'hidden'}">
+                    ${buildRepairOptions(repairId)}
+                </select>
             </div>
         `);
         $('#additional-costs-container').append(row);
+    }
+
+    // Show the repair select only on "Vehicle Repairs" rows, and warn when a
+    // repair is being paid more than is still owing. Warning only — saving is
+    // never blocked.
+    function updateRepairRows() {
+        const entered = {};
+        $('.cost-row').each(function () {
+            const reason = $(this).find('select[name="cost_reasons[]"]').val();
+            const repairSelect = $(this).find('select[name="cost_repair_ids[]"]');
+            if (reason === 'Vehicle Repairs') {
+                repairSelect.removeClass('hidden');
+                const repairId = repairSelect.val();
+                if (repairId) {
+                    const amount = parseFloat($(this).find('input[name="cost_amounts[]"]').val()) || 0;
+                    entered[repairId] = (entered[repairId] || 0) + amount;
+                }
+            } else {
+                repairSelect.addClass('hidden').val('');
+            }
+        });
+
+        const notes = $('#repairWarning').empty();
+        Object.keys(entered).forEach(function (id) {
+            const repair = repairs.find(r => String(r.id) === id);
+            if (!repair) { return; }
+            const allowed = Math.max(0, repair.total - repair.paid + (savedByRepair[id] || 0));
+            if (entered[id] > allowed + 0.004) {
+                notes.append($('<p>').addClass('at-repair-warning')
+                    .text(`⚠️ ${repair.description}: R${entered[id].toFixed(2)} entered, but only R${allowed.toFixed(2)} is still owing.`));
+            } else if (repair.weekly !== null) {
+                notes.append($('<p>').addClass('at-help-text')
+                    .text(`Suggested weekly for ${repair.description}: R${repair.weekly.toFixed(2)}`));
+            }
+        });
     }
 
     function recalcShortfall() {
@@ -171,6 +238,8 @@ $car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
         $('#shortfallFines').text(fines.toFixed(2));
         $('#shortfallRepairs').text(repairs.toFixed(2));
         $('#shortfallNet').text(net.toFixed(2));
+
+        updateRepairRows();
     }
 
     $(document).ready(function () {
@@ -181,9 +250,10 @@ $car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
 
         $(document).on('click', '.remove-cost-btn', function () {
             $(this).closest('.cost-row').remove();
+            recalcShortfall();
         });
 
-        $(document).on('input change', '#total_income, #cash_received, #shortfall_paid, select[name="cost_reasons[]"], input[name="cost_amounts[]"]', recalcShortfall);
+        $(document).on('input change', '#total_income, #cash_received, #shortfall_paid, select[name="cost_reasons[]"], select[name="cost_repair_ids[]"], input[name="cost_amounts[]"]', recalcShortfall);
 
         // Initial calc on load (car rental already applies even with no income entered yet)
         recalcShortfall();
@@ -206,7 +276,8 @@ $car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
                 shortfall_paid: $('#shortfall_paid').val(),
                 notes: $('#notes').val().trim(),
                 'cost_reasons[]': $('select[name="cost_reasons[]"]').map(function () { return $(this).val(); }).get(),
-                'cost_amounts[]': $('input[name="cost_amounts[]"]').map(function () { return $(this).val(); }).get()
+                'cost_amounts[]': $('input[name="cost_amounts[]"]').map(function () { return $(this).val(); }).get(),
+                'cost_repair_ids[]': $('select[name="cost_repair_ids[]"]').map(function () { return $(this).val(); }).get()
             };
 
             $.ajax({

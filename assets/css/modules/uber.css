@@ -279,3 +279,18 @@
 .at-repair-payments-list li:last-child {
     border-bottom: 0;
 }
+
+/* Repair picker on a "Vehicle Repairs" cost row in the weekly Add/Edit forms
+   (modules/Uber/add.php, edit.php). Sits on its own line under the row. */
+.at-cost-repair-select {
+    flex: 1 1 100%;
+}
+
+.at-repair-warning {
+    margin: 6px 0;
+    padding: 8px 10px;
+    background: #fef3e2;
+    border-left: 4px solid #e67e22;
+    border-radius: 0 4px 4px 0;
+    color: #7e5109;
+}
