@@ -212,7 +212,8 @@ function handleAdd()
             'total_income' => $totalIncome
         ]);
 
-        jsonResponse(['success' => true, 'message' => 'Uber income saved successfully']);
+        // id lets the Add form go straight to this week's fleet report
+        jsonResponse(['success' => true, 'message' => 'Uber income saved successfully', 'id' => (int) $uberIncomeId]);
 
     } catch (PDOException $e) {
         if ($pdo->inTransaction()) {

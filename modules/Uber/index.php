@@ -123,6 +123,8 @@ if ($lastOverrideId !== null) {
 <div class="financial-dashboard">
     <h2>🚗 Uber Reports (Last <?= htmlspecialchars($monthsBack) ?> Months)</h2>
 
+    <a href="<?= BASE_URL ?>/modules/Uber/report.php" class="action-btn view-details-btn">📋 Latest Fleet Report</a>
+
     <?php if (!empty($exportRows)): ?>
         <button type="button" id="viewSinceCorrectionBtn" class="action-btn export-since-correction-btn">👁️ View Since Last Correction</button>
 
@@ -450,6 +452,7 @@ if ($lastOverrideId !== null) {
                 <div class="metric-row">
                     <span></span>
                     <span class="at-uber-actions">
+                        <a href="<?= BASE_URL ?>/modules/Uber/report.php?id=${log.id}" class="action-btn view-details-btn">📋 Fleet Report</a>
                         <a href="<?= BASE_URL ?>/modules/Uber/edit.php?id=${log.id}" class="action-btn edit-btn">✏️ Edit</a>
                         <button class="action-btn delete-btn" data-id="${log.id}">🗑️ Delete</button>
                     </span>

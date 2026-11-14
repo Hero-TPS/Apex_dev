@@ -220,6 +220,133 @@ function getUberRepairOptions(PDO $pdo): array
 }
 
 /**
+ * Everything the fleet manager report shows for one Uber week.
+ *
+ * One place builds these figures so the report page and the WhatsApp text
+ * (same numbers, two layouts) can never disagree.
+ *
+ * Vehicle repair balances are "as at the end of this week": the repair's
+ * total minus payments made in this week and earlier weeks. Looking back at
+ * an older week therefore shows what was owing then, not what is owing today.
+ * A repair is listed when it was paid this week, or it already existed by the
+ * end of this week and still had a balance (and is not closed by hand).
+ *
+ * @param PDO      $pdo
+ * @param int|null $uberIncomeId  The week to report on. Null = the most recent week entered.
+ * @return array<string, mixed>|null  Null when there is no such week.
+ *     Keys: id, week_display, card_income, car_rental, fines, vehicle_repairs,
+ *     net, paid_in, balance (null before the first correction), balance_is_override,
+ *     notes, repairs (list of description / paid_this_week / remaining),
+ *     repairs_unlinked, repairs_owing, odo (km + date, or null), prev_id, next_id.
+ */
+function getUberWeekReport(PDO $pdo, ?int $uberIncomeId = null): ?array
+{
+    if ($uberIncomeId === null) {
+        $stmt = $pdo->query("SELECT * FROM uber_income ORDER BY week_start DESC, id DESC LIMIT 1");
+    } else {
+        $stmt = $pdo->prepare("SELECT * FROM uber_income WHERE id = ?");
+        $stmt->execute([$uberIncomeId]);
+    }
+    $week = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$week) {
+        return null;
+    }
+
+    $id = (int) $week['id'];
+    $tz = new DateTimeZone(TIME_ZONE);
+
+    $start = new DateTime();
+    $start->setTimestamp((int) $week['week_start']);
+    $start->setTimezone($tz);
+    $end = clone $start;
+    $end->modify('+6 days');
+    $weekSunday = $end->format('Y-m-d');
+
+    $fin     = calculateUberWeekFinancials($pdo, $week);
+    $walk    = calculateUberBalanceWalk($pdo);
+    $balance = $walk[$id] ?? ['balance' => null, 'is_override' => false];
+
+    // Vehicle repairs, balance as at the end of this week
+    $repairStmt = $pdo->prepare("
+        SELECT r.id, r.description, r.repair_date, r.total_amount, r.is_closed,
+               (SELECT COALESCE(SUM(uac.amount), 0)
+                  FROM uber_additional_costs uac
+                  JOIN uber_income ui ON ui.id = uac.uber_income_id
+                 WHERE uac.repair_id = r.id AND ui.week_start <= ?) AS paid_to_date,
+               (SELECT COALESCE(SUM(uac.amount), 0)
+                  FROM uber_additional_costs uac
+                 WHERE uac.repair_id = r.id AND uac.uber_income_id = ?) AS paid_this_week
+        FROM uber_vehicle_repairs r
+        ORDER BY r.repair_date ASC, r.id ASC
+    ");
+    $repairStmt->execute([(int) $week['week_start'], $id]);
+
+    $repairs = [];
+    $repairsOwing = 0.0;
+    foreach ($repairStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $paidThisWeek = (float) $r['paid_this_week'];
+        $remaining    = max(0.0, round((float) $r['total_amount'] - (float) $r['paid_to_date'], 2));
+        $stillOpen    = $remaining > 0.004 && (int) $r['is_closed'] === 0 && $r['repair_date'] <= $weekSunday;
+
+        if ($paidThisWeek > 0 || $stillOpen) {
+            $repairs[] = [
+                'description'    => $r['description'],
+                'paid_this_week' => $paidThisWeek,
+                'remaining'      => $remaining,
+            ];
+            $repairsOwing += $remaining;
+        }
+    }
+
+    // Vehicle Repairs money this week that is not linked to any repair
+    $unlinkedStmt = $pdo->prepare("
+        SELECT COALESCE(SUM(amount), 0)
+        FROM uber_additional_costs
+        WHERE uber_income_id = ? AND reason = 'Vehicle Repairs' AND repair_id IS NULL
+    ");
+    $unlinkedStmt->execute([$id]);
+    $repairsUnlinked = (float) $unlinkedStmt->fetchColumn();
+
+    // Last odometer reading from the fuel log (informative only)
+    $odo = null;
+    $odoRow = $pdo->query("SELECT odo_km, log_timestamp FROM fuel_logs ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    if ($odoRow) {
+        $odoDate = new DateTime();
+        $odoDate->setTimestamp((int) $odoRow['log_timestamp']);
+        $odoDate->setTimezone($tz);
+        $odo = ['km' => (float) $odoRow['odo_km'], 'date' => $odoDate->format('d M Y')];
+    }
+
+    // Neighbouring weeks, for browsing back through reports
+    $prevStmt = $pdo->prepare("SELECT id FROM uber_income WHERE week_start < ? ORDER BY week_start DESC, id DESC LIMIT 1");
+    $prevStmt->execute([(int) $week['week_start']]);
+    $prevId = $prevStmt->fetchColumn();
+    $nextStmt = $pdo->prepare("SELECT id FROM uber_income WHERE week_start > ? ORDER BY week_start ASC, id ASC LIMIT 1");
+    $nextStmt->execute([(int) $week['week_start']]);
+    $nextId = $nextStmt->fetchColumn();
+
+    return [
+        'id'                  => $id,
+        'week_display'        => $start->format('d M Y') . ' – ' . $end->format('d M Y'),
+        'card_income'         => $fin['card_income'],
+        'car_rental'          => $fin['car_rental'],
+        'fines'               => $fin['fines'],
+        'vehicle_repairs'     => $fin['vehicle_repairs'],
+        'net'                 => $fin['net'],
+        'paid_in'             => $fin['shortfall_paid'],
+        'balance'             => $balance['balance'],
+        'balance_is_override' => (bool) $balance['is_override'],
+        'notes'               => trim((string) ($week['notes'] ?? '')),
+        'repairs'             => $repairs,
+        'repairs_unlinked'    => $repairsUnlinked,
+        'repairs_owing'       => $repairsOwing,
+        'odo'                 => $odo,
+        'prev_id'             => $prevId !== false ? (int) $prevId : null,
+        'next_id'             => $nextId !== false ? (int) $nextId : null,
+    ];
+}
+
+/**
  * Walk every week in order and resolve the Balance shown for each one.
  *
  * Sign convention: POSITIVE = you're ahead (in credit with the rental

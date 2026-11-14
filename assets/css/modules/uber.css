@@ -289,6 +289,33 @@
     margin-top: 6px;
 }
 
+/* ========================
+   Fleet manager report (modules/Uber/report.php)
+======================== */
+.at-fleet-report-nav,
+.at-fleet-report-actions {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.at-fleet-report-heading {
+    margin: 18px 0 6px;
+    padding-top: 10px;
+    border-top: 1px solid #e3e8ec;
+}
+
+.at-fleet-report-notes {
+    margin: 0 0 12px;
+    white-space: normal;
+}
+
+.at-fleet-report .at-repair-payments-list li {
+    flex-wrap: wrap;
+}
+
 /* Repair picker on a "Vehicle Repairs" cost row in the weekly Add/Edit forms
    (modules/Uber/add.php, edit.php). Sits on its own line under the row. */
 .at-cost-repair-select {

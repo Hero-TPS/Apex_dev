@@ -265,7 +265,8 @@ $repair_options = getUberRepairOptions($pdo);
                 dataType: 'json',
                 success: function(res) {
                     if (res.success) {
-                        window.location.href = '<?= BASE_URL ?>/modules/Uber/index.php';
+                        // Straight to this week's fleet report
+                        window.location.href = '<?= BASE_URL ?>/modules/Uber/report.php?id=' + id;
                     } else {
                         alert('❌ ' + res.message);
                     }

@@ -291,7 +291,10 @@ $car_rental_price = (float) getSystemVariable($pdo, 'car_rental_price');
                         $('#uberForm')[0].reset();
                         $('#additional-costs-container').empty();
                         setTimeout(() => {
-                            window.location.href = '<?= BASE_URL ?>/modules/Uber/';
+                            // Straight to this week's fleet report
+                            window.location.href = response.id
+                                ? '<?= BASE_URL ?>/modules/Uber/report.php?id=' + response.id
+                                : '<?= BASE_URL ?>/modules/Uber/';
                         }, 1500);
                     } else {
                         result.html('<div class="error-message">✗ ' + response.message + '</div>');
