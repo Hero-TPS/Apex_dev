@@ -169,6 +169,7 @@ include ROOT_DIR . '/includes/header.php';
             <div class="at-inv-pick-tools">
                 <button type="button" id="selectUninvoicedBtn" class="page-action-btn toggle">Select all not yet invoiced</button>
                 <button type="button" id="clearSelectionBtn" class="page-action-btn back">Clear</button>
+                <button type="submit" class="page-action-btn save at-inv-create-btn" disabled>🧾 Create Invoice</button>
             </div>
 
             <table class="bookings-table at-inv-pick-table">
@@ -233,13 +234,13 @@ include ROOT_DIR . '/includes/header.php';
                 <textarea id="notes" name="notes" rows="3" maxlength="1000"></textarea>
             </div>
 
-            <button type="submit" id="createInvoiceBtn" class="page-action-btn save" disabled>🧾 Create Invoice</button>
+            <button type="submit" id="createInvoiceBtn" class="page-action-btn save at-inv-create-btn" disabled>🧾 Create Invoice</button>
         </form>
 
         <script>
             $(document).ready(function () {
                 var picks = $('.at-inv-pick');
-                var createBtn = $('#createInvoiceBtn');
+                var createBtn = $('.at-inv-create-btn'); // the button above the list and the one below it
                 var notificationArea = $('#notification-area');
 
                 function formatMoney(n) {
