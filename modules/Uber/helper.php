@@ -347,6 +347,45 @@ function getUberWeekReport(PDO $pdo, ?int $uberIncomeId = null): ?array
 }
 
 /**
+ * Every time the fleet report for a week was sent, newest first. The exact text
+ * that was sent is kept, for looking back if there is ever a dispute.
+ *
+ * Needs migrations/20261115_0610_uber_fleet_report.sql — throws a PDOException
+ * if it has not been run yet.
+ *
+ * @param PDO $pdo
+ * @param int $uberIncomeId
+ * @return array<int, array{id: int, recipient_phone: string, message_content: string, sent_display: string}>
+ */
+function getUberReportLog(PDO $pdo, int $uberIncomeId): array
+{
+    $stmt = $pdo->prepare("
+        SELECT id, recipient_phone, message_content, sent_at
+        FROM uber_report_log
+        WHERE uber_income_id = ?
+        ORDER BY sent_at DESC, id DESC
+    ");
+    $stmt->execute([$uberIncomeId]);
+
+    $tz   = new DateTimeZone(TIME_ZONE);
+    $rows = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $sent = new DateTime();
+        $sent->setTimestamp((int) $row['sent_at']);
+        $sent->setTimezone($tz);
+
+        $rows[] = [
+            'id'              => (int) $row['id'],
+            'recipient_phone' => $row['recipient_phone'],
+            'message_content' => $row['message_content'],
+            'sent_display'    => $sent->format('d M Y H:i'),
+        ];
+    }
+
+    return $rows;
+}
+
+/**
  * Walk every week in order and resolve the Balance shown for each one.
  *
  * Sign convention: POSITIVE = you're ahead (in credit with the rental

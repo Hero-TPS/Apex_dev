@@ -55,7 +55,7 @@ $isPassenger = $recipient === 'passenger';
         <textarea id="body" name="body" class="at-wa-body-input" maxlength="2000" required><?= $isNew ? '' : e($template['body']) ?></textarea>
     </div>
 
-    <?php if ($placement !== 'driver'): ?>
+    <?php if (!in_array($placement, ['driver', 'uber_report'], true)): ?>
         <div class="form-group at-wa-af-group"<?= $isPassenger ? ' style="display:none"' : '' ?>>
             <label for="body_af">Afrikaans message (optional)</label>
             <textarea id="body_af" name="body_af" class="at-wa-body-input" maxlength="2000"><?= $isNew ? '' : e($template['body_af'] ?? '') ?></textarea>

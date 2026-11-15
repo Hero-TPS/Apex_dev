@@ -316,6 +316,37 @@
     flex-wrap: wrap;
 }
 
+/* Send to fleet manager: message preview and send history (modules/Uber/report.php) */
+.at-fleet-send {
+    margin: 16px 0;
+}
+
+.at-fleet-preview,
+.at-fleet-log-text {
+    margin: 8px 0;
+    padding: 10px 12px;
+    background: #f4f7f9;
+    border: 1px solid #e3e8ec;
+    border-radius: 6px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: inherit;
+    font-size: 0.95em;
+}
+
+.at-fleet-log {
+    margin: 12px 0;
+}
+
+.at-fleet-log summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.at-fleet-log-entry {
+    margin: 10px 0;
+}
+
 /* Repair picker on a "Vehicle Repairs" cost row in the weekly Add/Edit forms
    (modules/Uber/add.php, edit.php). Sits on its own line under the row. */
 .at-cost-repair-select {

@@ -19,6 +19,7 @@ const WHATSAPP_PLACEMENTS = [
     'prebooking'   => 'Prebooking reminder',
     'driver'       => 'Message to driver',
     'booking_group' => 'Combined bookings message (client bookings page)',
+    'uber_report'  => 'Uber fleet manager report (Uber Fleet Report page)',
 ];
 
 /**
@@ -172,6 +173,32 @@ function getWhatsAppGroupVariables(): array
 }
 
 /**
+ * Placeholders for the Uber fleet manager report (placement 'uber_report').
+ * Used by: getWhatsAppVariables(), buildUberReportMessageVars()
+ *
+ * @return array<string,string> name => description
+ */
+function getWhatsAppUberReportVariables(): array
+{
+    return [
+        'week'           => 'The Uber week, e.g. 09 Nov 2026 – 15 Nov 2026',
+        'card_income'    => 'Uber card income for the week, e.g. R2,500.00',
+        'car_rental'     => 'Car rental for the week',
+        'fines'          => 'Fines for the week',
+        'repairs_paid'   => 'All vehicle repair payments made this week',
+        'repairs_detail' => 'One line per repair: what was paid this week and what is still owing, plus repair costs not linked to a repair. Empty when nothing is owing and nothing was paid',
+        'repairs_owing'  => 'Total of all vehicle repairs still owing at the end of that week. Empty when nothing is owing',
+        'net'            => 'Net for the week (card income less rental, fines and repairs). A minus sign means a loss',
+        'paid_in'        => 'Total paid in for the week',
+        'balance'        => 'Running balance after this week, with (behind) or (ahead). Empty before a starting balance has been set',
+        'notes'          => "The week's notes as typed on the Uber entry. Empty when there are none",
+        'odo'            => 'Last odometer reading from the fuel log with its date, e.g. 48,210 km (12 Nov 2026)',
+        'business_owner' => 'Business owner name (config)',
+        'business_name'  => 'Business name (config)',
+    ];
+}
+
+/**
  * Allowed placeholders for a template placement.
  * Used by: validateWhatsAppTemplateBody(), modules/WhatsApp/partials/template_form.php
  *
@@ -184,6 +211,9 @@ function getWhatsAppVariables(string $placement): array
     }
     if ($placement === 'booking_group') {
         return getWhatsAppGroupVariables();
+    }
+    if ($placement === 'uber_report') {
+        return getWhatsAppUberReportVariables();
     }
     return getWhatsAppBookingVariables();
 }
@@ -982,6 +1012,81 @@ function getWhatsAppGroupMessage(PDO $pdo, array $client, array $bookings): stri
     $language = normalizeWhatsAppLanguage($client['language'] ?? 'en');
     $vars = buildGroupMessageVars($pdo, (string) ($client['name'] ?? ''), (string) ($client['phone'] ?? ''), $bookings, $language);
     return renderWhatsAppTemplateByKey($pdo, 'booking_group', $vars, $language);
+}
+
+/**
+ * Fill in the placeholders of the Uber fleet manager report from getUberWeekReport()
+ * (modules/Uber/helper.php), so the message always carries the same figures as the report page.
+ * Used by: getUberReportMessage()
+ *
+ * @param array $report  From getUberWeekReport()
+ * @return array<string,string>
+ */
+function buildUberReportMessageVars(array $report): array
+{
+    $money = function (float $amount): string {
+        return 'R' . number_format(abs(round($amount, 2)), 2);
+    };
+    // A minus sign for a loss / being behind
+    $signed = function (float $amount) use ($money): string {
+        return (round($amount, 2) < 0 ? '-' : '') . $money($amount);
+    };
+
+    $repairLines = [];
+    foreach ($report['repairs'] as $repair) {
+        $owing = $repair['remaining'] > 0.004
+            ? $money($repair['remaining']) . ' still owing'
+            : 'now fully paid';
+        $repairLines[] = '• ' . $repair['description'] . ': paid ' . $money($repair['paid_this_week']) . ', ' . $owing;
+    }
+    if ($report['repairs_unlinked'] > 0) {
+        $repairLines[] = '• Other repair costs: paid ' . $money($report['repairs_unlinked']);
+    }
+
+    $balance = $report['balance'];
+    $balanceText = '';
+    if ($balance !== null) {
+        $balanceText = $signed($balance);
+        if (round($balance, 2) < 0) {
+            $balanceText .= ' (behind)';
+        } elseif (round($balance, 2) > 0) {
+            $balanceText .= ' (ahead)';
+        }
+    }
+
+    $odoText = '';
+    if ($report['odo'] !== null) {
+        $odoText = number_format($report['odo']['km'], 0) . ' km (' . $report['odo']['date'] . ')';
+    }
+
+    return [
+        'week'           => $report['week_display'],
+        'card_income'    => $money($report['card_income']),
+        'car_rental'     => $money($report['car_rental']),
+        'fines'          => $money($report['fines']),
+        'repairs_paid'   => $money($report['vehicle_repairs']),
+        'repairs_detail' => implode("\n", $repairLines),
+        'repairs_owing'  => ($report['repairs'] && $report['repairs_owing'] > 0.004) ? $money($report['repairs_owing']) : '',
+        'net'            => $signed($report['net']),
+        'paid_in'        => $money($report['paid_in']),
+        'balance'        => $balanceText,
+        'notes'          => $report['notes'],
+        'odo'            => $odoText,
+        'business_owner' => BUSINESS_OWNER,
+        'business_name'  => BUSINESS_NAME,
+    ];
+}
+
+/**
+ * The WhatsApp text for the Uber fleet manager report (always English).
+ * Returns '' when the 'uber_fleet_report' template is missing (logged).
+ * Used by: modules/Uber/report.php, modules/Uber/api/report.php
+ *
+ * @param array $report  From getUberWeekReport()
+ */
+function getUberReportMessage(PDO $pdo, array $report): string
+{
+    return renderWhatsAppTemplateByKey($pdo, 'uber_fleet_report', buildUberReportMessageVars($report), 'en');
 }
 
 // --- Message builders (templates: confirmation, evening_confirmation, prebooking_reminder, driver_notification) ---

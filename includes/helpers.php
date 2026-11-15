@@ -349,6 +349,13 @@ const SYSTEM_VARIABLES = [
         'type' => 'text',
         'default' => 'Thank you for your business!',
     ],
+    'fleet_manager_whatsapp' => [
+        'label' => 'Fleet Manager WhatsApp Number',
+        'type' => 'text',
+        'default' => '',
+        'optional' => true,
+        'hint' => 'Receives the weekly Uber report from the Uber Fleet Report page. Local (082 123 4567) or international (+44 ...). Leave empty to switch sending off.',
+    ],
     'ai_prompt_template' => [
         'label' => 'AI Budget Prompt Template',
         'type' => 'textarea',

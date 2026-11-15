@@ -11,6 +11,7 @@ require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
 require_once __DIR__ . '/helper.php';
+require_once ROOT_DIR . '/modules/WhatsApp/helpers.php';
 
 $breadcrumb = buildBreadcrumb([
     ['label' => 'Uber', 'url' => BASE_URL . '/modules/Uber/'],
@@ -34,6 +35,26 @@ $money = function (float $amount): string {
 $signedMoney = function (float $amount): string {
     return ($amount < 0 ? '-' : '') . 'R' . number_format(abs($amount), 2);
 };
+
+// The message that would be sent, and the history of what was sent for this week.
+$previewText = '';
+$sendLog = [];
+$sendLogError = false;
+$hasNumber = false;
+if ($report !== null) {
+    try {
+        $previewText = getUberReportMessage($pdo, $report);
+    } catch (PDOException $e) {
+        logError('UBER', 'Failed to build the fleet report message', ['error' => $e->getMessage()]);
+    }
+    try {
+        $sendLog = getUberReportLog($pdo, (int) $report['id']);
+    } catch (PDOException $e) {
+        $sendLogError = true;
+        logError('UBER', 'Failed to load the fleet report send log', ['error' => $e->getMessage()]);
+    }
+    $hasNumber = trim((string) getSystemVariable($pdo, 'fleet_manager_whatsapp')) !== '';
+}
 
 include ROOT_DIR . '/includes/header.php';
 ?>
@@ -133,11 +154,86 @@ include ROOT_DIR . '/includes/header.php';
             </div>
         </div>
 
+        <div class="at-fleet-send">
+            <h3>💬 Send to fleet manager</h3>
+            <div id="fleet-send-notice"></div>
+            <?php if ($previewText === ''): ?>
+                <p class="at-help-text">The report message is not set up yet. Run the pending updates under Services → Database Updates.</p>
+            <?php else: ?>
+                <pre class="at-fleet-preview"><?= htmlspecialchars($previewText) ?></pre>
+                <?php if (!$hasNumber): ?>
+                    <p class="at-help-text">No fleet manager number is set yet. Add it under Services → System Variables to enable sending.</p>
+                <?php endif; ?>
+                <button type="button" id="fleetSendBtn" class="page-action-btn save"<?= $hasNumber ? '' : ' disabled' ?>>📤 Send on WhatsApp</button>
+            <?php endif; ?>
+
+            <details class="at-fleet-log">
+                <summary>Send history (<?= count($sendLog) ?>)</summary>
+                <?php if ($sendLogError): ?>
+                    <p class="at-help-text">The send history is not available yet. Run the pending updates under Services → Database Updates.</p>
+                <?php elseif (empty($sendLog)): ?>
+                    <p class="at-help-text">This week's report has not been sent yet.</p>
+                <?php else: ?>
+                    <?php foreach ($sendLog as $entry): ?>
+                        <div class="at-fleet-log-entry">
+                            <strong><?= htmlspecialchars($entry['sent_display']) ?></strong>
+                            <span class="at-help-text">· to <?= htmlspecialchars($entry['recipient_phone']) ?></span>
+                            <pre class="at-fleet-log-text"><?= htmlspecialchars($entry['message_content']) ?></pre>
+                        </div>
+                    <?php endforeach; ?>
+                    <p class="at-help-text">Recorded when Send was tapped. WhatsApp itself does not confirm delivery.</p>
+                <?php endif; ?>
+            </details>
+        </div>
+
         <div class="at-fleet-report-actions">
             <a class="action-btn edit-btn" href="<?= BASE_URL ?>/modules/Uber/edit.php?id=<?= (int) $report['id'] ?>">✏️ Edit this week</a>
             <a class="action-btn" href="<?= BASE_URL ?>/modules/Uber/">Uber Reports</a>
         </div>
     </div>
+<?php endif; ?>
+
+<?php if ($report !== null && $previewText !== '' && $hasNumber): ?>
+<script>
+    $(document).ready(function () {
+        var btn = $('#fleetSendBtn');
+        var notice = $('#fleet-send-notice');
+
+        function showError(text) {
+            notice.html($('<div>').addClass('error-message').text(text));
+            btn.prop('disabled', false).text('📤 Send on WhatsApp');
+        }
+
+        btn.on('click', function () {
+            // Open the tab straight away (inside the tap) so the browser does not block it
+            var waTab = window.open('', '_blank');
+            notice.empty();
+            btn.prop('disabled', true).text('Preparing…');
+            $.ajax({
+                type: 'POST',
+                url: '<?= BASE_URL ?>/modules/Uber/api/report.php',
+                data: { action: 'send', id: <?= (int) $report['id'] ?> },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.success && res.url) {
+                        if (waTab) { waTab.location.href = res.url; } else { window.location.href = res.url; }
+                        // Reload so the new entry shows in the send history
+                        setTimeout(function () { window.location.reload(); }, 800);
+                    } else {
+                        if (waTab) { waTab.close(); }
+                        showError(res.message || 'Could not prepare the message.');
+                    }
+                },
+                error: function (xhr) {
+                    if (waTab) { waTab.close(); }
+                    var msg = 'Could not prepare the message. Please try again.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) { msg = xhr.responseJSON.message; }
+                    showError(msg);
+                }
+            });
+        });
+    });
+</script>
 <?php endif; ?>
 
 <?php include ROOT_DIR . '/includes/footer.php'; ?>
