@@ -32,6 +32,11 @@ on and asks `Confirm you are using [branch]? (Y)es/(N)o` before anything is extr
 apexzip ~/Downloads/<zip-name>.zip
 ```
 
+Or just `apexzip` with no path: it asks for the zip name, does the same unzip and
+branch check, then commits (message = the zip name) and pushes if nothing went
+wrong. It refuses to commit when git shows files that are not in the zip. See
+`GIT_COMMANDS.md` section 4.
+
 - It always works on `~/Projects/Apex-Transit/Apex_dev`, whatever folder your
   terminal is in, and never changes your terminal's folder.
 - It prints the branch and the zip's file list, then asks you to confirm the branch.
@@ -39,7 +44,7 @@ apexzip ~/Downloads/<zip-name>.zip
 - It warns if the working tree already has uncommitted changes, and asks before
   continuing (useful when one chat gives you two zips in a row).
 - It refuses zips containing absolute paths, `..` paths or `.git` entries.
-- It never runs `git add`, `commit`, `push` or `pull`.
+- With a path given it never runs `git add`, `commit`, `push` or `pull`; the commit and push only happen in the no-path version.
 
 The terminal prompt also shows the current branch: green `[main]`, red for any
 other branch. If the red tag is there and you did not expect it, stop.

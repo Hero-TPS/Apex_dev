@@ -86,10 +86,21 @@ Go to the itinerary branch and update it.
 
 Switch to the right branch first (section 3).
 
+### In one go (normal way)
+
+```bash
+apexzip
+```
+Asks `Zip name:` (type it with or without `.zip`; it looks in `~/Downloads`). Then it unzips with the branch check (`Confirm you are using [branch]? (Y)es/(N)o`) and, if nothing went wrong, runs `git add -A && git commit -m "ZIPNAME" && git push`. The commit message is the zip name. Push to `main` = dev deploys. Push to `feature/itinerary` = itinerary server deploys.
+
+It stops WITHOUT committing when: the zip is not found, the answer is No, nothing changed, or `git status` shows any changed/untracked file that is not in the zip. Then use the manual steps below.
+
+### Step by step (check first, or when it stopped)
+
 ```bash
 apexzip ~/Downloads/ZIPNAME.zip
 ```
-Shows the branch and asks `Confirm you are using [branch]? (Y)es/(N)o`. Never commits.
+With the path given, it only unzips with the branch check: shows the branch and asks `Confirm you are using [branch]? (Y)es/(N)o`. Never commits.
 
 ```bash
 git status
@@ -327,6 +338,11 @@ cp ~/Downloads/apex-git-helpers.sh ~/.apex-git-helpers.sh
 echo 'source ~/.apex-git-helpers.sh' >> ~/.bashrc && source ~/.bashrc
 ```
 Installs `apexzip` and the branch tag in the prompt. Do once only.
+
+```bash
+unzip -o ~/Downloads/apexzip-go.zip -d ~ && mv ~/apex-go.sh ~/.apex-go.sh && echo 'source ~/.apex-go.sh' >> ~/.bashrc && source ~/.bashrc
+```
+Adds the one-go `apexzip` (asks for the zip name, unzips, commits, pushes). Do once only, after the line above (it must load after `~/.apex-git-helpers.sh`).
 
 ```bash
 cd ~/Projects/Apex-Transit/Apex_dev && git config merge.conflictstyle diff3
