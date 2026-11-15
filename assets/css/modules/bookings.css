@@ -315,3 +315,19 @@
 .at-flight-line .map-link {
     margin-left: 6px;
 }
+
+/* ========================
+   Bookings index: client search and jump to upcoming (modules/Bookings/index.php)
+======================== */
+.at-bookings-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin: 12px 0;
+}
+
+.at-bookings-search {
+    flex: 1 1 220px;
+    max-width: 360px;
+}

@@ -17,6 +17,12 @@ include ROOT_DIR . '/includes/header.php';
 <!-- Toggle Button -->
 <button id="toggleBookingsBtn" class="page-action-btn primary">Show All</button>
 
+<!-- Client search (filters the rows below) and jump to the first upcoming booking -->
+<div class="at-bookings-tools">
+    <input type="search" id="clientSearch" class="at-bookings-search" placeholder="🔍 Search client…" autocomplete="off">
+    <button type="button" id="jumpUpcomingBtn" class="page-action-btn" style="display: none;">⬇ Jump to upcoming</button>
+</div>
+
 <!-- Notification Area -->
 <div id="notification-area"></div>
 
@@ -40,6 +46,11 @@ include ROOT_DIR . '/includes/header.php';
         <!-- Filled by AJAX -->
     </tbody>
 </table>
+
+<!-- Shown when the client search matches nothing -->
+<div id="search-empty-message" class="no-bookings" style="display: none;">
+    <p>No bookings match that client name.</p>
+</div>
 
 <!-- No Bookings Message -->
 <div id="no-bookings-message" class="no-bookings" style="display: none;">
@@ -70,6 +81,7 @@ include ROOT_DIR . '/includes/header.php';
         var bookingIdToDelete = null;
         var showAll = false;
         var overlapsById = {};
+        var clientSearch = $('#clientSearch');
 
         function renderOverlapBadge(booking) {
             if (!booking.overlaps || booking.overlaps.length === 0) return '';
@@ -169,8 +181,9 @@ include ROOT_DIR . '/includes/header.php';
                         $('.bookings-table').show();
                         noBookingsMessage.hide();
 
-                        if (showAll) {
-                            scrollToToday();
+                        applyClientFilter();
+                        if (showAll && $.trim(clientSearch.val()) === '') {
+                            jumpToUpcoming();
                         }
                     } else {
                         noBookingsMessage.show();
@@ -209,29 +222,66 @@ include ROOT_DIR . '/includes/header.php';
             });
         }
 
-        function scrollToToday() {
-            var today = new Date().toISOString().split('T')[0];
-            var $targetRow = tableBody.find('tr[data-date="' + today + '"]').first();
-            if (!$targetRow.length) {
-                tableBody.find('tr').each(function () {
-                    if ($(this).data('date') > today) {
-                        $targetRow = $(this);
-                        return false;
-                    }
-                });
-            }
+        // A row the client search has not hidden
+        function isRowShown() {
+            return this.style.display !== 'none';
+        }
+
+        // Client search: shows only rows (bookings and tentative) whose client name contains the typed text
+        function applyClientFilter() {
+            var term = $.trim(clientSearch.val()).toLowerCase();
+            var anyShown = false;
+            tableBody.find('tr').not('.prebooking-separator').each(function () {
+                var match = term === '' || String($(this).data('name') || '').indexOf(term) !== -1;
+                $(this).toggle(match);
+                if (match) { anyShown = true; }
+            });
+            // The "Tentative / Prebookings" heading only stays when one of its rows is showing
+            tableBody.find('.prebooking-separator').toggle(tableBody.find('.prebooking-row-info').filter(isRowShown).length > 0);
+            var hasRows = tableBody.find('tr').not('.prebooking-separator').length > 0;
+            $('#search-empty-message').toggle(term !== '' && hasRows && !anyShown);
+        }
+
+        // Today as YYYY-MM-DD on this device (matches the dates the list rows carry)
+        function localToday() {
+            var d = new Date();
+            var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+            return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+        }
+
+        // Scrolls to the first booking from today onwards (tentative bookings are listed separately below)
+        function jumpToUpcoming() {
+            var today = localToday();
+            var $targetRow = $();
+            tableBody.find('tr[id^="booking-row-"]').filter(isRowShown).each(function () {
+                if (String($(this).data('date')) >= today) {
+                    $targetRow = $(this);
+                    return false;
+                }
+            });
             if ($targetRow.length) {
                 $('html, body').animate({
                     scrollTop: $targetRow.offset().top - 150
                 }, 500);
+                return true;
             }
+            return false;
         }
 
         loadBookings();
         loadPrebookings();
 
+        clientSearch.on('input', applyClientFilter);
+
+        $('#jumpUpcomingBtn').on('click', function () {
+            if (!jumpToUpcoming()) {
+                showNotification('No upcoming bookings to jump to.', 'info');
+            }
+        });
+
         $('#toggleBookingsBtn').on('click', function () {
             showAll = !showAll;
+            $('#jumpUpcomingBtn').toggle(showAll);
             $(this).text(showAll ? 'Show Upcoming Only' : 'Show All Bookings');
             $('#bookings-heading').text(showAll ? 'All Bookings' : 'Upcoming Bookings');
             loadBookings();
@@ -411,7 +461,7 @@ include ROOT_DIR . '/includes/header.php';
                             ? '<a href="' + escapeHtml(p.whatsapp_url) + '" target="_blank" class="action-btn whatsapp-btn">💬 WhatsApp</a>'
                             : '';
                         var row =
-                            '<tr id="pre-row-' + p.id + '" class="' + rowClass + '" data-date="' + escapeHtml(p.trip_date_raw) + '">' +
+                            '<tr id="pre-row-' + p.id + '" class="' + rowClass + '" data-name="' + escapeHtml((p.client_name || '').toLowerCase()) + '" data-date="' + escapeHtml(p.trip_date_raw) + '">' +
                             '<td data-label="Date">' + escapeHtml(p.trip_date) + '</td>' +
                             '<td data-label="Time">' + (p.start_time ? escapeHtml(p.start_time) : '<em>TBC</em>') + '</td>' +
                             '<td data-label="Client">' + escapeHtml(p.client_name) + '</td>' +
@@ -438,6 +488,7 @@ include ROOT_DIR . '/includes/header.php';
 
                     $('.bookings-table').show();
                     noBookingsMessage.hide();
+                    applyClientFilter();
                 }
             });
         }
