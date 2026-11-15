@@ -471,6 +471,7 @@ include ROOT_DIR . '/includes/header.php';
                             '<td data-label="Distance"><span style="color:#aaa;">—</span></td>' +
                             '<td data-label="Calc. Cost"><span style="color:#aaa;">—</span></td>' +
                             '<td data-label="Driver">' +
+                            (p.driver_name ? escapeHtml(p.driver_name) + '<br>' : '') +
                             '<span class="prebooking-label">Tentative</span>' +
                             (p.description ? '<div class="prebooking-description">' + escapeHtml(p.description) + '</div>' : '') +
                             '</td>' +

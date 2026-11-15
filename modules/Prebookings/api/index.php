@@ -51,18 +51,20 @@ function handleList()
 
         if ($show === 'all') {
             $stmt = $pdo->query("
-                SELECT p.*, c.name AS client_name, c.phone AS client_phone, c.language AS client_language
+                SELECT p.*, c.name AS client_name, c.phone AS client_phone, c.language AS client_language, d.name AS driver_name
                 FROM prebookings p
                 JOIN contacts c ON p.contact_id = c.id
+                LEFT JOIN drivers d ON p.driver_id = d.id
                 WHERE p.converted_booking_id IS NULL
                 ORDER BY p.trip_date ASC, p.start_time ASC
                 LIMIT 200
             ");
         } else {
             $stmt = $pdo->prepare("
-                SELECT p.*, c.name AS client_name, c.phone AS client_phone, c.language AS client_language
+                SELECT p.*, c.name AS client_name, c.phone AS client_phone, c.language AS client_language, d.name AS driver_name
                 FROM prebookings p
                 JOIN contacts c ON p.contact_id = c.id
+                LEFT JOIN drivers d ON p.driver_id = d.id
                 WHERE p.converted_booking_id IS NULL
                   AND p.trip_date >= ?
                 ORDER BY p.trip_date ASC, p.start_time ASC
@@ -97,6 +99,7 @@ function handleList()
                 'destination'   => $effDest,
                 'cost'          => $row['cost'] ? 'R' . number_format((float) $row['cost'], 2) : '',
                 'description'   => $row['description'] ?? '',
+                'driver_name'   => $row['driver_name'] ?? '',
                 'is_past'       => $isPast,
                 'whatsapp_url'  => buildWhatsAppUrl($row['client_phone'] ?? '', createPrebookingWhatsAppMessage($pdo, [
                     'client_name'          => $row['client_name'],
@@ -120,6 +123,30 @@ function handleList()
         logError('PREBOOKING', 'Failed to list prebookings', ['error' => $e->getMessage()]);
         jsonResponse(['success' => false, 'message' => 'Database error.'], 500);
     }
+}
+
+/**
+ * Driver allocation fields posted by the add / edit forms.
+ * No driver means no booking fee percentage and no driver notes (same as a normal booking).
+ * Returns [driver_id|null, booking_fee_pct|null, driver_notes|null]. A driver that does not
+ * exist or is inactive is ignored.
+ */
+function readPrebookingDriverFields(PDO $pdo): array
+{
+    $driverId = intval($_POST['driver_id'] ?? 0);
+    if ($driverId > 0) {
+        $stmt = $pdo->prepare("SELECT id FROM drivers WHERE id = ? AND active = 1");
+        $stmt->execute([$driverId]);
+        if ($stmt->fetchColumn() === false) {
+            $driverId = 0;
+        }
+    }
+    if ($driverId <= 0) {
+        return [null, null, null];
+    }
+    $feePct = parseBookingFeePct($_POST['booking_fee_pct'] ?? null, getDefaultBookingFeePct($pdo));
+    $notes  = trim((string) ($_POST['driver_notes'] ?? ''));
+    return [$driverId, $feePct, $notes !== '' ? $notes : null];
 }
 
 function handleAdd()
@@ -158,11 +185,13 @@ function handleAdd()
             jsonResponse(['success' => false, 'message' => 'Client not found.'], 404);
         }
 
+        [$driverId, $feePct, $driverNotes] = readPrebookingDriverFields($pdo);
+
         $ins = $pdo->prepare("
-            INSERT INTO prebookings (contact_id, trip_date, start_time, original_pickup, original_destination, was_swapped, cost, description, passenger_name, passenger_phone)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO prebookings (contact_id, trip_date, start_time, original_pickup, original_destination, was_swapped, cost, description, passenger_name, passenger_phone, driver_id, booking_fee_pct, driver_notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $ins->execute([$contactId, $tripDate, $startTimeVal, $pickupVal, $destVal, $wasSwapped, $costVal, $descVal, $passengerName, $passengerPhone]);
+        $ins->execute([$contactId, $tripDate, $startTimeVal, $pickupVal, $destVal, $wasSwapped, $costVal, $descVal, $passengerName, $passengerPhone, $driverId, $feePct, $driverNotes]);
         $prebookingId = (int) $pdo->lastInsertId();
 
         reactivateContactIfArchived($pdo, $contactId);
@@ -245,12 +274,15 @@ function handleUpdate()
         }
 
         // Update the database record
+        [$driverId, $feePct, $driverNotes] = readPrebookingDriverFields($pdo);
+
         $upd = $pdo->prepare("
             UPDATE prebookings
-            SET trip_date = ?, start_time = ?, original_pickup = ?, original_destination = ?, was_swapped = ?, cost = ?, description = ?, passenger_name = ?, passenger_phone = ?
+            SET trip_date = ?, start_time = ?, original_pickup = ?, original_destination = ?, was_swapped = ?, cost = ?, description = ?, passenger_name = ?, passenger_phone = ?,
+                driver_id = ?, booking_fee_pct = ?, driver_notes = ?
             WHERE id = ?
         ");
-        $upd->execute([$tripDate, $startTimeVal, $pickupVal, $destVal, $wasSwapped, $costVal, $descVal, $passengerName, $passengerPhone, $id]);
+        $upd->execute([$tripDate, $startTimeVal, $pickupVal, $destVal, $wasSwapped, $costVal, $descVal, $passengerName, $passengerPhone, $driverId, $feePct, $driverNotes, $id]);
 
         // Update Google Calendar event if one exists
         $calData = [
@@ -371,6 +403,9 @@ function handleConvert()
             'description'     => $pre['description'] ?? '',
             'passenger_name'  => $pre['passenger_name'] ?? '',
             'passenger_phone' => $pre['passenger_phone'] ?? '',
+            'driver_id'       => $pre['driver_id'] ?? '',
+            'booking_fee_pct' => $pre['booking_fee_pct'] ?? '',
+            'driver_notes'    => $pre['driver_notes'] ?? '',
             'from_prebooking' => $id,
         ], fn($v) => $v !== '' && $v !== null));
 

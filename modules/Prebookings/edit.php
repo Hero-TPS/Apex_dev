@@ -7,6 +7,7 @@ $show_breadcrumb = true;
 require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/auth.php';
 require_once ROOT_DIR . '/includes/helpers.php';
+require_once ROOT_DIR . '/modules/Bookings/helpers.php'; // booking fee dropdown options
 $breadcrumb = buildBreadcrumb([
     ['label' => 'Prebookings', 'url' => BASE_URL . '/modules/Prebookings/'],
     ['label' => 'Edit Prebooking'],
@@ -49,6 +50,25 @@ $costInList    = $savedCost !== '' && in_array(number_format((float)$savedCost, 
 $showOtherPickup = $savedPickup !== '' && !$pickupInList;
 $showOtherDest = $savedDest !== '' && !$destInList;
 $showOtherCost = $savedCost !== '' && !$costInList;
+
+// Passenger and driver allocation (same panels as the booking edit form)
+$drivers       = $pdo->query("SELECT id, name, phone FROM drivers WHERE active = 1 ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+$feePctOptions = getBookingFeePctOptions();
+$savedDriverId = (int) ($prebooking['driver_id'] ?? 0);
+$hasDriver     = $savedDriverId > 0;
+$savedDriverName = '';
+foreach ($drivers as $d) {
+    if ((int) $d['id'] === $savedDriverId) {
+        $savedDriverName = $d['name'];
+    }
+}
+$savedFeePct = ($prebooking['booking_fee_pct'] ?? null) !== null && $prebooking['booking_fee_pct'] !== ''
+    ? snapBookingFeePct((float) $prebooking['booking_fee_pct'])
+    : getDefaultBookingFeePct($pdo);
+$savedDriverNotes    = (string) ($prebooking['driver_notes'] ?? '');
+$savedPassengerName  = (string) ($prebooking['passenger_name'] ?? '');
+$savedPassengerPhone = (string) ($prebooking['passenger_phone'] ?? '');
+$passengerOpen = trim($savedPassengerName) !== '' || trim($savedPassengerPhone) !== '';
 ?>
 
 <div class="form-container">
@@ -58,19 +78,6 @@ $showOtherCost = $savedCost !== '' && !$costInList;
         <div class="form-group">
             <label>Client</label>
             <input type="text" value="<?= e($prebooking['client_name']) ?>" disabled>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label for="passengerName">Picking Up (if not the client)</label>
-                <input type="text" id="passengerName" name="passenger_name" placeholder="Name of person being collected"
-                    value="<?= e($prebooking['passenger_name'] ?? '') ?>">
-            </div>
-            <div class="form-group">
-                <label for="passengerPhone">Passenger Phone</label>
-                <input type="tel" id="passengerPhone" name="passenger_phone"
-                    value="<?= e($prebooking['passenger_phone'] ?? '') ?>">
-            </div>
         </div>
 
         <div class="form-group">
@@ -166,6 +173,64 @@ $showOtherCost = $savedCost !== '' && !$costInList;
                       placeholder="Any relevant info about this booking..."><?= e($prebooking['description'] ?? '') ?></textarea>
         </div>
 
+        <!-- Passenger details (same collapsible panel as on the booking form; collapsed unless filled in) -->
+        <div class="menu-section">
+            <h3 class="menu-toggle" data-target="passenger-section">👤 Passenger Details</h3>
+            <div id="passenger-section" class="section-body<?= $passengerOpen ? '' : ' hidden' ?>">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="passengerName" class="manage-driver-label">Passenger Name</label>
+                        <input type="text" id="passengerName" name="passenger_name"
+                            value="<?= e($savedPassengerName) ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="passengerPhone" class="manage-driver-label">Passenger Phone</label>
+                        <input type="tel" id="passengerPhone" name="passenger_phone"
+                            value="<?= e($savedPassengerPhone) ?>">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Driver allocation (same panel as on the booking form; open when a driver is already allocated) -->
+        <div class="menu-section">
+            <h3 class="menu-toggle" data-target="manage-driver-section">🚗 Allocate Driver<span class="driver-allocated-badge<?= $hasDriver ? '' : ' hidden' ?>" id="driverBadge"><?= e($savedDriverName) ?></span></h3>
+            <div id="manage-driver-section" class="section-body<?= $hasDriver ? '' : ' hidden' ?>">
+                <div class="manage-driver-fields">
+                    <div>
+                        <label for="driver-select" class="manage-driver-label">Driver</label>
+                        <select id="driver-select" name="driver_id">
+                            <option value="">— No driver —</option>
+                            <?php foreach ($drivers as $driver): ?>
+                                <option value="<?= e($driver['id']) ?>"<?= (int) $driver['id'] === $savedDriverId ? ' selected' : '' ?>>
+                                    <?= e($driver['name']) ?>
+                                    <?= $driver['phone'] ? ' (' . e($driver['phone']) . ')' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div id="bookingFeePctGroup" class="hidden">
+                        <label for="booking-fee-pct-select" class="manage-driver-label">Booking Fee</label>
+                        <select id="booking-fee-pct-select" name="booking_fee_pct">
+                            <?php foreach ($feePctOptions as $opt): ?>
+                                <option value="<?= $opt ?>" <?= ($opt === $savedFeePct) ? 'selected' : '' ?>>
+                                    <?= $opt === 0 ? '0% — No booking fee' : $opt . '%' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group hidden" id="bookingFeeNote">
+                    <small id="bookingFeeDisplay"></small>
+                </div>
+                <div class="form-group hidden" id="driverNotesGroup">
+                    <label for="driver-notes-input" class="manage-driver-label">Driver Notes</label>
+                    <textarea id="driver-notes-input" name="driver_notes" rows="3"
+                        placeholder="Instructions for the driver..."><?= e($savedDriverNotes) ?></textarea>
+                </div>
+            </div>
+        </div>
+
         <button type="submit" class="btn" id="submitBtn">💾 Save Changes</button>
         <a href="<?= BASE_URL ?>/modules/Prebookings/" class="page-action-btn back">← Cancel</a>
     </form>
@@ -204,6 +269,55 @@ $showOtherCost = $savedCost !== '' && !$costInList;
             }
         });
 
+    // Passenger Details / Allocate Driver panels: headers toggle them (fields stay in the form and submit even when collapsed)
+        $('.menu-toggle[data-target="passenger-section"]').on('click', function () {
+            $('#passenger-section').slideToggle(200);
+        });
+        $('.menu-toggle[data-target="manage-driver-section"]').on('click', function () {
+            $('#manage-driver-section').slideToggle(200);
+        });
+
+        $('#driver-select').on('change', function () {
+            updateBookingFee();
+            updateDriverSections();
+        });
+        $('#booking-fee-pct-select').on('change', updateBookingFee);
+        $('#cost').on('change', updateBookingFee);
+        $('#otherCost').on('input', updateBookingFee);
+
+        function updateDriverSections() {
+            var driverSelected = $('#driver-select').val() !== '';
+            $('#bookingFeePctGroup').toggleClass('hidden', !driverSelected);
+            $('#driverNotesGroup').toggleClass('hidden', !driverSelected);
+            $('#bookingFeeNote').toggleClass('hidden', !driverSelected);
+            var badge = $('#driverBadge');
+            if (driverSelected) {
+                badge.text($('#driver-select option:selected').text().replace(/\s*\(.*\)\s*$/, '').trim()).removeClass('hidden');
+            } else {
+                badge.addClass('hidden').text('');
+                $('#driver-notes-input').val('');
+            }
+        }
+
+        // Fee preview: cost x the chosen percentage (0% = no booking fee, full amount to driver)
+        function updateBookingFee() {
+            var pct = parseInt($('#booking-fee-pct-select').val(), 10) || 0;
+            var costVal = $('#cost').val() === 'other'
+                ? parseFloat($('#otherCost').val()) || 0
+                : parseFloat($('#cost').val()) || 0;
+            if (pct === 0) {
+                $('#bookingFeeDisplay').text('No booking fee — the full amount goes to the driver.');
+            } else if (costVal <= 0) {
+                $('#bookingFeeDisplay').text('Booking fee: ' + pct + '% of the cost, worked out when the booking is created.');
+            } else {
+                var fee = parseFloat((costVal * pct / 100).toFixed(2));
+                $('#bookingFeeDisplay').text('Booking fee: R' + fee.toFixed(2) + ' (cost × ' + pct + '%), stored when the booking is created.');
+            }
+        }
+
+        updateDriverSections();
+        updateBookingFee();
+
         $('#editPrebookingForm').on('submit', function (e) {
             e.preventDefault();
 
@@ -236,6 +350,9 @@ $showOtherCost = $savedCost !== '' && !$costInList;
                     description:          $('#description').val().trim(),
                     passenger_name:       $('#passengerName').val().trim(),
                     passenger_phone:      $('#passengerPhone').val().trim(),
+                    driver_id:            $('#driver-select').val(),
+                    booking_fee_pct:      $('#booking-fee-pct-select').val(),
+                    driver_notes:         $('#driver-notes-input').val().trim(),
                 },
                 dataType: 'json',
                 success: function (res) {

@@ -53,6 +53,16 @@ $prefill_passenger_name  = isset($_GET['passenger_name'])  ? htmlspecialchars(ur
 $prefill_passenger_phone = isset($_GET['passenger_phone']) ? htmlspecialchars(urldecode($_GET['passenger_phone'])) : '';
 $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_prebooking'] : 0;
 
+// Driver allocation carried over from a tentative booking (driver, booking fee %, driver notes)
+$prefill_driver_id = isset($_GET['driver_id']) ? (int) $_GET['driver_id'] : 0;
+if ($prefill_driver_id > 0 && !in_array($prefill_driver_id, array_map('intval', array_column($drivers, 'id')), true)) {
+    $prefill_driver_id = 0;
+}
+$prefill_fee_pct = ($prefill_driver_id > 0 && isset($_GET['booking_fee_pct']) && is_numeric($_GET['booking_fee_pct']))
+    ? snapBookingFeePct((float) $_GET['booking_fee_pct'])
+    : $defaultFeePct;
+$prefill_driver_notes = ($prefill_driver_id > 0 && isset($_GET['driver_notes'])) ? htmlspecialchars((string) $_GET['driver_notes']) : '';
+
 // Payment method passed in by Book Again; anything that isn't a known method is ignored
 $prefill_payment_method = isset($_GET['payment_method']) ? urldecode($_GET['payment_method']) : '';
 if (!isset(PAYMENT_METHODS[$prefill_payment_method])) {
@@ -249,14 +259,14 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
         <!-- Driver Allocation (same panel as Manage Driver on the booking view) -->
         <div class="menu-section">
             <h3 class="menu-toggle" data-target="manage-driver-section">🚗 Allocate Driver<span class="driver-allocated-badge hidden" id="driverBadge"></span></h3>
-            <div id="manage-driver-section" class="section-body hidden">
+            <div id="manage-driver-section" class="section-body<?= $prefill_driver_id > 0 ? '' : ' hidden' ?>">
                 <div class="manage-driver-fields">
                     <div>
                         <label for="driver-select" class="manage-driver-label">Driver</label>
                         <select id="driver-select" name="driver_id">
                             <option value="">— No driver —</option>
                             <?php foreach ($drivers as $driver): ?>
-                                <option value="<?= htmlspecialchars($driver['id']) ?>">
+                                <option value="<?= htmlspecialchars($driver['id']) ?>"<?= (int) $driver['id'] === $prefill_driver_id ? ' selected' : '' ?>>
                                     <?= htmlspecialchars($driver['name']) ?>
                                     <?= $driver['phone'] ? ' (' . htmlspecialchars($driver['phone']) . ')' : '' ?>
                                 </option>
@@ -267,7 +277,7 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
                         <label for="booking-fee-pct-select" class="manage-driver-label">Booking Fee</label>
                         <select id="booking-fee-pct-select" name="booking_fee_pct">
                             <?php foreach ($feePctOptions as $opt): ?>
-                                <option value="<?= $opt ?>" <?= ($opt === $defaultFeePct) ? 'selected' : '' ?>>
+                                <option value="<?= $opt ?>" <?= ($opt === $prefill_fee_pct) ? 'selected' : '' ?>>
                                     <?= $opt === 0 ? '0% — No booking fee' : $opt . '%' ?>
                                 </option>
                             <?php endforeach; ?>
@@ -280,7 +290,7 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
                 <div class="form-group hidden" id="driverNotesGroup">
                     <label for="driver-notes-input" class="manage-driver-label">Driver Notes</label>
                     <textarea id="driver-notes-input" name="driver_notes" rows="3"
-                        placeholder="Instructions for the driver..."></textarea>
+                        placeholder="Instructions for the driver..."><?= $prefill_driver_notes ?></textarea>
                 </div>
             </div>
         </div>
