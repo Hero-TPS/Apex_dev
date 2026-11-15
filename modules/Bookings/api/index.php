@@ -1017,6 +1017,8 @@ function ensureWhatsAppSchema(PDO $pdo): void
     }
 }
 
+// The full booking row (and driver) is loaded because the evening message template can use any
+// booking placeholder, e.g. {payment_received}, {flight_number}, {driver_name}.
 function handleTomorrowsBookings()
 {
     global $pdo;
@@ -1025,11 +1027,11 @@ function handleTomorrowsBookings()
 
     try {
         $sql = "
-            SELECT b.id, b.trip_date, b.start_time, b.original_pickup, b.original_destination,
-                   b.was_swapped, b.cost, b.last_confirmed_at, b.passenger_name, b.passenger_phone, b.language,
-                   c.name AS client_name, c.phone AS client_phone
+            SELECT b.*, c.name AS client_name, c.phone AS client_phone,
+                   d.name AS driver_name, d.phone AS driver_phone
             FROM bookings b
             JOIN contacts c ON b.contact_id = c.id
+            LEFT JOIN drivers d ON b.driver_id = d.id
             WHERE b.trip_date = DATE_ADD(CURDATE(), INTERVAL 1 DAY)
               AND b.status != 'completed'
             ORDER BY b.start_time ASC
