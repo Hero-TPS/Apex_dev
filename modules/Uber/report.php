@@ -89,6 +89,14 @@ include ROOT_DIR . '/includes/header.php';
                 <span><strong><?= htmlspecialchars($report['week_display']) ?></strong></span>
             </div>
 
+            <div class="metric-row">
+                <span>📊 Brought forward:</span>
+                <?php if ($report['brought_forward'] !== null): ?>
+                    <strong class="net-amount <?= $report['brought_forward'] >= 0 ? 'profit' : 'loss' ?>"><?= $signedMoney($report['brought_forward']) ?></strong>
+                <?php else: ?>
+                    <span class="at-help-text">None yet</span>
+                <?php endif; ?>
+            </div>
             <div class="metric-row"><span>💳 Card income:</span>        <strong><?= $money($report['card_income']) ?></strong></div>
             <div class="metric-row"><span>Car rental:</span>            <span><?= $money($report['car_rental']) ?></span></div>
             <div class="metric-row"><span>🚨 Fines:</span>              <span><?= $money($report['fines']) ?></span></div>
@@ -112,25 +120,34 @@ include ROOT_DIR . '/includes/header.php';
             <?php if (empty($report['repairs']) && $report['repairs_unlinked'] <= 0): ?>
                 <p class="at-help-text">Nothing owing and no payments this week.</p>
             <?php else: ?>
-                <ul class="at-repair-payments-list">
-                    <?php foreach ($report['repairs'] as $repair): ?>
+                <?php foreach ($report['repairs'] as $repair): ?>
+                    <div class="at-fleet-repair">
+                        <strong><?= htmlspecialchars($repair['description']) ?></strong>
+                        <ul class="at-repair-payments-list">
+                            <li><span>Original cost</span> <span><?= $money($repair['original']) ?></span></li>
+                            <?php foreach ($repair['payments'] as $payment): ?>
+                                <li>
+                                    <span>Paid <?= htmlspecialchars($payment['date_display']) ?></span>
+                                    <span><?= $money($payment['amount']) ?></span>
+                                </li>
+                            <?php endforeach; ?>
+                            <li class="at-fleet-repair-due">
+                                <span>Still due</span>
+                                <strong><?= $money($repair['remaining']) ?></strong>
+                            </li>
+                        </ul>
+                    </div>
+                <?php endforeach; ?>
+                <?php if ($report['repairs_unlinked'] > 0): ?>
+                    <ul class="at-repair-payments-list">
                         <li>
-                            <span><?= htmlspecialchars($repair['description']) ?></span>
-                            <span>
-                                paid <?= $money($repair['paid_this_week']) ?> ·
-                                <strong><?= $money($repair['remaining']) ?></strong> still owing
-                            </span>
+                            <span>Other repair costs this week (not linked to a repair)</span>
+                            <span><?= $money($report['repairs_unlinked']) ?></span>
                         </li>
-                    <?php endforeach; ?>
-                    <?php if ($report['repairs_unlinked'] > 0): ?>
-                        <li>
-                            <span>Other repair costs (not linked to a repair)</span>
-                            <span>paid <?= $money($report['repairs_unlinked']) ?></span>
-                        </li>
-                    <?php endif; ?>
-                </ul>
+                    </ul>
+                <?php endif; ?>
                 <?php if (!empty($report['repairs'])): ?>
-                    <div class="metric-row"><span>Total repairs still owing:</span> <strong><?= $money($report['repairs_owing']) ?></strong></div>
+                    <div class="metric-row"><span>Total repairs still due:</span> <strong><?= $money($report['repairs_owing']) ?></strong></div>
                 <?php endif; ?>
             <?php endif; ?>
 

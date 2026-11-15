@@ -316,6 +316,34 @@
     flex-wrap: wrap;
 }
 
+/* One repair block on the fleet report: original cost, payments, still due */
+.at-fleet-repair {
+    margin: 10px 0 14px;
+}
+
+.at-fleet-repair-due {
+    border-top: 1px solid #e3e8ec;
+    padding-top: 4px;
+}
+
+/* "Paid on" date beside a Vehicle Repairs cost row on the weekly Add/Edit forms */
+.at-cost-paid-on {
+    flex: 1 1 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95em;
+}
+
+.at-cost-paid-on input {
+    width: auto;
+}
+
+/* The mobile table rule beats .hidden, same as the repair select */
+.at-cost-paid-on.hidden {
+    display: none;
+}
+
 /* Send to fleet manager: message preview and send history (modules/Uber/report.php) */
 .at-fleet-send {
     margin: 16px 0;

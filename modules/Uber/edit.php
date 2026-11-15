@@ -69,7 +69,7 @@ $repair_options = getUberRepairOptions($pdo);
         return options;
     }
 
-    function costRowTemplate(reason, amount, repairId = '') {
+    function costRowTemplate(reason, amount, repairId = '', paidOn = '') {
         // The repair select is always in the row (so the three cost_*[] lists stay
         // aligned when posted) but only shown for the "Vehicle Repairs" reason.
         return `
@@ -82,6 +82,9 @@ $repair_options = getUberRepairOptions($pdo);
             <select name="cost_repair_ids[]" class="at-cost-repair-select ${reason === 'Vehicle Repairs' ? '' : 'hidden'}">
                 ${buildRepairOptions(repairId)}
             </select>
+            <label class="at-cost-paid-on ${reason === 'Vehicle Repairs' ? '' : 'hidden'}">Paid on
+                <input type="date" name="cost_paid_on[]" value="${paidOn}">
+            </label>
         </div>
     `;
     }
@@ -109,7 +112,7 @@ $repair_options = getUberRepairOptions($pdo);
                         if (c.reason === 'Vehicle Repairs' && c.repair_id) {
                             savedByRepair[c.repair_id] = (savedByRepair[c.repair_id] || 0) + (parseFloat(c.amount) || 0);
                         }
-                        costRowsHtml += costRowTemplate(c.reason, c.amount, c.repair_id || '');
+                        costRowsHtml += costRowTemplate(c.reason, c.amount, c.repair_id || '', c.paid_on || '');
                     });
                 } else {
                     costRowsHtml = costRowTemplate('', '');
@@ -184,8 +187,10 @@ $repair_options = getUberRepairOptions($pdo);
             $('.cost-row').each(function() {
                 const reason = $(this).find('select[name="cost_reasons[]"]').val();
                 const repairSelect = $(this).find('select[name="cost_repair_ids[]"]');
+                const paidOnLabel = $(this).find('.at-cost-paid-on');
                 if (reason === 'Vehicle Repairs') {
                     repairSelect.removeClass('hidden');
+                    paidOnLabel.removeClass('hidden');
                     const repairId = repairSelect.val();
                     if (repairId) {
                         const amount = parseFloat($(this).find('input[name="cost_amounts[]"]').val()) || 0;
@@ -193,6 +198,7 @@ $repair_options = getUberRepairOptions($pdo);
                     }
                 } else {
                     repairSelect.addClass('hidden').val('');
+                    paidOnLabel.addClass('hidden').find('input').val('');
                 }
             });
 

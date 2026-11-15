@@ -136,7 +136,7 @@ include ROOT_DIR . '/includes/header.php';
                             <ul class="at-repair-payments-list">
                                 <?php foreach ($repairPayments as $payment): ?>
                                     <li>
-                                        <span><?= htmlspecialchars($payment['week_display']) ?></span>
+                                        <span><?= htmlspecialchars($payment['date_display']) ?></span>
                                         <strong>R<?= number_format($payment['amount'], 2) ?></strong>
                                     </li>
                                 <?php endforeach; ?>

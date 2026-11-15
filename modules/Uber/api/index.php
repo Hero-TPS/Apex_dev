@@ -117,7 +117,8 @@ function handleGetSingle()
         }
 
         // Fetch additional costs (repair_id lets the Edit form show which repair a payment is towards)
-        $costStmt = $pdo->prepare("SELECT id, reason, amount, repair_id FROM uber_additional_costs WHERE uber_income_id = ? ORDER BY id ASC");
+        $paidOnSql = uberCostsHavePaidOn($pdo) ? 'paid_on' : 'NULL AS paid_on';
+        $costStmt = $pdo->prepare("SELECT id, reason, amount, repair_id, $paidOnSql FROM uber_additional_costs WHERE uber_income_id = ? ORDER BY id ASC");
         $costStmt->execute([$id]);
         $record['additional_costs'] = $costStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -171,6 +172,7 @@ function handleAdd()
         $reasons = $_POST['cost_reasons'] ?? [];
         $amounts = $_POST['cost_amounts'] ?? [];
         $repairIds = $_POST['cost_repair_ids'] ?? [];
+        $paidOnDates = $_POST['cost_paid_on'] ?? [];
 
         if (empty($weekMonday)) {
             jsonResponse(['success' => false, 'message' => 'Week start date is required'], 400);
@@ -202,7 +204,7 @@ function handleAdd()
         $uberIncomeId = $pdo->lastInsertId();
 
         // Insert additional costs
-        saveAdditionalCosts($pdo, $uberIncomeId, $reasons, $amounts, $repairIds);
+        saveAdditionalCosts($pdo, $uberIncomeId, $reasons, $amounts, $repairIds, $paidOnDates);
 
         $pdo->commit();
 
@@ -241,6 +243,7 @@ function handleUpdate()
         $reasons = $_POST['cost_reasons'] ?? [];
         $amounts = $_POST['cost_amounts'] ?? [];
         $repairIds = $_POST['cost_repair_ids'] ?? [];
+        $paidOnDates = $_POST['cost_paid_on'] ?? [];
 
         if ($id <= 0 || $totalIncome <= 0) {
             jsonResponse(['success' => false, 'message' => 'Invalid data'], 400);
@@ -257,7 +260,7 @@ function handleUpdate()
 
         // Delete existing additional costs and re-save
         $pdo->prepare("DELETE FROM uber_additional_costs WHERE uber_income_id = ?")->execute([$id]);
-        saveAdditionalCosts($pdo, $id, $reasons, $amounts, $repairIds);
+        saveAdditionalCosts($pdo, $id, $reasons, $amounts, $repairIds, $paidOnDates);
 
         $pdo->commit();
 
@@ -434,12 +437,14 @@ function handleSetRentalOverride()
 // ========== HELPERS ==========
 
 /**
- * Save a week's Additional Cost rows. $repairIds is a third parallel array
- * (same index as $reasons / $amounts): the vehicle repair a "Vehicle Repairs"
- * row is paying towards, or empty. Only "Vehicle Repairs" rows can be linked,
- * and only to a repair that exists — anything else is saved unlinked.
+ * Save a week's Additional Cost rows. $repairIds and $paidOnDates are parallel
+ * arrays (same index as $reasons / $amounts): the vehicle repair a "Vehicle Repairs"
+ * row is paying towards, and the date that payment was made (Y-m-d). Only
+ * "Vehicle Repairs" rows can be linked or dated, and only to a repair that exists —
+ * anything else is saved unlinked. A missing or invalid date is saved as empty
+ * (the reports then show the week instead of a day).
  */
-function saveAdditionalCosts(PDO $pdo, int $uberIncomeId, array $reasons, array $amounts, array $repairIds = []): void
+function saveAdditionalCosts(PDO $pdo, int $uberIncomeId, array $reasons, array $amounts, array $repairIds = [], array $paidOnDates = []): void
 {
     $linked = [];
     foreach ($reasons as $i => $reason) {
@@ -458,6 +463,7 @@ function saveAdditionalCosts(PDO $pdo, int $uberIncomeId, array $reasons, array 
         $validRepairIds = array_map('intval', $repairStmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
+    $hasPaidOn = uberCostsHavePaidOn($pdo);
     $stmt = $pdo->prepare("INSERT INTO uber_additional_costs (uber_income_id, reason, amount) VALUES (?, ?, ?)");
     $linkedStmt = null;
     foreach ($reasons as $i => $reason) {
@@ -469,15 +475,32 @@ function saveAdditionalCosts(PDO $pdo, int $uberIncomeId, array $reasons, array 
 
         $repairId = $linked[$i] ?? null;
         if ($repairId !== null && in_array($repairId, $validRepairIds, true)) {
-            $linkedStmt ??= $pdo->prepare(
-                "INSERT INTO uber_additional_costs (uber_income_id, reason, amount, repair_id) VALUES (?, ?, ?, ?)"
-            );
-            $linkedStmt->execute([$uberIncomeId, $reason, $amount, $repairId]);
+            $paidOn = null;
+            $rawDate = trim((string) ($paidOnDates[$i] ?? ''));
+            if ($hasPaidOn && $rawDate !== '') {
+                $parsed = DateTime::createFromFormat('!Y-m-d', $rawDate);
+                if ($parsed && $parsed->format('Y-m-d') === $rawDate) {
+                    $paidOn = $rawDate;
+                }
+            }
+
+            if ($hasPaidOn) {
+                $linkedStmt ??= $pdo->prepare(
+                    "INSERT INTO uber_additional_costs (uber_income_id, reason, amount, repair_id, paid_on) VALUES (?, ?, ?, ?, ?)"
+                );
+                $linkedStmt->execute([$uberIncomeId, $reason, $amount, $repairId, $paidOn]);
+            } else {
+                $linkedStmt ??= $pdo->prepare(
+                    "INSERT INTO uber_additional_costs (uber_income_id, reason, amount, repair_id) VALUES (?, ?, ?, ?)"
+                );
+                $linkedStmt->execute([$uberIncomeId, $reason, $amount, $repairId]);
+            }
         } else {
             $stmt->execute([$uberIncomeId, $reason, $amount]);
         }
     }
 }
+
 function handleGetByMonth()
 {
     global $pdo;

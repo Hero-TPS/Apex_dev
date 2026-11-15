@@ -182,12 +182,13 @@ function getWhatsAppUberReportVariables(): array
 {
     return [
         'week'           => 'The Uber week, e.g. 09 Nov 2026 – 15 Nov 2026',
+        'brought_forward' => "Balance brought forward from last week, with (behind) or (ahead). Empty when there is no earlier balance",
         'card_income'    => 'Uber card income for the week, e.g. R2,500.00',
         'car_rental'     => 'Car rental for the week',
         'fines'          => 'Fines for the week',
         'repairs_paid'   => 'All vehicle repair payments made this week',
-        'repairs_detail' => 'One line per repair: what was paid this week and what is still owing, plus repair costs not linked to a repair. Empty when nothing is owing and nothing was paid',
-        'repairs_owing'  => 'Total of all vehicle repairs still owing at the end of that week. Empty when nothing is owing',
+        'repairs_detail' => 'Each repair with its original cost, every payment made with its date, and what is still due, plus repair costs not linked to a repair. Empty when nothing is owing and nothing was paid',
+        'repairs_owing'  => 'Total of all vehicle repairs still due at the end of that week. Empty when nothing is owing',
         'net'            => 'Net for the week (card income less rental, fines and repairs). A minus sign means a loss',
         'paid_in'        => 'Total paid in for the week',
         'balance'        => 'Running balance after this week, with (behind) or (ahead). Empty before a starting balance has been set',
@@ -1034,25 +1035,36 @@ function buildUberReportMessageVars(array $report): array
 
     $repairLines = [];
     foreach ($report['repairs'] as $repair) {
-        $owing = $repair['remaining'] > 0.004
-            ? $money($repair['remaining']) . ' still owing'
-            : 'now fully paid';
-        $repairLines[] = '• ' . $repair['description'] . ': paid ' . $money($repair['paid_this_week']) . ', ' . $owing;
+        $repairLines[] = '*' . $repair['description'] . '*';
+        $repairLines[] = 'Original cost: ' . $money($repair['original']);
+        foreach ($repair['payments'] as $payment) {
+            $repairLines[] = 'Paid ' . $payment['date_display'] . ': ' . $money($payment['amount']);
+        }
+        $repairLines[] = $repair['remaining'] > 0.004
+            ? 'Still due: ' . $money($repair['remaining'])
+            : 'Still due: R0.00 (fully paid)';
+        $repairLines[] = '';
     }
     if ($report['repairs_unlinked'] > 0) {
-        $repairLines[] = '• Other repair costs: paid ' . $money($report['repairs_unlinked']);
+        $repairLines[] = 'Other repair costs this week (not linked to a repair): ' . $money($report['repairs_unlinked']);
+    }
+    while ($repairLines && end($repairLines) === '') {
+        array_pop($repairLines);
     }
 
-    $balance = $report['balance'];
-    $balanceText = '';
-    if ($balance !== null) {
-        $balanceText = $signed($balance);
-        if (round($balance, 2) < 0) {
-            $balanceText .= ' (behind)';
-        } elseif (round($balance, 2) > 0) {
-            $balanceText .= ' (ahead)';
+    // Balance with (behind) / (ahead); '' when there is none
+    $balanceWithNote = function (?float $amount) use ($signed): string {
+        if ($amount === null) {
+            return '';
         }
-    }
+        $text = $signed($amount);
+        if (round($amount, 2) < 0) {
+            $text .= ' (behind)';
+        } elseif (round($amount, 2) > 0) {
+            $text .= ' (ahead)';
+        }
+        return $text;
+    };
 
     $odoText = '';
     if ($report['odo'] !== null) {
@@ -1061,6 +1073,7 @@ function buildUberReportMessageVars(array $report): array
 
     return [
         'week'           => $report['week_display'],
+        'brought_forward' => $balanceWithNote($report['brought_forward']),
         'card_income'    => $money($report['card_income']),
         'car_rental'     => $money($report['car_rental']),
         'fines'          => $money($report['fines']),
@@ -1069,7 +1082,7 @@ function buildUberReportMessageVars(array $report): array
         'repairs_owing'  => ($report['repairs'] && $report['repairs_owing'] > 0.004) ? $money($report['repairs_owing']) : '',
         'net'            => $signed($report['net']),
         'paid_in'        => $money($report['paid_in']),
-        'balance'        => $balanceText,
+        'balance'        => $balanceWithNote($report['balance']),
         'notes'          => $report['notes'],
         'odo'            => $odoText,
         'business_owner' => BUSINESS_OWNER,

@@ -151,16 +151,38 @@ function getUberRepairs(PDO $pdo, bool $openOnly = false): array
 }
 
 /**
+ * Whether uber_additional_costs already has the paid_on column
+ * (migrations/20261115_1340_uber_payment_dates.sql). Lets the weekly forms and
+ * reports keep working until that migration has been run.
+ */
+function uberCostsHavePaidOn(PDO $pdo): bool
+{
+    static $has = null;
+    if ($has === null) {
+        try {
+            $has = $pdo->query("SHOW COLUMNS FROM uber_additional_costs LIKE 'paid_on'")->fetch() !== false;
+        } catch (PDOException $e) {
+            $has = false;
+        }
+    }
+    return $has;
+}
+
+/**
  * Every payment made towards a vehicle repair, grouped by repair.
  *
+ * date_display is the day the payment was made when it was entered, otherwise
+ * the week it was paid in ("w/e" + that week's Sunday). exact_date says which.
+ *
  * @param PDO $pdo
- * @return array<int, array<int, array{id: int, amount: float, week_display: string}>>
- *     Keyed by repair id, each list in week order.
+ * @return array<int, array<int, array{id: int, amount: float, week_display: string, date_display: string, exact_date: bool}>>
+ *     Keyed by repair id, each list oldest first.
  */
 function getUberRepairPayments(PDO $pdo): array
 {
+    $paidOnSql = uberCostsHavePaidOn($pdo) ? 'uac.paid_on' : 'NULL AS paid_on';
     $rows = $pdo->query("
-        SELECT uac.id, uac.repair_id, uac.amount, ui.week_start
+        SELECT uac.id, uac.repair_id, uac.amount, $paidOnSql, ui.week_start
         FROM uber_additional_costs uac
         JOIN uber_income ui ON uac.uber_income_id = ui.id
         WHERE uac.repair_id IS NOT NULL
@@ -176,10 +198,15 @@ function getUberRepairPayments(PDO $pdo): array
         $end = clone $start;
         $end->modify('+6 days');
 
+        $exact = $row['paid_on'] !== null && $row['paid_on'] !== '';
         $result[(int) $row['repair_id']][] = [
             'id'           => (int) $row['id'],
             'amount'       => (float) $row['amount'],
             'week_display' => $start->format('d M Y') . ' – ' . $end->format('d M Y'),
+            'date_display' => $exact
+                ? (new DateTime($row['paid_on'], $tz))->format('d M Y')
+                : 'w/e ' . $end->format('d M Y'),
+            'exact_date'   => $exact,
         ];
     }
 
@@ -235,8 +262,9 @@ function getUberRepairOptions(PDO $pdo): array
  * @param int|null $uberIncomeId  The week to report on. Null = the most recent week entered.
  * @return array<string, mixed>|null  Null when there is no such week.
  *     Keys: id, week_display, card_income, car_rental, fines, vehicle_repairs,
- *     net, paid_in, balance (null before the first correction), balance_is_override,
- *     notes, repairs (list of description / paid_this_week / remaining),
+ *     net, paid_in, brought_forward (last week's balance, null when there is none),
+ *     balance (null before the first correction), balance_is_override,
+ *     notes, repairs (list of description / original / payments / paid_this_week / remaining),
  *     repairs_unlinked, repairs_owing, odo (km + date, or null), prev_id, next_id.
  */
 function getUberWeekReport(PDO $pdo, ?int $uberIncomeId = null): ?array
@@ -281,6 +309,35 @@ function getUberWeekReport(PDO $pdo, ?int $uberIncomeId = null): ?array
     ");
     $repairStmt->execute([(int) $week['week_start'], $id]);
 
+    // Every payment made up to the end of this week, oldest first, for the per-repair history
+    $paidOnSql = uberCostsHavePaidOn($pdo) ? 'uac.paid_on' : 'NULL AS paid_on';
+    $payStmt = $pdo->prepare("
+        SELECT uac.repair_id, uac.amount, $paidOnSql, ui.week_start
+        FROM uber_additional_costs uac
+        JOIN uber_income ui ON ui.id = uac.uber_income_id
+        WHERE uac.repair_id IS NOT NULL AND ui.week_start <= ?
+        ORDER BY ui.week_start ASC, uac.id ASC
+    ");
+    $payStmt->execute([(int) $week['week_start']]);
+    $paymentsByRepair = [];
+    foreach ($payStmt->fetchAll(PDO::FETCH_ASSOC) as $p) {
+        $pWeekEnd = new DateTime();
+        $pWeekEnd->setTimestamp((int) $p['week_start']);
+        $pWeekEnd->setTimezone($tz);
+        $pWeekEnd->modify('+6 days');
+
+        $exact = $p['paid_on'] !== null && $p['paid_on'] !== '';
+        $sortDate = $exact ? $p['paid_on'] : $pWeekEnd->format('Y-m-d');
+        $paymentsByRepair[(int) $p['repair_id']][] = [
+            'sort'         => $sortDate,
+            'date_display' => $exact
+                ? (new DateTime($p['paid_on'], $tz))->format('d M Y')
+                : 'w/e ' . $pWeekEnd->format('d M Y'),
+            'exact_date'   => $exact,
+            'amount'       => (float) $p['amount'],
+        ];
+    }
+
     $repairs = [];
     $repairsOwing = 0.0;
     foreach ($repairStmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
@@ -289,8 +346,16 @@ function getUberWeekReport(PDO $pdo, ?int $uberIncomeId = null): ?array
         $stillOpen    = $remaining > 0.004 && (int) $r['is_closed'] === 0 && $r['repair_date'] <= $weekSunday;
 
         if ($paidThisWeek > 0 || $stillOpen) {
+            $payments = $paymentsByRepair[(int) $r['id']] ?? [];
+            usort($payments, fn($a, $b) => strcmp($a['sort'], $b['sort']));
             $repairs[] = [
                 'description'    => $r['description'],
+                'original'       => (float) $r['total_amount'],
+                'payments'       => array_map(fn($x) => [
+                    'date_display' => $x['date_display'],
+                    'exact_date'   => $x['exact_date'],
+                    'amount'       => $x['amount'],
+                ], $payments),
                 'paid_this_week' => $paidThisWeek,
                 'remaining'      => $remaining,
             ];
@@ -325,6 +390,9 @@ function getUberWeekReport(PDO $pdo, ?int $uberIncomeId = null): ?array
     $nextStmt->execute([(int) $week['week_start']]);
     $nextId = $nextStmt->fetchColumn();
 
+    // Balance brought forward = last week's closing balance
+    $broughtForward = $prevId !== false ? ($walk[(int) $prevId]['balance'] ?? null) : null;
+
     return [
         'id'                  => $id,
         'week_display'        => $start->format('d M Y') . ' – ' . $end->format('d M Y'),
@@ -334,6 +402,7 @@ function getUberWeekReport(PDO $pdo, ?int $uberIncomeId = null): ?array
         'vehicle_repairs'     => $fin['vehicle_repairs'],
         'net'                 => $fin['net'],
         'paid_in'             => $fin['shortfall_paid'],
+        'brought_forward'     => $broughtForward,
         'balance'             => $balance['balance'],
         'balance_is_override' => (bool) $balance['is_override'],
         'notes'               => trim((string) ($week['notes'] ?? '')),
