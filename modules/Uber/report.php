@@ -146,7 +146,7 @@ include ROOT_DIR . '/includes/header.php';
                         </li>
                     </ul>
                 <?php endif; ?>
-                <?php if (!empty($report['repairs'])): ?>
+                <?php if (count($report['repairs']) > 1): ?>
                     <div class="metric-row"><span>Total repairs still due:</span> <strong><?= $money($report['repairs_owing']) ?></strong></div>
                 <?php endif; ?>
             <?php endif; ?>
