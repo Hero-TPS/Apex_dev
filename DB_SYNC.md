@@ -12,6 +12,25 @@ down to dev.
 
 ---
 
+## Easier way: Services → Database Updates → Backup and restore
+
+The same job without phpMyAdmin. Dev and live both have **Back up now** (downloads a zip
+to your browser's download folder) and **Restore** (pick a backup zip, **Check file**, then
+**Restore**).
+
+- Live restores only its own backups (signed with the `BACKUP_SIGNING_KEY` in live's
+  `config.php`, and you type `RESTORE LIVE`). Dev restores its own or a live backup.
+  The itinerary site restores only its own. A file from anywhere else is refused.
+- A backup of the current database is downloaded automatically just before every restore.
+- The `system_logs` table is never backed up or restored.
+- After restoring a live backup onto dev, the page lists any dev-only updates as pending: run them.
+- Needs once, in each site's `config.php`: live and dev `BACKUP_SIGNING_KEY` (see
+  `config.example.php`); the itinerary server also `SITE_ROLE` set to `'itinerary'`.
+
+The phpMyAdmin steps below still work and stay as the fallback.
+
+---
+
 ## ✅ Before You Start
 
 - [ ] Open **Services → Database Updates** on live — if updates are pending

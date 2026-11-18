@@ -13,6 +13,16 @@
 // -----------------------------------------------------------------------------
 define('APP_ENV', 'development'); // 'development' or 'production'
 
+// Backup and restore (Services -> Database Updates). Both optional.
+// SITE_ROLE: 'dev' (default) or 'itinerary'. A production site is always 'live'.
+//   The itinerary server must set 'itinerary', otherwise it is treated as dev and would accept live backups.
+// BACKUP_SIGNING_KEY: a long random secret, different on every site. A live backup is signed with it,
+//   and live only restores backups signed with its own key. Set it on live at least.
+//   Make one with: php -r "echo bin2hex(random_bytes(32));"
+//   Changing it later means older backups can no longer be restored on that site.
+// define('SITE_ROLE', 'dev');
+// define('BACKUP_SIGNING_KEY', '');
+
 // -----------------------------------------------------------------------------
 // URL & PATHS
 // -----------------------------------------------------------------------------

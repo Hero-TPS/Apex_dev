@@ -213,3 +213,26 @@
     color: inherit;
     font-weight: bold;
 }
+
+/* ========================
+   Database backup and restore (services/updates.php)
+======================== */
+.at-backup-box {
+    margin: 12px 0 18px;
+    padding: 12px 14px;
+    border: 1px solid #e3e8ec;
+    border-radius: 6px;
+}
+
+.at-backup-box h4 {
+    margin: 0 0 6px;
+}
+
+.at-backup-confirm {
+    margin: 12px 0;
+}
+
+.at-backup-confirm label {
+    display: block;
+    margin-bottom: 8px;
+}
