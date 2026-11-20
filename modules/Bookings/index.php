@@ -96,19 +96,58 @@ include ROOT_DIR . '/includes/header.php';
                 ' <a href="' + escapeHtmlAttr(booking.flightradar_url) + '" target="_blank" rel="noopener" class="map-link">Track Flight</a></div>';
         }
 
+        // Passenger name under the client (only when it is someone other than the client; the API sends '' otherwise)
+        function renderPassenger(booking) {
+            if (!booking.passenger_name) return '';
+            return '<div class="at-passenger-line">Passenger: ' + escapeHtml(booking.passenger_name) + '</div>';
+        }
+
+        // The dropdown has something to send: the client's number, or a message with its own (a passenger's)
+        function hasWaTarget(booking) {
+            return !!booking.client_phone || (booking.wa_messages || []).some(function (m) { return !!m.phone; });
+        }
+
         // WhatsApp dropdown for a booking row. Same markup as renderWhatsAppMenu() in
-        // modules/WhatsApp/helpers.php (the booking page); behaviour and logging live in assets/js/whatsapp-menu.js.
+        // modules/WhatsApp/helpers.php (the booking page): client messages, a blank message to the client,
+        // then each section ("To passenger") under its heading, sent to that message's own number.
+        // Behaviour and logging live in assets/js/whatsapp-menu.js.
         function buildWaMenu(booking) {
-            var waUrl = 'https://wa.me/' + booking.client_phone;
             var ids = ' data-booking-id="' + booking.id + '" data-contact-id="' + booking.contact_id + '"';
+
+            function waItem(m) {
+                var phone = m.phone || booking.client_phone;
+                if (!phone) { return ''; }
+                var url = 'https://wa.me/' + phone;
+                if (m.text) {
+                    url += '?text=' + encodeURIComponent(m.text);
+                } else if (!m.blank) {
+                    return ''; // e.g. bank details not filled in yet: nothing to send
+                }
+                return '<a class="at-wa-menu-item" target="_blank" rel="noopener" href="' + url + '"' +
+                    ' data-wa-key="' + escapeHtmlAttr(m.key) + '" data-wa-msg="' + escapeHtmlAttr(m.text || '') + '"' + ids + '>' + escapeHtml(m.label) + '</a>';
+            }
+
             var items = '';
+            var sections = {};
+            var sectionOrder = [];
             (booking.wa_messages || []).forEach(function (m) {
-                if (!m.text) { return; }
-                items += '<a class="at-wa-menu-item" target="_blank" rel="noopener" href="' + waUrl + '?text=' + encodeURIComponent(m.text) + '"' +
-                    ' data-wa-key="' + escapeHtmlAttr(m.key) + '" data-wa-msg="' + escapeHtmlAttr(m.text) + '"' + ids + '>' + escapeHtml(m.label) + '</a>';
+                if (m.section) {
+                    if (!sections[m.section]) { sections[m.section] = []; sectionOrder.push(m.section); }
+                    sections[m.section].push(m);
+                } else {
+                    items += waItem(m);
+                }
             });
-            items += '<a class="at-wa-menu-item" target="_blank" rel="noopener" href="' + waUrl + '"' +
-                ' data-wa-key="message" data-wa-msg=""' + ids + '>Blank message</a>';
+            if (booking.client_phone) {
+                items += waItem({ key: 'message', label: 'Blank message', text: '', blank: true });
+            }
+            sectionOrder.forEach(function (heading) {
+                var sectionItems = '';
+                sections[heading].forEach(function (m) { sectionItems += waItem(m); });
+                if (sectionItems) {
+                    items += '<div class="at-wa-menu-heading">' + escapeHtml(heading) + '</div>' + sectionItems;
+                }
+            });
             return '<div class="at-wa-menu"><button type="button" class="action-btn whatsapp-btn at-wa-menu-toggle"' +
                 ' aria-haspopup="true" aria-expanded="false">WhatsApp ▾</button>' +
                 '<div class="at-wa-menu-list" hidden>' + items + '</div></div>';
@@ -134,7 +173,7 @@ include ROOT_DIR . '/includes/header.php';
                                 'data-date="' + escapeHtml(booking.trip_date_raw) + '">' +
                                 '<td data-label="Date">' + escapeHtml(booking.trip_date) + '</td>' +
                                 '<td data-label="Time">' + escapeHtml(booking.start_time) + renderOverlapBadge(booking) + '</td>' +
-                                '<td data-label="Client">' + escapeHtml(booking.client_name) + '</td>' +
+                                '<td data-label="Client">' + escapeHtml(booking.client_name) + renderPassenger(booking) + '</td>' +
                                 '<td data-label="Pickup">' + escapeHtml(booking.pickup_location) + renderFlight(booking) + '</td>' +
                                 '<td data-label="Destination">' + escapeHtml(booking.destination) + '</td>' +
                                 '<td data-label="Cost">' + escapeHtml(booking.cost) + (booking.payment_received ? ' <span title="Payment received">✅</span>' : '') + '</td>' +
@@ -145,7 +184,7 @@ include ROOT_DIR . '/includes/header.php';
                                 '<div class="actions-container">' +
                                 '<a href="<?= BASE_URL ?>/modules/Bookings/view.php?id=' + booking.id + '" class="action-btn view-details-btn">View</a>' +
                                 '<a href="<?= BASE_URL ?>/modules/Bookings/edit.php?id=' + booking.id + '" class="action-btn edit-btn">Edit</a>' +
-                                (booking.client_phone ? buildWaMenu(booking) : '') +
+                                (hasWaTarget(booking) ? buildWaMenu(booking) : '') +
                                 '<button class="action-btn delete-btn" data-id="' + booking.id + '">Delete</button>' 
 
                             // Status button logic

@@ -155,6 +155,7 @@ function handleGetBookings()
 
         // WhatsApp dropdown messages: templates loaded once, filled in per booking below
         $waTemplates = getWhatsAppMenuTemplates($pdo);
+        $waPassengerTemplates = getWhatsAppPassengerTemplates($pdo);
 
         foreach ($bookings as $row) {
             $pickup = $row['was_swapped'] ? $row['original_destination'] : $row['original_pickup'];
@@ -170,6 +171,22 @@ function handleGetBookings()
             $calculatedCost = ($distanceKm !== null && $ratePerKm > 0)
                 ? $distanceKm * $ratePerKm
                 : null;
+
+            // Passenger only when someone other than the client is being collected
+            // (same rule as "Picking Up" on modules/Bookings/view.php)
+            $passengerName = trim((string) ($row['passenger_name'] ?? ''));
+            if (strcasecmp($passengerName, trim((string) $row['client_name'])) === 0) {
+                $passengerName = '';
+            }
+
+            $bookingForWa = $row + ['pickup_location' => $pickup, 'destination' => $destination];
+            $waMessages = $waPhone !== ''
+                ? getWhatsAppBookingMessages($pdo, $bookingForWa, $waTemplates)
+                : [];
+            // "To passenger" messages (own number and section heading), only for a separate passenger with a number
+            if ($passengerName !== '' && trim((string) ($row['passenger_phone'] ?? '')) !== '') {
+                $waMessages = array_merge($waMessages, getWhatsAppPassengerMessages($pdo, $bookingForWa, $waPassengerTemplates));
+            }
 
             $response['bookings'][] = [
                 'id' => (int) $row['id'],
@@ -195,12 +212,11 @@ function handleGetBookings()
                 'calculated_cost' => $calculatedCost !== null ? 'R' . number_format($calculatedCost, 2) : null,
                 'client_name' => $row['client_name'],
                 'client_phone' => $waPhone,
+                'passenger_name' => $passengerName,
                 'driver_name' => $row['driver_name'] ?? null,
                 'overlaps' => $overlapMap[(int) $row['id']] ?? [],
                 // Same messages as the WhatsApp dropdown on the booking page
-                'wa_messages' => $waPhone !== ''
-                    ? getWhatsAppBookingMessages($pdo, $row + ['pickup_location' => $pickup, 'destination' => $destination], $waTemplates)
-                    : [],
+                'wa_messages' => $waMessages,
             ];
         }
 

@@ -453,11 +453,13 @@ function getWhatsAppPassengerTemplates(PDO $pdo): array
  * is the client) or the passenger has no usable WhatsApp number, so the menu never offers a
  * message it cannot send.
  * Each message carries its own 'phone' (the passenger's WhatsApp number) and a 'section' heading.
- * Used by: modules/Bookings/view.php
+ * The last entry is always a blank message to the passenger ('blank' => true, no text), so the
+ * "To passenger" section is available even when no passenger template is switched on.
+ * Used by: modules/Bookings/view.php, modules/Bookings/api/index.php (bookings list)
  *
  * @param array $booking  Booking row with client_name, passenger_name / passenger_phone and the
  *                        fields buildBookingMessageVars() reads
- * @return array<int,array{key:string,label:string,text:string,phone:string,section:string}>
+ * @return array<int,array{key:string,label:string,text:string,phone:string,section:string,blank?:bool}>
  */
 function getWhatsAppPassengerMessages(PDO $pdo, array $booking, ?array $templates = null): array
 {
@@ -480,6 +482,14 @@ function getWhatsAppPassengerMessages(PDO $pdo, array $booking, ?array $template
             'section' => 'To passenger',
         ];
     }
+    $messages[] = [
+        'key'     => 'message',
+        'label'   => 'Blank message',
+        'text'    => '',
+        'phone'   => $waPhone,
+        'section' => 'To passenger',
+        'blank'   => true,
+    ];
     return $messages;
 }
 
@@ -1172,7 +1182,8 @@ function createDriverBookingMessage(PDO $pdo, array $bookingDetails): string
  * Used by: modules/Bookings/view.php, modules/Clients/bookings.php
  *
  * @param string $waPhone     Digits-only number from formatPhoneNumberForWhatsApp() (the client's)
- * @param array  $messages    Each: key, label, text. Optional: phone (digits-only, overrides $waPhone), section (heading)
+ * @param array  $messages    Each: key, label, text. Optional: phone (digits-only, overrides $waPhone), section (heading),
+ *                            blank (true = open the chat with no text, so empty text is not skipped)
  * @param string $buttonClass CSS classes for the button (page-level or table-level style)
  * @param string $buttonLabel Text on the button
  */
@@ -1195,6 +1206,12 @@ function renderWhatsAppMenu(string $waPhone, array $messages, ?int $bookingId, ?
 
     $renderItem = function (array $m) use ($waPhone, $ids): string {
         $phone = !empty($m['phone']) ? $m['phone'] : $waPhone;
+        if ($phone !== '' && !empty($m['blank'])) {
+            return '<a class="at-wa-menu-item" target="_blank" rel="noopener"'
+                . ' href="https://wa.me/' . e($phone) . '"'
+                . ' data-wa-key="' . e($m['key']) . '" data-wa-msg=""' . $ids . '>'
+                . e($m['label']) . '</a>';
+        }
         if ($phone === '' || trim($m['text']) === '') {
             return ''; // no number to send to, or e.g. bank details not filled in yet — nothing to send
         }

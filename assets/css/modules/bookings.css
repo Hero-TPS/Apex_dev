@@ -316,6 +316,13 @@
     margin-left: 6px;
 }
 
+/* Bookings index: passenger name under the client (only when it is someone other than the client) */
+.at-passenger-line {
+    margin-top: 4px;
+    font-size: 0.9em;
+    color: #666;
+}
+
 /* ========================
    Bookings index: client search and jump to upcoming (modules/Bookings/index.php)
 ======================== */
