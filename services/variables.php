@@ -43,6 +43,18 @@ include ROOT_DIR . '/includes/header.php';
                     <?php else: ?>
                         <small>Default: <?= htmlspecialchars($def['default']) ?></small>
                     <?php endif; ?>
+                <?php elseif ($def['type'] === 'select'): ?>
+                    <select name="variables[<?= htmlspecialchars($name) ?>]">
+                        <?php foreach ($def['options'] as $optValue => $optLabel): ?>
+                            <option value="<?= htmlspecialchars((string) $optValue) ?>"
+                                <?= (string) $value === (string) $optValue ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($optLabel) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php if (!empty($def['hint'])): ?>
+                        <small><?= htmlspecialchars($def['hint']) ?></small>
+                    <?php endif; ?>
                 <?php else: ?>
                     <input type="text" name="variables[<?= htmlspecialchars($name) ?>]"
                         value="<?= htmlspecialchars($value) ?>" <?= empty($def['optional']) ? 'required' : '' ?>>

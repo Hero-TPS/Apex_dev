@@ -356,6 +356,20 @@ const SYSTEM_VARIABLES = [
         'optional' => true,
         'hint' => 'Receives the weekly Uber report from the Uber Fleet Report page. Local (082 123 4567) or international (+44 ...). Leave empty to switch sending off.',
     ],
+    'gps_log_enabled' => [
+        'label' => 'GPS Log',
+        'type' => 'select',
+        'options' => ['0' => 'Off', '1' => 'On'],
+        'default' => '0',
+        'hint' => 'On = location points sent by the Traccar Client app are saved. Off = the app\'s points are refused.',
+    ],
+    'gps_log_token' => [
+        'label' => 'GPS Log Token',
+        'type' => 'text',
+        'default' => '',
+        'optional' => true,
+        'hint' => 'Enter this as the Device identifier in Traccar Client. Letters and digits only. Leave empty to refuse all points.',
+    ],
     'ai_prompt_template' => [
         'label' => 'AI Budget Prompt Template',
         'type' => 'textarea',
