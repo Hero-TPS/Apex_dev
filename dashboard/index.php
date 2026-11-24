@@ -105,6 +105,7 @@ include ROOT_DIR . '/includes/header.php';
             <a href="<?= BASE_URL ?>/services/cleanup.php" class="dashboard-button db-maintenance">Cleanup Tools</a>
             <a href="<?= BASE_URL ?>/services/drivers.php" class="dashboard-button db-maintenance">Drivers</a>
             <a href="<?= BASE_URL ?>/services/logs.php" class="dashboard-button db-maintenance">System Logs</a>
+            <a href="<?= BASE_URL ?>/services/gps_import.php" class="dashboard-button db-maintenance">GPS Import</a>
             <a href="<?= BASE_URL ?>/services/updates.php" class="dashboard-button db-maintenance">Database Updates<?= $pendingUpdates > 0 ? ' (' . $pendingUpdates . ')' : '' ?></a>
             <a href="<?= BASE_URL ?>/modules/WhatsApp/" class="dashboard-button db-maintenance">WhatsApp Messages</a>
             <a href="<?= BASE_URL ?>/modules/DistanceCalculator/" class="dashboard-button db-distcalc">Trip Distance Calculator</a>

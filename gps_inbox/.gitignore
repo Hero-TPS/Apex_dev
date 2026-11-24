@@ -1,0 +1,5 @@
+# gps_inbox/.gitignore
+# Location data must never reach the repo (it is public). Only the folder protection is kept.
+*
+!.gitignore
+!.htaccess

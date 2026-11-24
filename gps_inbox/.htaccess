@@ -1,0 +1,9 @@
+# gps_inbox/.htaccess
+# Location files uploaded from the phone by FTP. They must never be served over the web.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
