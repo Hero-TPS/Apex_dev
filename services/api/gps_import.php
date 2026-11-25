@@ -1,7 +1,8 @@
 <?php
 // services/api/gps_import.php
 // JSON API for services/gps_import.php (GPS Import). POST only, login and CSRF token required.
-// Reads the CSV files in gps_inbox/ and adds their points to gps_log.
+// "run" reads every CSV in gps_inbox/ again, including files already read, and adds the points that are not
+// in gps_log yet. The normal import is automatic: services/gps_import.php calls gpsImportOnDemand() when it loads.
 require_once __DIR__ . '/../../config.php';
 require_once ROOT_DIR . '/includes/auth_api.php';
 require_once ROOT_DIR . '/includes/helpers.php';
@@ -22,21 +23,24 @@ if (($_GET['action'] ?? '') !== 'run') {
 
 try {
     set_time_limit(120);
-    $summary = gpsImportRun($pdo);
-    logInfo('GPS', 'GPS CSV import run', $summary);
+    $summary = gpsImportRun($pdo, true);
+    logInfo('GPS', 'GPS CSV re-read of all files', $summary);
 
     if ($summary['files'] === 0 && empty($summary['errors'])) {
-        jsonResponse(['success' => true, 'message' => 'No CSV files in the inbox yet.', 'summary' => $summary]);
+        jsonResponse(['success' => true, 'message' => 'No CSV files in the inbox.', 'summary' => $summary]);
     }
 
     $message = "Read {$summary['files']} file(s), {$summary['rows']} rows: "
         . "{$summary['new']} new, {$summary['existing']} already in the log, {$summary['skipped']} skipped.";
+    if ($summary['deleted'] > 0) {
+        $message .= " Deleted {$summary['deleted']} old imported file(s).";
+    }
     if (!empty($summary['errors'])) {
         $message .= ' Problems: ' . implode('; ', $summary['errors']) . '.';
     }
     jsonResponse(['success' => empty($summary['errors']), 'message' => $message, 'summary' => $summary]);
 } catch (PDOException $e) {
-    logError('GPS', 'GPS CSV import failed', ['error' => $e->getMessage()]);
+    logError('GPS', 'GPS CSV re-read failed', ['error' => $e->getMessage()]);
     jsonResponse([
         'success' => false,
         'message' => 'The import could not save to the database. If a table or column is missing, run Services → Database Updates.',

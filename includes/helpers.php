@@ -363,6 +363,7 @@ const SYSTEM_VARIABLES = [
         'default' => '0',
         'hint' => 'On = location points sent by the Traccar Client app are saved. Off = the app\'s points are refused.',
     ],
+    'gps_inbox_keep_days' => ['label' => 'GPS Inbox: Keep Imported Files (days, 0 = forever)', 'type' => 'number', 'default' => 14],
     'gps_log_token' => [
         'label' => 'GPS Log Token',
         'type' => 'text',
