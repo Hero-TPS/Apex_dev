@@ -33,6 +33,19 @@
             <a href="<?= BASE_URL ?>/logout.php" class="logout-link">🔓 Logout</a>
         </header>
 
+        <?php
+        // "Logging today" note while a GPS Log session is open. Skipped without a database connection, before the
+        // GPS Log update has run, and on the GPS Log page itself.
+        $gpsBannerSince = null;
+        if (empty($hide_gps_banner) && isset($pdo) && $pdo instanceof PDO && is_file(ROOT_DIR . '/includes/gps_session.php')) {
+            require_once ROOT_DIR . '/includes/gps_session.php';
+            $gpsBannerSince = gpsSessionBannerSince($pdo);
+        }
+        ?>
+        <?php if ($gpsBannerSince !== null): ?>
+            <a class="at-gps-banner" href="<?= BASE_URL ?>/services/gps_sessions.php">📍 Logging today since <?= htmlspecialchars($gpsBannerSince) ?> · open GPS Log</a>
+        <?php endif; ?>
+
         <main class="content">
             <!-- Breadcrumb Navigation -->
             <?php if (isset($show_breadcrumb) && $show_breadcrumb): ?>

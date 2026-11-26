@@ -236,3 +236,106 @@
     display: block;
     margin-bottom: 8px;
 }
+
+/* ========================
+   GPS Log (services/gps_sessions.php) and the "logging today" note in includes/header.php
+======================== */
+.at-gps-banner {
+    display: block;
+    background: #c0392b;
+    color: #fff;
+    text-align: center;
+    font-weight: 600;
+    padding: 8px 12px;
+    text-decoration: none;
+}
+
+.at-gps-banner:hover {
+    background: #a93226;
+}
+
+.at-gps-state {
+    padding: 14px 16px;
+    border-radius: 8px;
+    background: #f4f6f8;
+    border-left: 6px solid #95a5a6;
+    margin-bottom: 8px;
+    font-size: 18px;
+}
+
+.at-gps-state-between { background: #fff8e1; border-left-color: #f39c12; }
+.at-gps-state-to_pickup { background: #e8f4fd; border-left-color: #3498db; }
+.at-gps-state-loaded { background: #e9f7ef; border-left-color: #27ae60; }
+
+.at-gps-sub {
+    font-size: 13px;
+    color: #666;
+    margin-top: 4px;
+}
+
+.at-gps-fresh {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 12px;
+}
+
+.at-gps-fresh-old {
+    color: #c0392b;
+    font-weight: 600;
+}
+
+.at-gps-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.at-gps-btn {
+    width: 100%;
+    padding: 18px 10px;
+    font-size: 16px;
+    white-space: normal;
+}
+
+.at-gps-uber {
+    background: linear-gradient(135deg, #34495e, #2c3e50);
+}
+
+.at-gps-small {
+    padding: 6px 10px;
+    font-size: 13px;
+    min-width: 0;
+}
+
+.at-gps-auto td {
+    color: #777;
+}
+
+.at-gps-tag {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: #eceff1;
+    color: #607d8b;
+    font-size: 11px;
+}
+
+.at-gps-tag-pos {
+    background: transparent;
+    padding: 0;
+}
+
+.at-gps-icon {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px 6px;
+}
+
+.at-gps-time-input {
+    font-size: 14px;
+    padding: 4px;
+}
