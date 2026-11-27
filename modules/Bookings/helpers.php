@@ -717,6 +717,42 @@ function resolveReturnPickupTime(bool $sameDay, $raw, string $startTime): ?strin
 }
 
 /**
+ * Duration of a same-day round trip that has a return time: from the outbound start to the return
+ * pickup, plus half an hour, rounded up to the next value in the Durations list. When even the longest
+ * value is too short, the longest is used and 'capped' is true. Null when there is no return time or no
+ * durations are set up (the duration then stays a manual choice).
+ * Used by: modules/Bookings/api/index.php (add, update). The Add / Edit Booking pages work it out in
+ * JavaScript with the same rule.
+ *
+ * @param array       $durations   Values of the durations table, as numbers or numeric strings
+ * @param string      $startTime   Outbound start, 'HH:MM' or 'HH:MM:SS'
+ * @param string|null $returnTime  Return pickup from resolveReturnPickupTime(), or null
+ * @return array{hours: float, capped: bool}|null
+ */
+function calculateSameDayDuration(array $durations, string $startTime, ?string $returnTime): ?array
+{
+    if ($returnTime === null || $startTime === '') {
+        return null;
+    }
+    $values = array_values(array_filter(array_map('floatval', $durations), fn($d) => $d > 0));
+    if (!$values) {
+        return null;
+    }
+    sort($values);
+
+    [$sh, $sm] = array_map('intval', explode(':', substr($startTime, 0, 5)));
+    [$rh, $rm] = array_map('intval', explode(':', substr($returnTime, 0, 5)));
+    $needed = (($rh * 60 + $rm) - ($sh * 60 + $sm)) / 60 + 0.5;
+
+    foreach ($values as $value) {
+        if ($value + 0.0001 >= $needed) {
+            return ['hours' => $value, 'capped' => false];
+        }
+    }
+    return ['hours' => end($values), 'capped' => true];
+}
+
+/**
  * The after-hours surcharge for a booking, or null when none applies. It is charged once for every pickup
  * that falls in the after-hours window: the outbound pickup and, on a same-day round trip, the return pickup.
  * Only applied when the popup was accepted on the page, and never for a time outside the window.
@@ -751,7 +787,8 @@ function sameDayReturnMigrationHint(Throwable $e): ?string
 {
     $message = $e->getMessage();
     if (stripos($message, 'unknown column') !== false
-        && (stripos($message, 'is_same_day_return') !== false || stripos($message, 'return_pickup_time') !== false)) {
+        && (stripos($message, 'is_same_day_return') !== false || stripos($message, 'return_pickup_time') !== false
+            || stripos($message, 'driver_leg') !== false)) {
         return 'The database needs an update before same-day round trips can be saved. Run Services → Database Updates.';
     }
     return null;

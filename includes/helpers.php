@@ -257,7 +257,7 @@ function isPaidToApexAccount(?string $method): bool
  */
 function calculateDriverSettlement(array $bookingDetails): array
 {
-    $cost = (float) ($bookingDetails['cost'] ?? 0);
+    $cost = (float) ($bookingDetails['cost'] ?? 0) * getDriverLegFactor($bookingDetails);
     $method = normalizePaymentMethod($bookingDetails['payment_method'] ?? '');
     $isEft = ($method === 'eft');
     $isCard = ($method === 'card');
@@ -332,6 +332,20 @@ const SYSTEM_VARIABLES = [
         'type' => 'text',
         'default' => "Dit is 'n na-ure rit — 'n na-ure toeslag van R{amount} is by die koste ingesluit.",
         'hint' => 'Sent for clients set to Afrikaans. {amount} is replaced by the booking\'s after-hours charge. Leave the {amount} in.',
+    ],
+    'return_trip_line_af' => [
+        'label' => 'Same-Day Return Line (Afrikaans)',
+        'type' => 'text',
+        'default' => '',
+        'optional' => true,
+        'hint' => 'The {return_trip} line for clients set to Afrikaans, when the return time is known. {time} is replaced by the return pickup time and {place} by the place the return starts from. Leave empty to send the English line.',
+    ],
+    'return_trip_tbc_line_af' => [
+        'label' => 'Same-Day Return Line, Time Not Yet Known (Afrikaans)',
+        'type' => 'text',
+        'default' => '',
+        'optional' => true,
+        'hint' => 'The {return_trip} line for clients set to Afrikaans, while the return time is still to be confirmed. {place} is replaced by the place the return starts from. Leave empty to send the English line.',
     ],
     'invoice_payment_details' => [
         'label' => 'Invoice Payment Details (bank / EFT)',
@@ -506,41 +520,66 @@ function calculateSameDayReturnCost(float $oneWayFare, float $discountPct): floa
 }
 
 /**
- * Returns booking notes with the same-day return notice appended, when the booking is a same-day
- * round trip. Computed at render time only, never written into bookings.description, same principle
- * as appendAfterHoursNotice().
- * Used by: modules/WhatsApp/helpers.php (buildBookingMessageVars, getWhatsAppTripNoticeLines), modules/Bookings/view.php
+ * The part of a same-day round trip the allocated driver does, as stored in bookings.driver_leg:
+ * 'whole', 'outbound' or 'return'. Anything else, and every booking that is not a same-day round trip,
+ * is 'whole'.
+ * Used by: getDriverLegFactor(), modules/Bookings/api/index.php, modules/WhatsApp/helpers.php
  *
- * @param array       $booking  Needs is_same_day_return, return_pickup_time and destination (the place the
- *                              return trip starts from, already resolved for was_swapped)
- * @param string|null $notes    Raw stored notes/description text
- * @param string      $lang     'en' (default) or 'af'
- * @return string               Notes text ready for display
+ * @param mixed $leg  Value from the form or the bookings row
  */
-function appendSameDayReturnNotice(array $booking, ?string $notes, string $lang = 'en'): string
+function normalizeDriverLeg($leg): string
 {
-    $notes = $notes ?? '';
-    if (empty($booking['is_same_day_return'])) {
-        return $notes;
-    }
+    $leg = is_string($leg) ? strtolower(trim($leg)) : '';
+    return in_array($leg, ['outbound', 'return'], true) ? $leg : 'whole';
+}
 
-    $isAfrikaans = ($lang === 'af');
-    if (stripos($notes, $isAfrikaans ? 'terugrit' : 'same-day return') !== false) {
-        return $notes;
+/**
+ * Share of the booking cost that belongs to the allocated driver: 0.5 when the driver does only one leg
+ * of a same-day round trip (the stored cost is the total of both legs), otherwise 1.
+ * The booking fee and the driver settlement are worked out on this share of the cost.
+ * Used by: calculateDriverSettlement(), modules/Bookings/api/index.php
+ *
+ * @param array $booking  Needs is_same_day_return and driver_leg
+ */
+function getDriverLegFactor(array $booking): float
+{
+    if (empty($booking['is_same_day_return'])) {
+        return 1.0;
+    }
+    return normalizeDriverLeg($booking['driver_leg'] ?? '') === 'whole' ? 1.0 : 0.5;
+}
+
+/**
+ * The {return_trip} line of the booking messages: when the client is collected again on the way back
+ * of a same-day round trip. Empty when the booking is not a same-day round trip. Afrikaans uses the
+ * return_trip_line_af and return_trip_tbc_line_af system variables and falls back to the English line
+ * while they are empty.
+ * Used by: modules/WhatsApp/helpers.php (buildBookingMessageVars, buildWhatsAppTripsText)
+ *
+ * @param array  $booking  Needs is_same_day_return, return_pickup_time and destination (the place the
+ *                         return starts from, already resolved for was_swapped)
+ * @param string $lang     'en' (default) or 'af'
+ */
+function buildSameDayReturnLine(PDO $pdo, array $booking, string $lang = 'en'): string
+{
+    if (empty($booking['is_same_day_return'])) {
+        return '';
     }
 
     $time = !empty($booking['return_pickup_time']) ? substr((string) $booking['return_pickup_time'], 0, 5) : '';
     $place = trim((string) ($booking['destination'] ?? ''));
-    if ($time === '') {
-        $notice = $isAfrikaans
-            ? 'Dieselfde-dag terugrit: die terugrit-tyd word nog bevestig.'
-            : 'Same-day return: the return pick-up time will be confirmed.';
-    } elseif ($isAfrikaans) {
-        $notice = 'Dieselfde-dag terugrit: optel om ' . $time . ($place !== '' ? ' by ' . $place : '') . '.';
-    } else {
-        $notice = 'Same-day return: pick-up at ' . $time . ($place !== '' ? ' from ' . $place : '') . '.';
+
+    if ($lang === 'af') {
+        $template = trim((string) getSystemVariable($pdo, $time === '' ? 'return_trip_tbc_line_af' : 'return_trip_line_af'));
+        if ($template !== '') {
+            return str_replace(['{time}', '{place}'], [$time, $place], $template);
+        }
     }
-    return trim($notes) === '' ? $notice : rtrim($notes) . "\n" . $notice;
+
+    if ($time === '') {
+        return 'Return pick-up' . ($place !== '' ? ' from ' . $place : '') . ': time to be confirmed';
+    }
+    return 'Return pick-up at ' . $time . ($place !== '' ? ' from ' . $place : '');
 }
 
 /**

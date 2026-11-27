@@ -198,7 +198,7 @@ if (isset($_GET['id'])) {
             <?php endif; ?>
         </div>
         <div class="detail-item full-width">
-            <strong>Notes:</strong> <?= nl2br(htmlspecialchars(appendSameDayReturnNotice($booking, appendAfterHoursNotice($booking['after_hours_charge'] ?? null, appendAirportPickupNotice($pdo, $booking['pickup_location'], $booking['description']))) ?: 'None')) ?>
+            <strong>Notes:</strong> <?= nl2br(htmlspecialchars(appendAfterHoursNotice($booking['after_hours_charge'] ?? null, appendAirportPickupNotice($pdo, $booking['pickup_location'], $booking['description'])) ?: 'None')) ?>
         </div>
         <?php if (!empty($booking['driver_name'])): ?>
         <div class="detail-item">
@@ -435,6 +435,17 @@ if (isset($_GET['id'])) {
                         </select>
                     </div>
                 </div>
+                <?php if (!empty($booking['is_same_day_return'])): ?>
+                <div class="form-group<?= empty($booking['driver_id']) ? ' hidden' : '' ?>" id="driverLegGroup">
+                    <label for="driver-leg-select" class="manage-driver-label">Driver does</label>
+                    <?php $selectedLeg = normalizeDriverLeg($booking['driver_leg'] ?? ''); ?>
+                    <select id="driver-leg-select">
+                        <option value="whole"<?= $selectedLeg === 'whole' ? ' selected' : '' ?>>Whole trip</option>
+                        <option value="outbound"<?= $selectedLeg === 'outbound' ? ' selected' : '' ?>>Outbound only (half the cost)</option>
+                        <option value="return"<?= $selectedLeg === 'return' ? ' selected' : '' ?>>Return only (half the cost)</option>
+                    </select>
+                </div>
+                <?php endif; ?>
                 <div class="form-group<?= empty($booking['driver_id']) ? ' hidden' : '' ?>" id="bookingFeeNote">
                     <small id="bookingFeeDisplay"></small>
                 </div>
@@ -807,16 +818,19 @@ if (isset($_GET['id'])) {
                 var driverSelected = $('#driver-select').val() !== '';
                 $('#bookingFeePctGroup').toggleClass('hidden', !driverSelected);
                 $('#bookingFeeNote').toggleClass('hidden', !driverSelected);
+                $('#driverLegGroup').toggleClass('hidden', !driverSelected);
                 var pct = parseInt($('#booking-fee-pct-select').val(), 10) || 0;
+                var singleLeg = $('#driver-leg-select').length > 0 && $('#driver-leg-select').val() !== 'whole';
+                var feeBase = singleLeg ? bookingCost / 2 : bookingCost;
                 if (pct === 0) {
                     $('#bookingFeeDisplay').text('No booking fee — the full amount goes to the driver.');
                 } else {
-                    var fee = Math.round(bookingCost * pct / 100 * 100) / 100;
-                    $('#bookingFeeDisplay').text('Booking fee: R' + fee.toFixed(2) + ' (cost × ' + pct + '%), saved when you update the driver.');
+                    var fee = Math.round(feeBase * pct / 100 * 100) / 100;
+                    $('#bookingFeeDisplay').text('Booking fee: R' + fee.toFixed(2) + ' (' + (singleLeg ? 'half the cost' : 'cost') + ' × ' + pct + '%), saved when you update the driver.');
                 }
             }
 
-            $('#driver-select, #booking-fee-pct-select').on('change', updateBookingFeeNote);
+            $('#driver-select, #booking-fee-pct-select, #driver-leg-select').on('change', updateBookingFeeNote);
             updateBookingFeeNote();
 
             function doRemoveDriver() {
@@ -857,7 +871,7 @@ if (isset($_GET['id'])) {
                 $.ajax({
                     type: 'POST',
                     url: '<?= BASE_URL ?>/modules/Bookings/api/index.php',
-                    data: { action: 'assign_driver', booking_id: bookingId, driver_id: driverId, booking_fee_pct: feePct, driver_notes: driverNotes },
+                    data: { action: 'assign_driver', booking_id: bookingId, driver_id: driverId, booking_fee_pct: feePct, driver_leg: $('#driver-leg-select').val() || 'whole', driver_notes: driverNotes },
                     dataType: 'json',
                     success: function (res) {
                         if (res.success) {

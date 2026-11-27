@@ -301,6 +301,16 @@ function handleAddBooking()
             $cost = (float) $cost + $after_hours_charge;
         }
 
+        // Which part of a same-day round trip the driver does (a single leg is half of the cost)
+        $driver_leg = ($is_same_day_return && $driver_id !== null) ? normalizeDriverLeg($_POST['driver_leg'] ?? '') : 'whole';
+        $driverShare = getDriverLegFactor(['is_same_day_return' => $is_same_day_return, 'driver_leg' => $driver_leg]);
+
+        // With a return time the duration follows from it (return time - start time + half an hour)
+        $sameDayDuration = calculateSameDayDuration(fetchColumn($pdo, 'durations', 'hours', 'hours ASC'), $start_time, $return_pickup_time);
+        if ($sameDayDuration !== null) {
+            $duration = $sameDayDuration['hours'];
+        }
+
         // Validate
         if (empty($contact_id))
             throw new Exception('Client not selected');
@@ -337,7 +347,7 @@ function handleAddBooking()
         }
 
         // Booking fee from the chosen percentage (0% = no booking fee); nothing stored without a driver
-        $feeFields = resolveBookingFeeFields($driver_id, (float) $cost, $booking_fee_pct_input);
+        $feeFields = resolveBookingFeeFields($driver_id, (float) $cost * $driverShare, $booking_fee_pct_input);
         $booking_fee = $feeFields['fee'];
         $booking_fee_pct = $feeFields['pct'];
         $no_booking_fee = $feeFields['no_booking_fee'];
@@ -358,8 +368,8 @@ function handleAddBooking()
                 flight_number, description, driver_id, booking_fee, booking_fee_pct, no_booking_fee, driver_notes,
                 pickup_is_custom, distance_km, is_round_trip, after_hours_charge,
                 passenger_name, passenger_phone, language,
-                is_same_day_return, return_pickup_time
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                is_same_day_return, return_pickup_time, driver_leg
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -388,7 +398,8 @@ function handleAddBooking()
             $passenger_phone,
             $language,
             $is_same_day_return,
-            $return_pickup_time
+            $return_pickup_time,
+            $driver_leg
         ]);
 
         $booking_id = $pdo->lastInsertId();
@@ -603,9 +614,19 @@ function handleUpdateBooking()
                 $final_cost += $after_hours_charge;
             }
 
+            // Which part of a same-day round trip the driver does (a single leg is half of the cost)
+            $driver_leg = ($is_same_day_return && $driver_id !== null) ? normalizeDriverLeg($_REQUEST['driver_leg'] ?? '') : 'whole';
+            $driverShare = getDriverLegFactor(['is_same_day_return' => $is_same_day_return, 'driver_leg' => $driver_leg]);
+
+            // With a return time the duration follows from it (return time - start time + half an hour)
+            $sameDayDuration = calculateSameDayDuration(fetchColumn($pdo, 'durations', 'hours', 'hours ASC'), $start_time, $return_pickup_time);
+            if ($sameDayDuration !== null) {
+                $duration = $sameDayDuration['hours'];
+            }
+
             // Recalculate the booking fee from the chosen percentage (0% = no booking fee)
             // Null out all driver fields when no driver is selected
-            $feeFields = resolveBookingFeeFields($driver_id, $final_cost, $booking_fee_pct_input);
+            $feeFields = resolveBookingFeeFields($driver_id, $final_cost * $driverShare, $booking_fee_pct_input);
             $booking_fee = $feeFields['fee'];
             $booking_fee_pct = $feeFields['pct'];
             $no_booking_fee = $feeFields['no_booking_fee'];
@@ -649,7 +670,7 @@ function handleUpdateBooking()
                 driver_id = ?, booking_fee = ?, booking_fee_pct = ?, no_booking_fee = ?, driver_notes = ?,
                 pickup_is_custom = ?, distance_km = ?, is_round_trip = ?, after_hours_charge = ?,
                 passenger_name = ?, passenger_phone = ?, language = ?,
-                is_same_day_return = ?, return_pickup_time = ?,
+                is_same_day_return = ?, return_pickup_time = ?, driver_leg = ?,
                 last_confirmed_at = NULL,
                 updated_at = NOW()
             WHERE id = ?";
@@ -682,6 +703,7 @@ function handleUpdateBooking()
                 $language,
                 $is_same_day_return,
                 $return_pickup_time,
+                $driver_leg,
                 $booking_id
             ]);
 
@@ -1245,24 +1267,29 @@ function handleAssignDriver()
 
     try {
         // The fee is worked out here from the booking's stored cost and the chosen percentage
-        $costStmt = $pdo->prepare("SELECT cost FROM bookings WHERE id = ?");
+        $costStmt = $pdo->prepare("SELECT cost, is_same_day_return FROM bookings WHERE id = ?");
         $costStmt->execute([$bookingId]);
-        $storedCost = $costStmt->fetchColumn();
-        if ($storedCost === false) {
+        $costRow = $costStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$costRow) {
             jsonResponse(['success' => false, 'message' => 'Booking not found.'], 404);
             return;
         }
+        $storedCost = $costRow['cost'];
+
+        // A driver doing one leg of a same-day round trip is paid on half of the cost
+        $driver_leg = (!empty($costRow['is_same_day_return']) && $driver_id !== null) ? normalizeDriverLeg($_POST['driver_leg'] ?? '') : 'whole';
+        $driverShare = getDriverLegFactor(['is_same_day_return' => $costRow['is_same_day_return'], 'driver_leg' => $driver_leg]);
 
         $pctInput = parseBookingFeePct($_POST['booking_fee_pct'] ?? null, getDefaultBookingFeePct($pdo));
-        $feeFields = resolveBookingFeeFields($driver_id, (float) $storedCost, $pctInput);
+        $feeFields = resolveBookingFeeFields($driver_id, (float) $storedCost * $driverShare, $pctInput);
         $booking_fee = $feeFields['fee'];
         $booking_fee_pct = $feeFields['pct'];
         $no_booking_fee = $feeFields['no_booking_fee'];
 
         $stmt = $pdo->prepare(
-            "UPDATE bookings SET driver_id = ?, booking_fee = ?, booking_fee_pct = ?, no_booking_fee = ?, driver_notes = ?, updated_at = NOW() WHERE id = ?"
+            "UPDATE bookings SET driver_id = ?, booking_fee = ?, booking_fee_pct = ?, no_booking_fee = ?, driver_notes = ?, driver_leg = ?, updated_at = NOW() WHERE id = ?"
         );
-        $stmt->execute([$driver_id, $booking_fee, $booking_fee_pct, $no_booking_fee, $driver_notes, $bookingId]);
+        $stmt->execute([$driver_id, $booking_fee, $booking_fee_pct, $no_booking_fee, $driver_notes, $driver_leg, $bookingId]);
 
         logInfo('BOOKING_API', 'Driver assigned to booking', [
             'booking_id'     => $bookingId,
@@ -1270,6 +1297,7 @@ function handleAssignDriver()
             'fee'            => $booking_fee,
             'fee_pct'        => $booking_fee_pct,
             'no_booking_fee' => $no_booking_fee,
+            'driver_leg'     => $driver_leg,
         ]);
 
         // Sync the Google Calendar event so the 👤 icon (and driver info in
@@ -1296,7 +1324,7 @@ function handleAssignDriver()
             'error'      => $e->getMessage(),
             'booking_id' => $bookingId,
         ]);
-        jsonResponse(['success' => false, 'message' => bookingFeePctMigrationHint($e) ?? 'Database error occurred.'], 500);
+        jsonResponse(['success' => false, 'message' => bookingFeePctMigrationHint($e) ?? sameDayReturnMigrationHint($e) ?? 'Database error occurred.'], 500);
     }
 }
 

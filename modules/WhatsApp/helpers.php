@@ -107,6 +107,7 @@ function getWhatsAppBookingVariables(): array
         'payment_received'   => 'Filled when payment has been received (use with {if})',
         'flight_number'      => 'Flight number',
         'flightradar_url'    => 'Flightradar24 tracking link for the flight number',
+        'return_trip'        => 'Same-day round trip only: the return pick-up line, e.g. Return pick-up at 16:30 from Franschhoek. Empty for other bookings, so its line drops out. Put it above the cost line',
         'notes'              => 'Booking notes including the airport / after-hours notices',
         'passenger_name'     => 'Passenger name (empty when same as the client)',
         'passenger_phone'    => 'Passenger phone (empty when there is no separate passenger)',
@@ -631,10 +632,11 @@ function buildBookingMessageVars(PDO $pdo, array $b): array
 
     $date = '';
     $time = '';
-    if (!empty($b['trip_date']) && !empty($b['start_time'])) {
-        $start = new DateTime($b['trip_date'] . ' ' . $b['start_time'], $tz);
+    if (!empty($b['trip_date'])) {
+        // The time stays empty when it is not known yet (the return leg of a trip without a return time)
+        $start = new DateTime($b['trip_date'] . ' ' . (!empty($b['start_time']) ? $b['start_time'] : '00:00:00'), $tz);
         $date = $start->format('d/m/y');
-        $time = $start->format('H:i');
+        $time = !empty($b['start_time']) ? $start->format('H:i') : '';
     }
 
     $clientName = trim($b['client_name'] ?? '');
@@ -652,7 +654,7 @@ function buildBookingMessageVars(PDO $pdo, array $b): array
     $lang = normalizeWhatsAppLanguage($b['language'] ?? 'en');
     $notes = appendAirportPickupNotice($pdo, $pickup, $b['description'] ?? '', $lang);
     $notes = appendAfterHoursNotice($b['after_hours_charge'] ?? null, $notes, $lang, $pdo);
-    $notes = appendSameDayReturnNotice($b, $notes, $lang);
+    $returnTrip = buildSameDayReturnLine($pdo, $b, $lang);
 
     $isUpdate = !empty($b['updated_at']);
     $updatedAt = $isUpdate ? (new DateTime($b['updated_at'], $tz))->format('d/m/y H:i') : '';
@@ -677,6 +679,7 @@ function buildBookingMessageVars(PDO $pdo, array $b): array
         'payment_received'  => !empty($b['payment_received']) ? '1' : '',
         'flight_number'     => $flightNumber,
         'flightradar_url'   => $flightNumber !== '' ? buildFlightradarUrl($flightNumber) : '',
+        'return_trip'       => $returnTrip,
         'notes'             => $notes,
         'passenger_name'    => $passengerName,
         'passenger_phone'   => $passengerPhone,
@@ -812,18 +815,17 @@ function splitWhatsAppNoteLines(?string $text): array
 }
 
 /**
- * The notices the system adds to a trip (airport pickup, after-hours surcharge, same-day return), one per line, in
+ * The notices the system adds to a trip (airport pickup, after-hours surcharge), one per line, in
  * the given language. They belong to a single trip, so {trips} shows them under that trip.
  * Used by: buildWhatsAppTripsText()
  *
- * @param array $booking  Row with pickup_location, destination, after_hours_charge, is_same_day_return, return_pickup_time
+ * @param array $booking  Row with pickup_location and after_hours_charge
  * @return string[]
  */
 function getWhatsAppTripNoticeLines(PDO $pdo, array $booking, string $language = 'en'): array
 {
     $notices = appendAirportPickupNotice($pdo, (string) ($booking['pickup_location'] ?? ''), '', $language);
     $notices = appendAfterHoursNotice($booking['after_hours_charge'] ?? null, $notices, $language, $pdo);
-    $notices = appendSameDayReturnNotice($booking, $notices, $language);
     return splitWhatsAppNoteLines($notices);
 }
 
@@ -891,6 +893,7 @@ function getSharedWhatsAppPair(array $pairs): array
  *   📅 date (and time)
  *   📍 pickup -> destination
  *   ✈️ flight number
+ *   ↩️ the return pick-up line - same-day round trips only
  *   💰 cost
  *   ✅ Payment Received - only when some, not all, of the trips are paid (all paid is the
  *      {payment_received} flag of the template)
@@ -900,7 +903,7 @@ function getSharedWhatsAppPair(array $pairs): array
  * Used by: buildGroupMessageVars()
  *
  * @param array[] $bookings  Rows with trip_date, start_time, cost, flight_number, description,
- *                           after_hours_charge, payment_received, passenger_name / passenger_phone,
+ *                           after_hours_charge, is_same_day_return, return_pickup_time, payment_received, passenger_name / passenger_phone,
  *                           driver_name / driver_phone and pickup_location / destination already
  *                           resolved for was_swapped
  * @param string  $language  'en' or 'af' (the word "at", the payment line and the notices change)
@@ -941,6 +944,11 @@ function buildWhatsAppTripsText(PDO $pdo, array $bookings, string $clientName, s
         $flight = trim((string) ($b['flight_number'] ?? ''));
         if ($flight !== '') {
             $lines[] = '✈️ ' . $flight;
+        }
+
+        $returnLine = buildSameDayReturnLine($pdo, $b, $language);
+        if ($returnLine !== '') {
+            $lines[] = '↩️ ' . $returnLine;
         }
 
         $cents = (int) round(((float) ($b['cost'] ?? 0)) * 100);
@@ -1162,12 +1170,44 @@ function createPrebookingWhatsAppMessage(PDO $pdo, array $prebookingDetails): st
 }
 
 /**
+ * The booking as the allocated driver should see it. A driver who does the whole trip, and every booking
+ * that is not a same-day round trip, gets the booking unchanged. A driver who does one leg of a same-day
+ * round trip gets a booking of just that leg, at half of the cost:
+ *   - 'outbound': the normal trip out, with no return line.
+ *   - 'return':   the places swapped (and the Waze links with them), the return pickup time as the time,
+ *                 and no return line. The time is empty while the return time is still to be confirmed.
+ * Used by: createDriverBookingMessage()
+ *
+ * @param array $b  Booking row with pickup_location / destination already resolved for was_swapped
+ * @return array    Row to pass to buildBookingMessageVars()
+ */
+function buildDriverLegBooking(array $b): array
+{
+    $leg = normalizeDriverLeg($b['driver_leg'] ?? '');
+    if (empty($b['is_same_day_return']) || $leg === 'whole') {
+        return $b;
+    }
+
+    $b['cost'] = (float) ($b['cost'] ?? 0) * getDriverLegFactor($b);
+    // The cost is halved here already, so the settlement must not halve it a second time
+    $b['driver_leg'] = 'whole';
+    $b['is_same_day_return'] = 0;
+
+    if ($leg === 'return') {
+        [$b['pickup_location'], $b['destination']] = [(string) ($b['destination'] ?? ''), (string) ($b['pickup_location'] ?? '')];
+        $b['was_swapped'] = empty($b['was_swapped']) ? 1 : 0;
+        $b['start_time'] = !empty($b['return_pickup_time']) ? $b['return_pickup_time'] : '';
+    }
+    return $b;
+}
+
+/**
  * The message sent to an allocated driver about a booking. Always English.
  * Used by: modules/Bookings/view.php
  */
 function createDriverBookingMessage(PDO $pdo, array $bookingDetails): string
 {
-    $vars = buildBookingMessageVars($pdo, $bookingDetails);
+    $vars = buildBookingMessageVars($pdo, buildDriverLegBooking($bookingDetails));
     if ($vars['driver_name'] === '') {
         $vars['driver_name'] = 'Driver';
     }

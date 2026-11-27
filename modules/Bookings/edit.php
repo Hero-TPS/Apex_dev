@@ -123,6 +123,7 @@ if (isset($_GET['id'])) {
                         </option>
                     <?php endforeach; ?>
                 </select>
+                <small id="durationAutoHint" class="at-help-text hidden"></small>
             </div>
 
             <!-- Overlap Warning (soft — never blocks saving) -->
@@ -175,6 +176,26 @@ if (isset($_GET['id'])) {
                     🔁 Round trip (double the calculated distance)
                 </label>
             </div>
+            <div class="form-group">
+                <label for="cost">Cost <span class="required">*</span></label>
+                <select id="cost" name="cost" required>
+                    <?php
+                    // Compared/selected against the base fare (surcharge excluded)
+                    // — see $booking['base_cost'] above — not the combined total.
+                    $isStandardCost = in_array($booking['base_cost'], $costs);
+                    foreach ($costs as $c):
+                        ?>
+                        <option value="<?php echo htmlspecialchars($c); ?>" <?php if ($c == $booking['base_cost']) echo 'selected'; ?>>
+                            R<?php echo htmlspecialchars(number_format($c, 2)); ?>
+                        </option>
+                    <?php endforeach; ?>
+                    <option value="other" <?php if (!$isStandardCost) echo 'selected'; ?>>Other</option>
+                </select>
+            </div>
+            <div class="form-group <?php if ($isStandardCost) echo 'hidden'; ?>" id="otherCostGroup">
+                <label for="otherCost">Specify Other Cost</label>
+                <input type="number" id="otherCost" name="other_cost">
+            </div>
             <?php
             $isSameDayReturn = !empty($booking['is_same_day_return']);
             $returnTimeValue = !empty($booking['return_pickup_time']) ? substr((string) $booking['return_pickup_time'], 0, 5) : '';
@@ -201,26 +222,6 @@ if (isset($_GET['id'])) {
                     <?php endforeach; ?>
                 </select>
                 <small class="at-help-text">Picked up from the destination on the trip date. Leave as "To be confirmed" until the client decides.</small>
-            </div>
-            <div class="form-group">
-                <label for="cost">Cost <span class="required">*</span></label>
-                <select id="cost" name="cost" required>
-                    <?php
-                    // Compared/selected against the base fare (surcharge excluded)
-                    // — see $booking['base_cost'] above — not the combined total.
-                    $isStandardCost = in_array($booking['base_cost'], $costs);
-                    foreach ($costs as $c):
-                        ?>
-                        <option value="<?php echo htmlspecialchars($c); ?>" <?php if ($c == $booking['base_cost']) echo 'selected'; ?>>
-                            R<?php echo htmlspecialchars(number_format($c, 2)); ?>
-                        </option>
-                    <?php endforeach; ?>
-                    <option value="other" <?php if (!$isStandardCost) echo 'selected'; ?>>Other</option>
-                </select>
-            </div>
-            <div class="form-group <?php if ($isStandardCost) echo 'hidden'; ?>" id="otherCostGroup">
-                <label for="otherCost">Specify Other Cost</label>
-                <input type="number" id="otherCost" name="other_cost">
             </div>
 
             <!-- Payment Method -->
@@ -308,6 +309,14 @@ if (isset($_GET['id'])) {
                             </select>
                         </div>
                     </div>
+                    <div class="form-group hidden" id="driverLegGroup">
+                        <label for="driver-leg-select" class="manage-driver-label">Driver does</label>
+                        <select id="driver-leg-select" name="driver_leg">
+                            <option value="whole" <?= normalizeDriverLeg($booking['driver_leg'] ?? '') === 'whole' ? 'selected' : '' ?>>Whole trip</option>
+                            <option value="outbound" <?= normalizeDriverLeg($booking['driver_leg'] ?? '') === 'outbound' ? 'selected' : '' ?>>Outbound only (half the cost)</option>
+                            <option value="return" <?= normalizeDriverLeg($booking['driver_leg'] ?? '') === 'return' ? 'selected' : '' ?>>Return only (half the cost)</option>
+                        </select>
+                    </div>
                     <div class="form-group<?= $hasDriver ? '' : ' hidden' ?>" id="bookingFeeNote">
                         <small id="bookingFeeDisplay"></small>
                     </div>
@@ -326,6 +335,17 @@ if (isset($_GET['id'])) {
     <?php endif; ?>
     <div id="loading" class="loading"></div>
     <div id="result"></div>
+</div>
+
+<!-- Return time warning -->
+<div id="returnTimeModal" class="modal-overlay">
+    <div class="modal-content">
+        <h3>⚠️ Check the return time</h3>
+        <p id="returnTimeModalText"></p>
+        <div class="modal-buttons">
+            <button type="button" id="returnTimeModalOk" class="modal-btn confirm-btn">OK</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -516,6 +536,7 @@ $(document).ready(function () {
         $('#bookingFeePctGroup').toggleClass('hidden', !driverSelected);
         $('#driverNotesGroup').toggleClass('hidden', !driverSelected);
         $('#bookingFeeNote').toggleClass('hidden', !driverSelected);
+        $('#driverLegGroup').toggleClass('hidden', !(driverSelected && $('#sameDayReturn').is(':checked')));
         var badge = $('#driverBadge');
         if (driverSelected) {
             badge.text($('#driver-select option:selected').text().replace(/\s*\(.*\)\s*$/, '').trim()).removeClass('hidden');
@@ -528,14 +549,18 @@ $(document).ready(function () {
     // Fee preview: cost × the chosen percentage (0% = no booking fee, full amount to driver)
     function updateBookingFee() {
         var pct = parseInt($('#booking-fee-pct-select').val(), 10) || 0;
+        var singleLeg = $('#sameDayReturn').is(':checked') && $('#driver-leg-select').val() !== 'whole';
         var costVal = $('#cost').val() === 'other'
             ? parseFloat($('#otherCost').val()) || 0
             : parseFloat($('#cost').val()) || 0;
+        if (singleLeg) {
+            costVal = costVal / 2;
+        }
         if (pct === 0) {
             $('#bookingFeeDisplay').text('No booking fee — the full amount goes to the driver.');
         } else {
             var fee = parseFloat((costVal * pct / 100).toFixed(2));
-            $('#bookingFeeDisplay').text('Booking fee: R' + fee.toFixed(2) + ' (cost × ' + pct + '%), recalculated when saved.');
+            $('#bookingFeeDisplay').text('Booking fee: R' + fee.toFixed(2) + ' (' + (singleLeg ? 'half the cost' : 'cost') + ' × ' + pct + '%), recalculated when saved.');
         }
     }
 
@@ -618,6 +643,105 @@ $(document).ready(function () {
     updateDriverSections();
     updateBookingFee();
 
+    // Return time check, shown as a modal warning
+    function returnTimeProblem() {
+        if (!$('#sameDayReturn').is(':checked')) return '';
+        var ret = $('#returnTime').val();
+        var start = $('#startTime').val();
+        if (ret && start && ret <= start) {
+            return 'The return pickup time (' + ret + ') must be later than the start time (' + start + '). A return on another day is a separate booking.';
+        }
+        return '';
+    }
+
+    function showReturnTimeModal(text) {
+        $('#returnTimeModalText').text(text);
+        $('#returnTimeModal').css('display', 'flex');
+    }
+
+    $('#returnTimeModalOk').on('click', function () {
+        $('#returnTimeModal').hide();
+    });
+    $('#returnTimeModal').on('click', function (e) {
+        if (e.target === this) {
+            $(this).hide();
+        }
+    });
+
+    // Duration of a same-day round trip with a return time: return time - start time + half an hour, rounded
+    // up to the next value in the Durations list (the server works it out the same way when saving)
+    function timeToMinutes(t) {
+        var parts = t.split(':');
+        return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    }
+
+    function unlockDuration() {
+        $('#duration').prop('disabled', false);
+        $('#durationAuto').remove();
+        $('#durationAutoHint').addClass('hidden').text('');
+    }
+
+    function updateAutoDuration() {
+        var ret = $('#sameDayReturn').is(':checked') ? $('#returnTime').val() : '';
+        var start = $('#startTime').val();
+        if (!ret || !start || ret <= start) {
+            unlockDuration();
+            return;
+        }
+        var needed = (timeToMinutes(ret) - timeToMinutes(start)) / 60 + 0.5;
+        var values = $('#duration option').map(function () { return parseFloat($(this).val()); }).get()
+            .filter(function (v) { return v > 0; }).sort(function (a, b) { return a - b; });
+        if (!values.length) {
+            unlockDuration();
+            return;
+        }
+        var pick = null;
+        for (var i = 0; i < values.length; i++) {
+            if (values[i] + 0.0001 >= needed) { pick = values[i]; break; }
+        }
+        var capped = (pick === null);
+        if (capped) pick = values[values.length - 1];
+
+        $('#duration option').each(function () {
+            if (parseFloat($(this).val()) === pick) {
+                $('#duration').val($(this).val());
+                return false;
+            }
+        });
+        // A disabled select is not submitted, so a hidden field carries the value
+        $('#duration').prop('disabled', true);
+        if (!$('#durationAuto').length) {
+            $('<input type="hidden" id="durationAuto" name="duration">').appendTo('#editBookingForm');
+        }
+        $('#durationAuto').val($('#duration').val());
+        $('#durationAutoHint')
+            .text('Set from the return time: ' + start + ' to ' + ret + ' plus half an hour' +
+                (capped ? '. That is longer than the longest duration in the list, so the longest (' + pick + ' hours) is used' : '') + '.')
+            .removeClass('hidden');
+        checkOverlap();
+    }
+
+    $('#startTime, #returnTime').on('change', updateAutoDuration);
+    $('#sameDayReturn').on('change', function () {
+        updateAutoDuration();
+        updateDriverSections();
+        updateBookingFee();
+    });
+    $('#returnTime, #startTime').on('change', function () {
+        var problem = returnTimeProblem();
+        if (problem) {
+            if ($(this).attr('id') === 'returnTime') {
+                $('#returnTime').val('');
+                updateAutoDuration();
+            }
+            showReturnTimeModal(problem);
+        }
+    });
+    $('#driver-leg-select').on('change', updateBookingFee);
+    updateAutoDuration();
+    updateDriverSections();
+
+
     // Passenger Details panel: header toggles it (fields stay in the form and submit even when collapsed)
     $('.menu-toggle[data-target="passenger-section"]').on('click', function () {
         $('#passenger-section').slideToggle(200);
@@ -625,6 +749,12 @@ $(document).ready(function () {
 
     $('#editBookingForm').on('submit', function (e) {
         e.preventDefault();
+
+        var returnProblem = returnTimeProblem();
+        if (returnProblem) {
+            showReturnTimeModal(returnProblem);
+            return;
+        }
 
         // Every pickup that falls in after-hours is charged: the outbound pickup and, on a same-day
         // round trip, the return pickup
