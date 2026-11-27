@@ -66,6 +66,9 @@ function buildInvoiceItemFromBooking(array $booking): array
     $destination = $booking['was_swapped'] ? $booking['original_pickup'] : $booking['original_destination'];
 
     $description = 'Transport from ' . $pickup . ' to ' . $destination;
+    if (!empty($booking['is_same_day_return'])) {
+        $description .= ' and back (same-day return)';
+    }
     if (!empty($booking['flight_number'])) {
         $description .= "\nFlight: " . $booking['flight_number'];
     }

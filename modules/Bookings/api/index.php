@@ -292,10 +292,12 @@ function handleAddBooking()
         // After-hours surcharge — only applied if the popup was accepted
         // client-side AND the time is genuinely within the window (never
         // trust the client-side check alone).
+        // On a same-day round trip, every pickup that is after hours (outbound and return) is charged.
+        $is_same_day_return = isset($_POST['same_day_return']) ? 1 : 0;
+        $return_pickup_time = resolveReturnPickupTime((bool) $is_same_day_return, $_POST['return_pickup_time'] ?? '', $start_time);
         $after_hours_confirmed = isset($_POST['after_hours_confirmed']) && $_POST['after_hours_confirmed'] === '1';
-        $after_hours_charge = null;
-        if ($after_hours_confirmed && !empty($start_time) && isAfterHoursStartTime($pdo, $start_time)) {
-            $after_hours_charge = (float) getSystemVariable($pdo, 'after_hours_charge');
+        $after_hours_charge = calculateAfterHoursCharge($pdo, $after_hours_confirmed, $start_time, $return_pickup_time);
+        if ($after_hours_charge !== null) {
             $cost = (float) $cost + $after_hours_charge;
         }
 
@@ -341,7 +343,8 @@ function handleAddBooking()
         $no_booking_fee = $feeFields['no_booking_fee'];
 
         // Calculate trip distance (null on failure — never guessed)
-        $is_round_trip = isset($_POST['round_trip']) ? 1 : 0;
+        // A same-day round trip is always a round trip for the distance
+        $is_round_trip = (isset($_POST['round_trip']) || $is_same_day_return) ? 1 : 0;
         $distance_km = calculateTripDistanceKm($original_pickup, $original_destination);
         if ($distance_km !== null && $is_round_trip) {
             $distance_km = round($distance_km * 2, 1);
@@ -354,8 +357,9 @@ function handleAddBooking()
                 original_pickup, original_destination, was_swapped, cost, payment_method, payment_received,
                 flight_number, description, driver_id, booking_fee, booking_fee_pct, no_booking_fee, driver_notes,
                 pickup_is_custom, distance_km, is_round_trip, after_hours_charge,
-                passenger_name, passenger_phone, language
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                passenger_name, passenger_phone, language,
+                is_same_day_return, return_pickup_time
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         $stmt->execute([
@@ -382,7 +386,9 @@ function handleAddBooking()
             $after_hours_charge,
             $passenger_name,
             $passenger_phone,
-            $language
+            $language,
+            $is_same_day_return,
+            $return_pickup_time
         ]);
 
         $booking_id = $pdo->lastInsertId();
@@ -438,7 +444,7 @@ function handleAddBooking()
             'contact_id' => $contact_id ?? null,
             'trip_date' => $trip_date ?? null
         ]);
-        jsonResponse(['success' => false, 'message' => bookingFeePctMigrationHint($e) ?? $e->getMessage()], 400);
+        jsonResponse(['success' => false, 'message' => bookingFeePctMigrationHint($e) ?? sameDayReturnMigrationHint($e) ?? $e->getMessage()], 400);
     }
 }
 
@@ -588,10 +594,12 @@ function handleUpdateBooking()
             // After-hours surcharge — only applied if the popup was accepted
             // client-side AND the time is genuinely within the window (never
             // trust the client-side check alone).
+            // On a same-day round trip, every pickup that is after hours (outbound and return) is charged.
+            $is_same_day_return = isset($_REQUEST['same_day_return']) ? 1 : 0;
+            $return_pickup_time = resolveReturnPickupTime((bool) $is_same_day_return, $_REQUEST['return_pickup_time'] ?? '', $start_time);
             $after_hours_confirmed = isset($_REQUEST['after_hours_confirmed']) && $_REQUEST['after_hours_confirmed'] === '1';
-            $after_hours_charge = null;
-            if ($after_hours_confirmed && !empty($start_time) && isAfterHoursStartTime($pdo, $start_time)) {
-                $after_hours_charge = (float) getSystemVariable($pdo, 'after_hours_charge');
+            $after_hours_charge = calculateAfterHoursCharge($pdo, $after_hours_confirmed, $start_time, $return_pickup_time);
+            if ($after_hours_charge !== null) {
                 $final_cost += $after_hours_charge;
             }
 
@@ -627,7 +635,8 @@ function handleUpdateBooking()
             $description_to_save = $description_input;
 
             // Recalculate trip distance in case pickup/destination changed
-            $is_round_trip = isset($_REQUEST['round_trip']) ? 1 : 0;
+            // A same-day round trip is always a round trip for the distance
+            $is_round_trip = (isset($_REQUEST['round_trip']) || $is_same_day_return) ? 1 : 0;
             $distance_km = calculateTripDistanceKm($original_pickup, $original_destination);
             if ($distance_km !== null && $is_round_trip) {
                 $distance_km = round($distance_km * 2, 1);
@@ -640,6 +649,7 @@ function handleUpdateBooking()
                 driver_id = ?, booking_fee = ?, booking_fee_pct = ?, no_booking_fee = ?, driver_notes = ?,
                 pickup_is_custom = ?, distance_km = ?, is_round_trip = ?, after_hours_charge = ?,
                 passenger_name = ?, passenger_phone = ?, language = ?,
+                is_same_day_return = ?, return_pickup_time = ?,
                 last_confirmed_at = NULL,
                 updated_at = NOW()
             WHERE id = ?";
@@ -670,6 +680,8 @@ function handleUpdateBooking()
                 $passenger_name,
                 $passenger_phone,
                 $language,
+                $is_same_day_return,
+                $return_pickup_time,
                 $booking_id
             ]);
 
@@ -719,7 +731,7 @@ function handleUpdateBooking()
             'error' => $e->getMessage(),
             'booking_id' => $booking_id ?? null
         ]);
-        jsonResponse(['success' => false, 'message' => bookingFeePctMigrationHint($e) ?? 'Update failed.'], 400);
+        jsonResponse(['success' => false, 'message' => bookingFeePctMigrationHint($e) ?? sameDayReturnMigrationHint($e) ?? ($e instanceof InvalidArgumentException ? $e->getMessage() : 'Update failed.')], 400);
     }
 }
 

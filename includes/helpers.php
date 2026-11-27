@@ -315,6 +315,7 @@ const SYSTEM_VARIABLES = [
     'after_hours_charge' => ['label' => 'After-Hours Surcharge (R)', 'type' => 'number', 'default' => 75],
     'after_hours_start' => ['label' => 'After-Hours Start Time', 'type' => 'time', 'default' => '20:00'],
     'after_hours_end' => ['label' => 'After-Hours End Time', 'type' => 'time', 'default' => '06:00'],
+    'round_trip_discount_pct' => ['label' => 'Same-Day Round Trip Discount (%)', 'type' => 'number', 'default' => 10],
     'airport_pickup_notice' => [
         'label' => 'Cape Town Airport Pickup Notice',
         'type' => 'textarea',
@@ -486,6 +487,60 @@ function isAfterHoursStartTime(PDO $pdo, string $startTime): bool
     }
     // Window wraps past midnight
     return $time >= $start || $time < $end;
+}
+
+/**
+ * Price of a same-day round trip: the one-way fare doubled, less the discount percentage
+ * (round_trip_discount_pct), rounded to the nearest R10.
+ * The Add / Edit Booking pages work this out in JavaScript with the same formula.
+ * Used by: modules/Bookings/view.php (Book Again)
+ *
+ * @param float $oneWayFare   Base fare for one way (after-hours surcharge excluded)
+ * @param float $discountPct  Discount in percent, 0 to 100
+ * @return float
+ */
+function calculateSameDayReturnCost(float $oneWayFare, float $discountPct): float
+{
+    $discountPct = min(100.0, max(0.0, $discountPct));
+    return round(($oneWayFare * 2 * (1 - $discountPct / 100)) / 10) * 10;
+}
+
+/**
+ * Returns booking notes with the same-day return notice appended, when the booking is a same-day
+ * round trip. Computed at render time only, never written into bookings.description, same principle
+ * as appendAfterHoursNotice().
+ * Used by: modules/WhatsApp/helpers.php (buildBookingMessageVars, getWhatsAppTripNoticeLines), modules/Bookings/view.php
+ *
+ * @param array       $booking  Needs is_same_day_return, return_pickup_time and destination (the place the
+ *                              return trip starts from, already resolved for was_swapped)
+ * @param string|null $notes    Raw stored notes/description text
+ * @param string      $lang     'en' (default) or 'af'
+ * @return string               Notes text ready for display
+ */
+function appendSameDayReturnNotice(array $booking, ?string $notes, string $lang = 'en'): string
+{
+    $notes = $notes ?? '';
+    if (empty($booking['is_same_day_return'])) {
+        return $notes;
+    }
+
+    $isAfrikaans = ($lang === 'af');
+    if (stripos($notes, $isAfrikaans ? 'terugrit' : 'same-day return') !== false) {
+        return $notes;
+    }
+
+    $time = !empty($booking['return_pickup_time']) ? substr((string) $booking['return_pickup_time'], 0, 5) : '';
+    $place = trim((string) ($booking['destination'] ?? ''));
+    if ($time === '') {
+        $notice = $isAfrikaans
+            ? 'Dieselfde-dag terugrit: die terugrit-tyd word nog bevestig.'
+            : 'Same-day return: the return pick-up time will be confirmed.';
+    } elseif ($isAfrikaans) {
+        $notice = 'Dieselfde-dag terugrit: optel om ' . $time . ($place !== '' ? ' by ' . $place : '') . '.';
+    } else {
+        $notice = 'Same-day return: pick-up at ' . $time . ($place !== '' ? ' from ' . $place : '') . '.';
+    }
+    return trim($notes) === '' ? $notice : rtrim($notes) . "\n" . $notice;
 }
 
 /**

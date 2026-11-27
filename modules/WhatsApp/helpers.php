@@ -652,6 +652,7 @@ function buildBookingMessageVars(PDO $pdo, array $b): array
     $lang = normalizeWhatsAppLanguage($b['language'] ?? 'en');
     $notes = appendAirportPickupNotice($pdo, $pickup, $b['description'] ?? '', $lang);
     $notes = appendAfterHoursNotice($b['after_hours_charge'] ?? null, $notes, $lang, $pdo);
+    $notes = appendSameDayReturnNotice($b, $notes, $lang);
 
     $isUpdate = !empty($b['updated_at']);
     $updatedAt = $isUpdate ? (new DateTime($b['updated_at'], $tz))->format('d/m/y H:i') : '';
@@ -811,17 +812,18 @@ function splitWhatsAppNoteLines(?string $text): array
 }
 
 /**
- * The notices the system adds to a trip (airport pickup, after-hours surcharge), one per line, in
+ * The notices the system adds to a trip (airport pickup, after-hours surcharge, same-day return), one per line, in
  * the given language. They belong to a single trip, so {trips} shows them under that trip.
  * Used by: buildWhatsAppTripsText()
  *
- * @param array $booking  Row with pickup_location and after_hours_charge
+ * @param array $booking  Row with pickup_location, destination, after_hours_charge, is_same_day_return, return_pickup_time
  * @return string[]
  */
 function getWhatsAppTripNoticeLines(PDO $pdo, array $booking, string $language = 'en'): array
 {
     $notices = appendAirportPickupNotice($pdo, (string) ($booking['pickup_location'] ?? ''), '', $language);
     $notices = appendAfterHoursNotice($booking['after_hours_charge'] ?? null, $notices, $language, $pdo);
+    $notices = appendSameDayReturnNotice($booking, $notices, $language);
     return splitWhatsAppNoteLines($notices);
 }
 

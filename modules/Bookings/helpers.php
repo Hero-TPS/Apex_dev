@@ -535,6 +535,12 @@ function createEventDescription(array $bookingData): string
 
     $description = "📍 Pickup: " . $pickup . "\n";
     $description .= "🎯 Destination: " . $destination . "\n";
+    if (!empty($bookingData['is_same_day_return'])) {
+        $description .= "↩️ Same-day return from " . $destination . ": "
+            . (!empty($bookingData['return_pickup_time'])
+                ? substr((string) $bookingData['return_pickup_time'], 0, 5)
+                : 'time to be confirmed') . "\n";
+    }
     $description .= "💰 Cost: R" . number_format($bookingData['cost'], 2) . "\n";
     $description .= "💳 Payment: " . paymentMethodLabel($bookingData['payment_method'] ?? '') . "\n";
 
@@ -678,6 +684,75 @@ function bookingFeePctMigrationHint(Throwable $e): ?string
 {
     if (stripos($e->getMessage(), 'booking_fee_pct') !== false && stripos($e->getMessage(), 'unknown column') !== false) {
         return 'The database needs an update before booking fees can be saved. Run Services → Database Updates.';
+    }
+    return null;
+}
+
+/**
+ * The return pickup time of a same-day round trip, as 'HH:MM:00', or null when it is not set yet
+ * (the client often decides on the day) or the booking is not a same-day round trip.
+ * The return is on the booking's own date, so it has to be later than the start time.
+ * Used by: modules/Bookings/api/index.php (add, update)
+ *
+ * @param bool   $sameDay    Whether the booking is a same-day round trip
+ * @param mixed  $raw        Submitted value, 'HH:MM' or empty
+ * @param string $startTime  The outbound start time, 'HH:MM' or 'HH:MM:SS'
+ * @return string|null
+ * @throws InvalidArgumentException  When the time is not a valid time or is not later than the start time
+ */
+function resolveReturnPickupTime(bool $sameDay, $raw, string $startTime): ?string
+{
+    $raw = is_string($raw) ? trim($raw) : '';
+    if (!$sameDay || $raw === '') {
+        return null;
+    }
+    if (!preg_match('/^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/', $raw)) {
+        throw new InvalidArgumentException('The return pickup time is not a valid time.');
+    }
+    $time = substr($raw, 0, 5);
+    if ($time <= substr($startTime, 0, 5)) {
+        throw new InvalidArgumentException('The return pickup time must be later than the start time. A return on another day is a separate booking.');
+    }
+    return $time . ':00';
+}
+
+/**
+ * The after-hours surcharge for a booking, or null when none applies. It is charged once for every pickup
+ * that falls in the after-hours window: the outbound pickup and, on a same-day round trip, the return pickup.
+ * Only applied when the popup was accepted on the page, and never for a time outside the window.
+ * Used by: modules/Bookings/api/index.php (add, update)
+ *
+ * @param string|null $returnTime  Return pickup time from resolveReturnPickupTime(), or null
+ * @return float|null              Total surcharge to add to the cost
+ */
+function calculateAfterHoursCharge(PDO $pdo, bool $confirmed, string $startTime, ?string $returnTime): ?float
+{
+    if (!$confirmed) {
+        return null;
+    }
+    $legs = 0;
+    if ($startTime !== '' && isAfterHoursStartTime($pdo, $startTime)) {
+        $legs++;
+    }
+    if ($returnTime !== null && isAfterHoursStartTime($pdo, $returnTime)) {
+        $legs++;
+    }
+    if ($legs === 0) {
+        return null;
+    }
+    return round((float) getSystemVariable($pdo, 'after_hours_charge') * $legs, 2);
+}
+
+/**
+ * Friendly message when a booking cannot be saved because the same-day round trip update has not been run yet.
+ * Returns null for any other error.
+ */
+function sameDayReturnMigrationHint(Throwable $e): ?string
+{
+    $message = $e->getMessage();
+    if (stripos($message, 'unknown column') !== false
+        && (stripos($message, 'is_same_day_return') !== false || stripos($message, 'return_pickup_time') !== false)) {
+        return 'The database needs an update before same-day round trips can be saved. Run Services → Database Updates.';
     }
     return null;
 }

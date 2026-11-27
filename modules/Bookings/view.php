@@ -139,6 +139,14 @@ if (isset($_GET['id'])) {
         <div class="detail-item">
             <strong>Time:</strong> <?= date('H:i', strtotime($booking['start_time'])) ?>
         </div>
+        <?php if (!empty($booking['is_same_day_return'])): ?>
+        <div class="detail-item">
+            <strong>Return Pickup:</strong>
+            ↩️ <?= !empty($booking['return_pickup_time'])
+                ? e(date('H:i', strtotime($booking['return_pickup_time']))) . ' from ' . e($booking['destination'])
+                : 'time to be confirmed' ?>
+        </div>
+        <?php endif; ?>
         <div class="detail-item full-width">
             <strong>Pickup:</strong> <?= htmlspecialchars($booking['pickup_location']) ?>
             <?php if ($gpsPinSide === 'pickup'): ?><span title="GPS marked">📍</span><?php endif; ?>
@@ -190,7 +198,7 @@ if (isset($_GET['id'])) {
             <?php endif; ?>
         </div>
         <div class="detail-item full-width">
-            <strong>Notes:</strong> <?= nl2br(htmlspecialchars(appendAfterHoursNotice($booking['after_hours_charge'] ?? null, appendAirportPickupNotice($pdo, $booking['pickup_location'], $booking['description'])) ?: 'None')) ?>
+            <strong>Notes:</strong> <?= nl2br(htmlspecialchars(appendSameDayReturnNotice($booking, appendAfterHoursNotice($booking['after_hours_charge'] ?? null, appendAirportPickupNotice($pdo, $booking['pickup_location'], $booking['description']))) ?: 'None')) ?>
         </div>
         <?php if (!empty($booking['driver_name'])): ?>
         <div class="detail-item">
@@ -275,7 +283,9 @@ if (isset($_GET['id'])) {
     // Cost is the base fare (after-hours surcharge excluded), same as edit.php, so the
     // surcharge prompt on add.php doesn't charge it twice. The payment method is copied on
     // all three choices; "Payment Received" never is (a new trip hasn't been paid yet).
-    // Date, time, flight number, notes, driver and the round-trip flag are never copied.
+    // Date, time, flight number, notes and driver are never copied. Repeat keeps the round-trip flag, and for a
+    // same-day round trip it keeps the same-day flag with the cost as it is (keep_cost). The Same day round trip
+    // choice starts from the one-way fare, so it is not offered for a booking that already is one.
     $bookAgainUrl = function (array $params): string {
         $parts = [];
         foreach ($params as $key => $value) {
@@ -304,9 +314,18 @@ if (isset($_GET['id'])) {
     ];
 
     $bookAgainNewUrl    = $bookAgainUrl($bookAgainClient + $bookAgainPayment);
+    $bookAgainIsSameDay = !empty($booking['is_same_day_return']);
     $bookAgainRepeatUrl = $bookAgainUrl($bookAgainClient + $bookAgainPayment + $bookAgainTrip + [
-        'swap_locations' => !empty($booking['was_swapped']) ? '1' : '',
+        'swap_locations'  => !empty($booking['was_swapped']) ? '1' : '',
+        'round_trip'      => !empty($booking['is_round_trip']) ? '1' : '',
+        'same_day_return' => $bookAgainIsSameDay ? '1' : '',
+        'keep_cost'       => $bookAgainIsSameDay ? '1' : '',
     ]);
+    $bookAgainSameDayUrl = $bookAgainUrl($bookAgainClient + $bookAgainPayment + $bookAgainTrip + [
+        'swap_locations'  => !empty($booking['was_swapped']) ? '1' : '',
+        'same_day_return' => '1',
+    ]);
+    $bookAgainDiscountPct = (float) getSystemVariable($pdo, 'round_trip_discount_pct');
     $bookAgainReturnUrl = $bookAgainUrl($bookAgainClient + $bookAgainPayment + $bookAgainTrip + [
         'swap_locations' => !empty($booking['was_swapped']) ? '' : '1',
     ]);
@@ -326,10 +345,16 @@ if (isset($_GET['id'])) {
                     🔁 Repeat this trip
                     <span class="at-bookagain-hint">Same route, cost, payment method and pickup person</span>
                 </a>
+                <?php if (!$bookAgainIsSameDay): ?>
                 <a href="<?= htmlspecialchars($bookAgainReturnUrl) ?>" class="page-action-btn rebook">
                     ↩️ Return trip
                     <span class="at-bookagain-hint">Same as repeat, with pickup and destination swapped</span>
                 </a>
+                <a href="<?= htmlspecialchars($bookAgainSameDayUrl) ?>" class="page-action-btn rebook">
+                    🔁 Same day round trip
+                    <span class="at-bookagain-hint">One booking, there and back the same day: two fares less <?= e((string) $bookAgainDiscountPct) ?>%, with a return pickup time</span>
+                </a>
+                <?php endif; ?>
             </div>
             <div class="modal-buttons">
                 <button type="button" id="cancelBookAgainBtn" class="modal-btn cancel-btn">Cancel</button>

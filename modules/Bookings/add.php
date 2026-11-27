@@ -53,6 +53,13 @@ $prefill_passenger_name  = isset($_GET['passenger_name'])  ? htmlspecialchars(ur
 $prefill_passenger_phone = isset($_GET['passenger_phone']) ? htmlspecialchars(urldecode($_GET['passenger_phone'])) : '';
 $from_prebooking      = isset($_GET['from_prebooking']) ? (int) $_GET['from_prebooking'] : 0;
 
+// Same-day round trip from Book Again: the cost passed in is the one-way fare and the page works out the
+// discounted total. keep_cost=1 (Repeat of a same-day booking) passes the finished total, which is kept as it is.
+$prefill_same_day   = isset($_GET['same_day_return']) && $_GET['same_day_return'] === '1';
+$prefill_keep_cost  = isset($_GET['keep_cost']) && $_GET['keep_cost'] === '1';
+$prefill_round_trip = $prefill_same_day || (isset($_GET['round_trip']) && $_GET['round_trip'] === '1');
+$sameDayDiscountPct = (float) getSystemVariable($pdo, 'round_trip_discount_pct');
+
 // Driver allocation carried over from a tentative booking (driver, booking fee %, driver notes)
 $prefill_driver_id = isset($_GET['driver_id']) ? (int) $_GET['driver_id'] : 0;
 if ($prefill_driver_id > 0 && !in_array($prefill_driver_id, array_map('intval', array_column($drivers, 'id')), true)) {
@@ -177,9 +184,28 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
 
         <div class="form-group">
             <label>
-                <input type="checkbox" id="roundTrip" name="round_trip">
+                <input type="checkbox" id="roundTrip" name="round_trip" <?php if ($prefill_round_trip) echo 'checked'; ?>>
                 🔁 Round trip (double the calculated distance)
             </label>
+        </div>
+
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="sameDayReturn" name="same_day_return" value="1" <?php if ($prefill_same_day) echo 'checked'; ?>>
+                ↩️ Same-day round trip (there, wait, and back the same day at a discount)
+            </label>
+            <small id="sameDayCostHint" class="at-help-text hidden"></small>
+        </div>
+
+        <div class="form-group<?= $prefill_same_day ? '' : ' hidden' ?>" id="returnTimeGroup">
+            <label for="returnTime">Return Pickup Time (optional)</label>
+            <select id="returnTime" name="return_pickup_time">
+                <option value="">To be confirmed</option>
+                <?php foreach ($timeOptions as $time): ?>
+                    <option value="<?= htmlspecialchars($time) ?>"><?= htmlspecialchars($time) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <small class="at-help-text">Picked up from the destination on the trip date. Leave as "To be confirmed" until the client decides.</small>
         </div>
 
         <!-- Cost -->
@@ -362,6 +388,13 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
         var afterHoursStart  = <?= json_encode(substr((string) getSystemVariable($pdo, 'after_hours_start'), 0, 5)) ?>;
         var afterHoursEnd    = <?= json_encode(substr((string) getSystemVariable($pdo, 'after_hours_end'), 0, 5)) ?>;
         var afterHoursCharge = <?= json_encode((float) getSystemVariable($pdo, 'after_hours_charge')) ?>;
+
+        // Same-day round trip: two one-way fares less the discount, rounded to the nearest R10
+        var sameDayDiscountPct = <?= json_encode($sameDayDiscountPct) ?>;
+        var prefillSameDay = <?= json_encode($prefill_same_day) ?>;
+        var prefillKeepCost = <?= json_encode($prefill_keep_cost) ?>;
+        var oneWayFare = null;       // the fare picked before the box was ticked, put back when it is unticked
+        var roundTripWasAuto = false; // the Round trip box was ticked by this box, so unticking this one clears it
 
         function isAfterHours(time) {
             if (!time) return false;
@@ -618,6 +651,79 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
             }
         }
 
+        // Same-day round trip
+        function currentCostValue() {
+            return $('#cost').val() === 'other'
+                ? parseFloat($('#otherCost').val()) || 0
+                : parseFloat($('#cost').val()) || 0;
+        }
+
+        function setCostValue(amount) {
+            var costSelect = $('#cost');
+            var match = null;
+            costSelect.find('option').each(function () {
+                var v = $(this).val();
+                if (v !== '' && v !== 'other' && parseFloat(v) === amount) match = v;
+            });
+            if (match !== null) {
+                costSelect.val(match);
+            } else {
+                costSelect.val('other');
+                $('#otherCost').val(amount);
+            }
+            costSelect.trigger('change');
+        }
+
+        function sameDayTotal(fare) {
+            var pct = Math.min(100, Math.max(0, sameDayDiscountPct));
+            return Math.round(fare * 2 * (1 - pct / 100) / 10) * 10;
+        }
+
+        function applySameDay(on) {
+            var hint = $('#sameDayCostHint');
+            $('#returnTimeGroup').toggleClass('hidden', !on);
+            if (on) {
+                var fare = currentCostValue();
+                if (fare <= 0) {
+                    $('#sameDayReturn').prop('checked', false);
+                    $('#returnTimeGroup').addClass('hidden');
+                    hint.text('Select the one-way fare in Cost first, then tick this box.').removeClass('hidden');
+                    return;
+                }
+                oneWayFare = fare;
+                var total = sameDayTotal(fare);
+                roundTripWasAuto = !$('#roundTrip').is(':checked');
+                $('#roundTrip').prop('checked', true);
+                setCostValue(total);
+                hint.text('One-way fare R' + fare.toFixed(2) + ' × 2, less ' + sameDayDiscountPct + '%, to the nearest R10 = R' +
+                    total.toFixed(2) + '. You can still change the cost.').removeClass('hidden');
+            } else {
+                if (roundTripWasAuto) {
+                    $('#roundTrip').prop('checked', false);
+                }
+                roundTripWasAuto = false;
+                if (oneWayFare !== null) {
+                    setCostValue(oneWayFare);
+                    oneWayFare = null;
+                    hint.addClass('hidden').text('');
+                } else {
+                    hint.text('Check the cost: it is still the amount for the round trip.').removeClass('hidden');
+                }
+            }
+        }
+
+        $('#sameDayReturn').on('change', function () {
+            applySameDay($(this).is(':checked'));
+        });
+
+        if (prefillSameDay) {
+            if (prefillKeepCost) {
+                $('#sameDayCostHint').text('Cost kept from the original booking.').removeClass('hidden');
+            } else {
+                applySameDay(true);
+            }
+        }
+
         // Passenger Details panel: header toggles it (fields stay in the form and submit even when collapsed)
         $('.menu-toggle[data-target="passenger-section"]').on('click', function () {
             $('#passenger-section').slideToggle(200);
@@ -627,12 +733,20 @@ $pickupPersonOpen = ($prefill_passenger_name !== '' || $prefill_passenger_phone 
         $('#bookingForm').on('submit', function (e) {
             e.preventDefault();
 
+            // Every pickup that falls in after-hours is charged: the outbound pickup and, on a same-day
+            // round trip, the return pickup
             var afterHoursConfirmed = '0';
             var startTimeVal = $('#startTime').val();
-            if (isAfterHours(startTimeVal)) {
-                var afterHoursMsg = 'This trip starts at ' + startTimeVal + ', which falls within after-hours (' +
-                    afterHoursStart + '–' + afterHoursEnd + '). Add the R' + afterHoursCharge.toFixed(2) +
-                    ' after-hours surcharge to the cost?';
+            var returnTimeVal = $('#sameDayReturn').is(':checked') ? $('#returnTime').val() : '';
+            var afterHoursLegs = [];
+            if (isAfterHours(startTimeVal)) afterHoursLegs.push('the pickup at ' + startTimeVal);
+            if (returnTimeVal && isAfterHours(returnTimeVal)) afterHoursLegs.push('the return pickup at ' + returnTimeVal);
+            if (afterHoursLegs.length) {
+                var afterHoursMsg = afterHoursLegs.join(' and ').replace(/^./, function (c) { return c.toUpperCase(); }) +
+                (afterHoursLegs.length > 1 ? ' fall' : ' falls') +
+                    ' within after-hours (' + afterHoursStart + '–' + afterHoursEnd + '). Add the R' +
+                    (afterHoursCharge * afterHoursLegs.length).toFixed(2) + ' after-hours surcharge' +
+                    (afterHoursLegs.length > 1 ? ' (R' + afterHoursCharge.toFixed(2) + ' per pickup)' : '') + ' to the cost?';
                 afterHoursConfirmed = confirm(afterHoursMsg) ? '1' : '0';
             }
 
